@@ -1,0 +1,1615 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro Pessoal</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#f8fafc',
+                        surface: '#ffffff',
+                        surfaceLight: '#f1f5f9',
+                        accent: '#0ea5e9',
+                        accentDark: '#0284c7',
+                        danger: '#e11d48',
+                        success: '#10b981',
+                        warn: '#f59e0b',
+                        textPrimary: '#0f172a',
+                        textSecondary: '#64748b'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="h-full text-textPrimary overflow-hidden">
+    <div id="app" class="h-full flex flex-col relative">
+        <!-- Sidebar Navigation -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity duration-300 opacity-0 backdrop-blur-sm"></div>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 glass-panel z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-r border-surfaceLight shadow-2xl bg-surface">
+            <div class="p-4 border-b border-surfaceLight flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                        <i data-lucide="wallet" class="w-4 h-4 text-accent"></i>
+                    </div>
+                    <span class="font-bold text-textPrimary text-lg">Menu</span>
+                </div>
+                <button onclick="toggleSidebar()" class="p-1 rounded-lg hover:bg-surfaceLight text-textSecondary hover:text-textPrimary transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <nav class="flex-1 overflow-y-auto p-3 space-y-1" id="main-tabs">
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-accent/10 text-accent" data-tab="dashboard"
+                    onclick="switchTab('dashboard')"><i data-lucide="bar-chart-3" class="w-5 h-5"></i>Dashboard</button>
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="saidas"
+                    onclick="switchTab('saidas')"><i data-lucide="arrow-up-right" class="w-5 h-5 text-danger"></i>Saídas</button>
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="entradas"
+                    onclick="switchTab('entradas')"><i data-lucide="arrow-down-left" class="w-5 h-5 text-success"></i>Entradas</button>
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="categorias"
+                    onclick="switchTab('categorias')"><i data-lucide="tag" class="w-5 h-5"></i>Categorias</button>
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="novo"
+                    onclick="switchTab('novo')"><i data-lucide="plus-circle" class="w-5 h-5"></i>Novo Lançamento</button>
+                <hr class="border-surfaceLight my-2">
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="configuracoes"
+                    onclick="switchTab('configuracoes')"><i data-lucide="settings" class="w-5 h-5"></i>Configurações</button>
+            </nav>
+        </aside>
+
+        <!-- Header -->
+        <header class="flex-shrink-0 glass border-b border-surfaceLight px-4 py-3 flex items-center justify-between z-10 sticky top-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="p-2 -ml-2 rounded-lg hover:bg-surfaceLight transition-colors text-textSecondary hover:text-accent">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="w-9 h-9 rounded-lg bg-accent/20 flex items-center justify-center">
+                    <i data-lucide="wallet" class="w-5 h-5 text-accent"></i>
+                </div>
+                <h1 id="app-title" class="text-lg font-bold text-textPrimary">Controle Financeiro</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="exportPDF()"
+                    class="text-xs bg-surfaceLight hover:bg-surfaceLight/80 px-3 py-1.5 rounded-lg text-textSecondary hover:text-accent flex items-center gap-1 transition-colors"><i
+                        data-lucide="file-text" class="w-4 h-4"></i> Relatório PDF</button>
+            </div>
+        </header>
+        <main class="flex-1 overflow-auto p-4" id="main-content"><!-- DASHBOARD -->
+            <section id="view-dashboard" class="fade-in">
+                <div class="flex flex-wrap gap-2 mb-4 items-center">
+                    <div class="flex items-center gap-1 bg-surfaceLight/30 rounded-lg px-2 shadow-sm border border-surfaceLight/50">
+                        <span class="text-xs text-textSecondary font-medium">De</span>
+                        <input type="month" id="f-comp-start" onchange="renderDashboard()" class="text-sm bg-transparent border-0 ring-0 focus:ring-0 text-textPrimary py-1.5 w-[110px] cursor-pointer">
+                        <span class="text-xs text-textSecondary font-medium">Até</span>
+                        <input type="month" id="f-comp-end" onchange="renderDashboard()" class="text-sm bg-transparent border-0 ring-0 focus:ring-0 text-textPrimary py-1.5 w-[110px] cursor-pointer">
+                    </div> <select id="f-person" onchange="renderDashboard()" class="text-sm">
+                        <option value="">Todas Pessoas</option>
+                    </select> <select id="f-macro" onchange="renderDashboard()" class="text-sm">
+                        <option value="">Todas Categorias</option>
+                    </select> <select id="f-status" onchange="renderDashboard()" class="text-sm">
+                        <option value="">Todos Status</option>
+                        <option>Em aberto</option>
+                        <option>Pago</option>
+                        <option>Cancelado</option>
+                    </select>
+                    <button onclick="clearDashboardFilters()" class="text-xs bg-accent/10 text-accent hover:bg-accent hover:text-white px-3 py-2 rounded-lg transition-colors font-medium">Limpar Filtros</button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" id="summary-cards"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no gráfico para filtrar">
+                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Distribuição por Categoria</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-category"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no gráfico para filtrar">
+                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Gastos por Pessoa</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-person"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass rounded-xl p-4 mb-4">
+                    <h3 class="text-sm font-semibold text-textSecondary mb-4">Fluxo Mensal (12 meses - Histórico e Previsão)</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="chart-trend"></canvas>
+                    </div>
+                </div>
+                <div class="glass rounded-xl p-4" id="recent-container">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 id="recent-title" class="text-sm font-semibold text-textSecondary">Lançamentos Recentes</h3>
+                        <button id="btn-clear-card" onclick="setFocusedCard(null)" class="hidden text-xs text-accent hover:text-accentLight hover:underline px-2 py-1">Limpar Seleção</button>
+                    </div>
+                    <div id="recent-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
+                </div>
+            </section><!-- SAÍDAS LIST -->
+            <section id="view-saidas" class="fade-in hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-semibold">Saídas</h2><button
+                        onclick="switchTab('novo');document.getElementById('form-type').value='saida'"
+                        class="bg-accent hover:bg-accentDark text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                            data-lucide="plus" class="w-4 h-4"></i> Nova Saída</button>
+                </div>
+                <div id="saidas-list" class="space-y-2"></div>
+                <p id="saidas-empty" class="text-textSecondary text-sm text-center py-8 hidden">Nenhuma saída
+                    cadastrada.</p>
+            </section><!-- ENTRADAS LIST -->
+            <section id="view-entradas" class="fade-in hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-semibold">Entradas</h2><button
+                        onclick="switchTab('novo');document.getElementById('form-type').value='entrada';toggleFormFields()"
+                        class="bg-success hover:bg-success/80 text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                            data-lucide="plus" class="w-4 h-4"></i> Nova Entrada</button>
+                </div>
+                <div id="entradas-list" class="space-y-2"></div>
+                <p id="entradas-empty" class="text-textSecondary text-sm text-center py-8 hidden">Nenhuma entrada
+                    cadastrada.</p>
+            </section><!-- CATEGORIAS -->
+            <section id="view-categorias" class="fade-in hidden max-w-2xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-semibold">Categorias Personalizadas</h2><button onclick="openCategoryForm()"
+                        class="bg-accent hover:bg-accentDark text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                            data-lucide="plus" class="w-4 h-4"></i> Nova Categoria</button>
+                </div>
+                <div id="categories-list" class="grid gap-3"></div>
+                <p id="categories-empty" class="text-textSecondary text-sm text-center py-8">Nenhuma categoria
+                    personalizada.</p>
+                <div id="category-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                    <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4 w-full">
+                        <h3 class="font-semibold mb-4">Nova Categoria</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Nome</label><input id="cat-name"
+                                    type="text" placeholder="Ex: Alimentação" class="w-full text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Macro Categoria</label><select
+                                    id="cat-macro" class="w-full text-sm">
+                                    <option value="FIXO">Fixo</option>
+                                    <option value="VARIAVEL">Variável</option>
+                                    <option value="RESERVA">Reserva</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Cor</label>
+                                <div class="flex gap-2 flex-wrap">
+                                    <button type="button" onclick="selectColor('#38bdf8')"
+                                        class="w-8 h-8 rounded bg-cyan-500 border-2 border-textSecondary"></button><button
+                                        type="button" onclick="selectColor('#34d399')"
+                                        class="w-8 h-8 rounded bg-emerald-400 border-2 border-textSecondary"></button><button
+                                        type="button" onclick="selectColor('#fbbf24')"
+                                        class="w-8 h-8 rounded bg-amber-400 border-2 border-textSecondary"></button><button
+                                        type="button" onclick="selectColor('#f43f5e')"
+                                        class="w-8 h-8 rounded bg-rose-500 border-2 border-textSecondary"></button><button
+                                        type="button" onclick="selectColor('#a78bfa')"
+                                        class="w-8 h-8 rounded bg-violet-400 border-2 border-textSecondary"></button><button
+                                        type="button" onclick="selectColor('#ec4899')"
+                                        class="w-8 h-8 rounded bg-pink-500 border-2 border-textSecondary"></button>
+                                </div><input id="cat-color" type="hidden" value="#38bdf8">
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Ícone (nome Lucide)</label><input
+                                    id="cat-icon" type="text" placeholder="Ex: shopping-bag..." class="w-full text-sm"
+                                    value="tag">
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end mt-5">
+                            <button onclick="closeCategoryForm()"
+                                class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
+                                onclick="saveCategory()"
+                                class="px-3 py-1.5 text-sm text-white bg-accent rounded-lg">Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </section><!-- NOVO LANÇAMENTO -->
+            <section id="view-novo" class="fade-in hidden max-w-lg mx-auto">
+                <h2 class="font-semibold mb-4">Novo Lançamento</h2>
+                <form id="form-new" onsubmit="handleSubmit(event)" class="space-y-3">
+                    <div>
+                        <label class="text-xs text-textSecondary mb-1 block">Tipo</label><select id="form-type"
+                            onchange="toggleFormFields()" class="w-full text-sm">
+                            <option value="saida">Saída</option>
+                            <option value="entrada">Entrada</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-textSecondary mb-1 block">Pessoa</label><select id="form-person"
+                            class="w-full text-sm">
+                            <option>Jadson</option>
+                            <option>Luana</option>
+                            <option>Reserva</option>
+                        </select>
+                    </div>
+                    <div id="saida-fields">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Categoria Macro</label><select
+                                    id="form-macro" onchange="updateCategoryOptions()" class="w-full text-sm">
+                                    <option value="">Selecione...</option>
+                                    <option value="FIXO">Fixo</option>
+                                    <option value="VARIAVEL">Variável</option>
+                                    <option value="RESERVA">Reserva</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Categoria</label><select
+                                    id="form-category" class="w-full text-sm">
+                                    <option value="">Selecione macro primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs text-textSecondary mb-1 block">Descrição</label><input id="form-desc"
+                                type="text" placeholder="Detalhes do gasto" class="w-full text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Valor (R$)</label><input
+                                    id="form-amount" type="number" step="0.01" min="0" placeholder="0,00"
+                                    class="w-full text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Status</label><select
+                                    id="form-status" onchange="togglePaidAt()" class="w-full text-sm">
+                                    <option>Em aberto</option>
+                                    <option>Pago</option>
+                                    <option>Cancelado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-textSecondary mb-1 block mt-3">Conta / Meio de
+                                Pagamento</label><input id="form-payment" type="text" placeholder="Nubank, Itaú, Pix..."
+                                class="w-full text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Data do Evento</label><input
+                                    id="form-occurred" type="date" class="w-full text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Vencimento</label><input
+                                    id="form-due" type="date" class="w-full text-sm">
+                            </div>
+                        </div>
+                        <div id="paid-at-wrap" class="mt-3 hidden">
+                            <label class="text-xs text-textSecondary mb-1 block">Data do Pagamento</label><input
+                                id="form-paid-at" type="date" class="w-full text-sm">
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs text-textSecondary mb-1 block">Competência
+                                (auto-sugerida)</label><input id="form-competence" type="month" class="w-full text-sm">
+                        </div>
+                        <div class="mt-3 flex items-center gap-3">
+                            <label class="text-xs text-textSecondary flex items-center gap-2"><input type="checkbox"
+                                    id="form-installment-check" onchange="toggleInstallments()" class="accent-accent">
+                                Parcelado</label>
+                        </div>
+                        <div id="installment-fields" class="hidden mt-2 grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Nº de Parcelas</label><input
+                                    id="form-installments" type="number" min="2" max="48" value="2"
+                                    class="w-full text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Valor Total</label><input
+                                    id="form-total-amount" type="number" step="0.01" placeholder="Valor total"
+                                    class="w-full text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs text-textSecondary mb-1 block">Recorrência</label><select
+                                id="form-recurrence" class="w-full text-sm">
+                                <option value="">Nenhuma</option>
+                                <option value="mensal">Mensal</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="entrada-fields" class="hidden space-y-3">
+                        <div>
+                            <label class="text-xs text-textSecondary mb-1 block">Tipo de Entrada</label><select
+                                id="form-earning-type" class="w-full text-sm">
+                                <option>Salário</option>
+                                <option>Hora Extra</option>
+                                <option>DSR</option>
+                                <option>13º</option>
+                                <option>Bônus</option>
+                                <option>Alimentação</option>
+                                <option>Café</option>
+                                <option>Outros Benefícios</option>
+                                <option>INSS (dedução)</option>
+                                <option>IRPF (dedução)</option>
+                                <option>Outras Deduções</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-textSecondary mb-1 block">Descrição</label><input
+                                id="form-earning-desc" type="text" placeholder="Detalhes" class="w-full text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Valor (R$)</label><input
+                                    id="form-earning-amount" type="number" step="0.01" min="0" placeholder="0,00"
+                                    class="w-full text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-textSecondary mb-1 block">Competência</label><input
+                                    id="form-earning-comp" type="month" class="w-full text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" id="btn-submit"
+                            class="w-full bg-accent hover:bg-accentDark text-bg font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all"><i
+                                data-lucide="save" class="w-4 h-4"></i> Salvar Lançamento</button>
+                    </div>
+                    <div id="toast"
+                        class="hidden fixed bottom-4 right-4 bg-success text-bg px-4 py-2 rounded-lg text-sm font-medium shadow-lg z-50">
+                    </div>
+                </form>
+            </section><!-- CONFIGURAÇÕES -->
+            <section id="view-configuracoes" class="fade-in hidden max-w-2xl mx-auto">
+                <h2 class="font-semibold mb-4">Configurações</h2>
+                <div class="space-y-6">
+                    <div class="bg-surface rounded-xl p-4 border border-surfaceLight">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-semibold text-sm">Pessoas</h3><button onclick="addPerson()"
+                                class="bg-accent hover:bg-accentDark text-bg text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                                    data-lucide="plus" class="w-3 h-3"></i> Adicionar</button>
+                        </div>
+                        <div id="pessoas-list" class="space-y-2"></div>
+                        <p id="pessoas-empty" class="text-textSecondary text-xs text-center py-4">Nenhuma pessoa
+                            configurada.</p>
+                    </div>
+                    <div class="bg-surface rounded-xl p-4 border border-surfaceLight">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-semibold text-sm">Categorias Macro</h3><button onclick="addMacroCategory()"
+                                class="bg-accent hover:bg-accentDark text-bg text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                                    data-lucide="plus" class="w-3 h-3"></i> Adicionar</button>
+                        </div>
+                        <div id="macro-list" class="space-y-2"></div>
+                        <p id="macro-empty" class="text-textSecondary text-xs text-center py-4">Nenhuma categoria macro.
+                        </p>
+                    </div>
+                </div>
+                <div id="add-person-modal"
+                    class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                    <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4 w-full">
+                        <h3 class="font-semibold mb-4">Nova Pessoa</h3><input id="person-input" type="text"
+                            placeholder="Ex: João" class="w-full text-sm mb-4">
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="closeAddPersonModal()"
+                                class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
+                                onclick="savePerson()"
+                                class="px-3 py-1.5 text-sm text-white bg-accent rounded-lg">Salvar</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="add-macro-modal"
+                    class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                    <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4 w-full">
+                        <h3 class="font-semibold mb-4">Nova Categoria Macro</h3><input id="macro-input" type="text"
+                            placeholder="Ex: Lazer" class="w-full text-sm mb-4">
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="closeAddMacroModal()"
+                                class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
+                                onclick="saveMacroCategory()"
+                                class="px-3 py-1.5 text-sm text-white bg-accent rounded-lg">Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main><!-- Delete confirmation overlay -->
+        <div id="delete-overlay" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4">
+                <p class="text-sm mb-4">Tem certeza que deseja excluir este lançamento?</p>
+                <div class="flex gap-2 justify-end">
+                    <button onclick="cancelDelete()"
+                        class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
+                        onclick="confirmDelete()"
+                        class="px-3 py-1.5 text-sm text-white bg-danger rounded-lg">Excluir</button>
+                </div>
+            </div>
+        </div><!-- Delete Person confirmation overlay -->
+        <div id="delete-person-overlay" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4">
+                <p id="delete-person-msg" class="text-sm mb-4"></p>
+                <div class="flex gap-2 justify-end">
+                    <button onclick="cancelDeletePerson()"
+                        class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
+                        onclick="confirmDeletePerson()"
+                        class="px-3 py-1.5 text-sm text-white bg-danger rounded-lg">Excluir</button>
+                </div>
+            </div>
+        </div><!-- Delete Macro Category confirmation overlay -->
+        <div id="delete-macro-overlay" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4">
+                <p id="delete-macro-msg" class="text-sm mb-4"></p>
+                <div class="flex gap-2 justify-end">
+                    <button onclick="cancelDeleteMacro()"
+                        class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
+                        onclick="confirmDeleteMacro()"
+                        class="px-3 py-1.5 text-sm text-white bg-danger rounded-lg">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            addDoc,
+            getDocs,
+            onSnapshot,
+            updateDoc,
+            deleteDoc,
+            doc
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-iblMouoFYi8t7GM2pn7Ec3TcJD-hKGI",
+            authDomain: "finance-control-cce4f.firebaseapp.com",
+            projectId: "finance-control-cce4f",
+            storageBucket: "finance-control-cce4f.firebasestorage.app",
+            messagingSenderId: "1050867234579",
+            appId: "1:1050867234579:web:616463d41775696dfc4ce6",
+            measurementId: "G-7ZMJQ7CEH1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Substituto do dataSdk apontando para o Firebase Firestore
+        window.dataSdk = {
+            init: async (dataHandler) => {
+                const colRef = collection(db, "finance_records");
+                onSnapshot(colRef, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    dataHandler.onDataChanged(data);
+                });
+                return { isOk: true };
+            },
+            create: async (record) => {
+                try {
+                    await addDoc(collection(db, "finance_records"), record);
+                    return { isOk: true };
+                } catch(e) { console.error(e); return { isOk: false }; }
+            },
+            update: async (record) => {
+                try {
+                    const { id, ...data } = record;
+                    if (!id) throw new Error("Documento precisa de um ID");
+                    await updateDoc(doc(db, "finance_records", id), data);
+                    return { isOk: true };
+                } catch(e) { console.error(e); return { isOk: false }; }
+            },
+            delete: async (record) => {
+                try {
+                    if (!record.id) throw new Error("Documento precisa de um ID");
+                    await deleteDoc(doc(db, "finance_records", record.id));
+                    return { isOk: true };
+                } catch(e) { console.error(e); return { isOk: false }; }
+            }
+        };
+
+        // Avisa a aplicação que o Firebase está pronto
+        window.dispatchEvent(new Event('firebasePronto'));
+    </script>
+    <script>
+        // ============ STATE ============
+        let allRecords = [];
+        let deleteTarget = null;
+        let deletePerson = null;
+        let deleteMacro = null;
+        let currentTab = 'dashboard';
+        let chartInstances = {};
+        let editingCategoryId = null;
+        let focusedDashboardCard = null; // 'entradas', 'saidas', 'aberto'
+
+        const defaultConfig = {
+            app_title: 'Controle Financeiro',
+            background_color: '#0b1120',
+            surface_color: '#1e293b',
+            text_color: '#e2e8f0',
+            accent_color: '#38bdf8',
+            secondary_action_color: '#94a3b8',
+            font_family: 'DM Sans',
+            font_size: 14
+        };
+
+        // ============ ELEMENT SDK ============
+        if (window.elementSdk) {
+            window.elementSdk.init({
+                defaultConfig,
+                onConfigChange: async (config) => {
+                    const c = { ...defaultConfig, ...config };
+                    document.getElementById('app-title').textContent = c.app_title;
+                },
+                mapToCapabilities: (config) => {
+                    const c = { ...defaultConfig, ...config };
+                    const mk = (key) => ({
+                        get: () => c[key] || defaultConfig[key],
+                        set: (v) => { c[key] = v; window.elementSdk.setConfig({ [key]: v }); }
+                    });
+                    return {
+                        recolorables: [mk('background_color'), mk('surface_color'), mk('text_color'), mk('accent_color')],
+                        borderables: [],
+                        fontEditable: mk('font_family'),
+                        fontSizeable: { get: () => c.font_size || defaultConfig.font_size, set: (v) => { c.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+                    };
+                },
+                mapToEditPanelValues: (config) => {
+                    const c = { ...defaultConfig, ...config };
+                    return new Map([['app_title', c.app_title || defaultConfig.app_title]]);
+                }
+            });
+        }
+
+        // ============ DATA SDK ============
+        const dataHandler = {
+            onDataChanged(data) {
+                allRecords = data;
+                renderAll();
+            }
+        };
+
+        async function initSdk() {
+            const r = await window.dataSdk.init(dataHandler);
+            if (!r.isOk) console.error('Data SDK init failed');
+        }
+
+        if (window.dataSdk) {
+            initSdk();
+        } else {
+            window.addEventListener('firebasePronto', initSdk);
+        }
+
+        // ============ SIDEBAR / TAB SWITCHING ============
+        let isSidebarOpen = false;
+
+        function toggleSidebar() {
+            const overlay = document.getElementById('sidebar-overlay');
+            const sidebar = document.getElementById('sidebar');
+            isSidebarOpen = !isSidebarOpen;
+            
+            if (isSidebarOpen) {
+                overlay.classList.remove('hidden');
+                setTimeout(() => {
+                    overlay.classList.remove('opacity-0');
+                    sidebar.classList.remove('-translate-x-full');
+                }, 10);
+            } else {
+                overlay.classList.add('opacity-0');
+                sidebar.classList.add('-translate-x-full');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('#main-tabs button').forEach(b => {
+                b.className = b.dataset.tab === tab ? 
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-accent/10 text-accent' : 
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary';
+            });
+            ['dashboard', 'saidas', 'entradas', 'categorias', 'novo', 'configuracoes'].forEach(v => {
+                const el = document.getElementById('view-' + v);
+                if (el) el.classList.toggle('hidden', v !== tab);
+            });
+            if (tab === 'configuracoes') renderConfiguracoes();
+            renderAll();
+            if (isSidebarOpen) toggleSidebar();
+        }
+
+        // ============ FORM HELPERS ============
+        function toggleFormFields() {
+            const t = document.getElementById('form-type').value;
+            document.getElementById('saida-fields').classList.toggle('hidden', t !== 'saida');
+            document.getElementById('entrada-fields').classList.toggle('hidden', t !== 'entrada');
+        }
+
+        function togglePaidAt() {
+            document.getElementById('paid-at-wrap').classList.toggle('hidden', document.getElementById('form-status').value !== 'Pago');
+        }
+
+        function toggleInstallments() {
+            document.getElementById('installment-fields').classList.toggle('hidden', !document.getElementById('form-installment-check').checked);
+        }
+
+        function updateCategoryOptions() {
+            const macro = document.getElementById('form-macro').value;
+            const sel = document.getElementById('form-category');
+            const cats = allRecords.filter(r => r.type === 'categoria' && r.macro_category === macro);
+            sel.innerHTML = '<option value="">Selecione categoria</option>' + cats.map(c => `<option value="${c.category_name}">${c.category_name}</option>`).join('');
+        }
+
+        function suggestCompetence() {
+            const due = document.getElementById('form-due').value;
+            const occ = document.getElementById('form-occurred').value;
+            const base = due || occ;
+            if (base) {
+                const d = new Date(base + 'T00:00:00');
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                document.getElementById('form-competence').value = d.getFullYear() + '-' + m;
+            }
+        }
+        document.getElementById('form-due')?.addEventListener('change', suggestCompetence);
+        document.getElementById('form-occurred')?.addEventListener('change', suggestCompetence);
+
+        const today = new Date().toISOString().slice(0, 10);
+        const thisMonth = today.slice(0, 7);
+        document.getElementById('form-occurred').value = today;
+        document.getElementById('form-competence').value = thisMonth;
+        document.getElementById('form-earning-comp').value = thisMonth;
+
+        // ============ SUBMIT ============
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-bg border-t-transparent rounded-full"></span> Salvando...';
+
+            try {
+                const formType = document.getElementById('form-type').value;
+
+                if (formType === 'entrada') {
+                    const amt = parseFloat(document.getElementById('form-earning-amount').value);
+                    if (!amt || amt <= 0) { showToast('Informe um valor válido', true); return; }
+                    const earningType = document.getElementById('form-earning-type').value;
+                    const isDeduction = earningType.includes('dedução') || earningType.includes('INSS') || earningType.includes('IRPF');
+
+                    if (allRecords.length >= 999) { showToast('Limite de 999 registros atingido!', true); return; }
+
+                    const result = await window.dataSdk.create({
+                        type: 'entrada',
+                        person: document.getElementById('form-person').value,
+                        macro_category: isDeduction ? 'Dedução' : (earningType.includes('Alimentação') || earningType.includes('Café') || earningType.includes('Benefício') ? 'Benefício' : 'Rendimento'),
+                        subcategory: earningType,
+                        description: document.getElementById('form-earning-desc').value || '',
+                        amount: amt,
+                        status: 'Pago',
+                        payment_method: '',
+                        occurred_date: '',
+                        due_date: '',
+                        competence: document.getElementById('form-earning-comp').value,
+                        paid_at: '',
+                        installment_no: 0,
+                        total_installments: 0,
+                        parent_id: '',
+                        earning_type: earningType,
+                        recurrence: '',
+                        created_at: new Date().toISOString(),
+                        category_id: '',
+                        category_name: '',
+                        category_color: '',
+                        category_icon: ''
+                    });
+                    if (result.isOk) showToast('Entrada salva!');
+                    else showToast('Erro ao salvar', true);
+                } else {
+                    const amount = parseFloat(document.getElementById('form-amount').value);
+                    if (!amount || amount <= 0) { showToast('Informe um valor válido', true); return; }
+                    const status = document.getElementById('form-status').value;
+                    if (status === 'Pago' && !document.getElementById('form-paid-at').value) { showToast('Informe a data de pagamento', true); return; }
+
+                    const isInstallment = document.getElementById('form-installment-check').checked;
+                    const recurrence = document.getElementById('form-recurrence').value;
+                    const parentId = 'p_' + Date.now();
+
+                    if (isInstallment) {
+                        const n = parseInt(document.getElementById('form-installments').value) || 2;
+                        const total = parseFloat(document.getElementById('form-total-amount').value) || (amount * n);
+                        const perInstallment = Math.round((total / n) * 100) / 100;
+                        const baseDue = document.getElementById('form-due').value || today;
+
+                        for (let i = 0; i < n; i++) {
+                            if (allRecords.length + i >= 999) { showToast('Limite de registros atingido!', true); break; }
+                            const dueDate = new Date(baseDue + 'T00:00:00');
+                            dueDate.setMonth(dueDate.getMonth() + i);
+                            const dueDateStr = dueDate.toISOString().slice(0, 10);
+                            const compMonth = dueDateStr.slice(0, 7);
+
+                            await window.dataSdk.create({
+                                type: 'saida', person: document.getElementById('form-person').value,
+                                macro_category: document.getElementById('form-macro').value,
+                                subcategory: document.getElementById('form-category').value || '',
+                                description: document.getElementById('form-desc').value + ` (${i + 1}/${n})`,
+                                amount: perInstallment, status: i === 0 ? status : 'Em aberto',
+                                payment_method: document.getElementById('form-payment').value || '',
+                                occurred_date: document.getElementById('form-occurred').value || '',
+                                due_date: dueDateStr, competence: compMonth,
+                                paid_at: i === 0 && status === 'Pago' ? document.getElementById('form-paid-at').value : '',
+                                installment_no: i + 1, total_installments: n, parent_id: parentId,
+                                earning_type: '', recurrence: '', created_at: new Date().toISOString(),
+                                category_id: '', category_name: '', category_color: '', category_icon: ''
+                            });
+                        }
+                        showToast(`${n} parcelas criadas!`);
+                    } else if (recurrence) {
+                        const months = recurrence === 'anual' ? 12 : 1;
+                        const count = 12;
+                        const baseDue = document.getElementById('form-due').value || today;
+
+                        for (let i = 0; i < count; i++) {
+                            if (allRecords.length + i >= 999) { showToast('Limite de registros atingido!', true); break; }
+                            const dueDate = new Date(baseDue + 'T00:00:00');
+                            dueDate.setMonth(dueDate.getMonth() + (i * months));
+                            const dueDateStr = dueDate.toISOString().slice(0, 10);
+
+                            await window.dataSdk.create({
+                                type: 'saida', person: document.getElementById('form-person').value,
+                                macro_category: document.getElementById('form-macro').value,
+                                subcategory: document.getElementById('form-category').value || '',
+                                description: document.getElementById('form-desc').value || '',
+                                amount: amount, status: i === 0 ? status : 'Em aberto',
+                                payment_method: document.getElementById('form-payment').value || '',
+                                occurred_date: '', due_date: dueDateStr, competence: dueDateStr.slice(0, 7),
+                                paid_at: i === 0 && status === 'Pago' ? document.getElementById('form-paid-at').value : '',
+                                installment_no: 0, total_installments: 0, parent_id: parentId,
+                                earning_type: '', recurrence: recurrence, created_at: new Date().toISOString(),
+                                category_id: '', category_name: '', category_color: '', category_icon: ''
+                            });
+                        }
+                        showToast(`Recorrência ${recurrence} criada (${count}x)!`);
+                    } else {
+                        if (allRecords.length >= 999) { showToast('Limite de 999 registros!', true); return; }
+                        const result = await window.dataSdk.create({
+                            type: 'saida', person: document.getElementById('form-person').value,
+                            macro_category: document.getElementById('form-macro').value,
+                            subcategory: document.getElementById('form-category').value || '',
+                            description: document.getElementById('form-desc').value || '',
+                            amount: amount, status: status,
+                            payment_method: document.getElementById('form-payment').value || '',
+                            occurred_date: document.getElementById('form-occurred').value || '',
+                            due_date: document.getElementById('form-due').value || '',
+                            competence: document.getElementById('form-competence').value || '',
+                            paid_at: status === 'Pago' ? document.getElementById('form-paid-at').value : '',
+                            installment_no: 0, total_installments: 0, parent_id: '',
+                            earning_type: '', recurrence: '', created_at: new Date().toISOString(),
+                            category_id: '', category_name: '', category_color: '', category_icon: ''
+                        });
+                        if (result.isOk) showToast('Saída salva!');
+                        else showToast('Erro ao salvar', true);
+                    }
+                    document.getElementById('form-desc').value = '';
+                    document.getElementById('form-amount').value = '';
+                    document.getElementById('form-category').value = '';
+                    document.getElementById('form-installment-check').checked = false;
+                    toggleInstallments();
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Lançamento';
+                lucide.createIcons();
+            }
+        }
+
+        // ============ TOAST ============
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-sm font-medium shadow-lg z-50 ${isError ? 'bg-danger text-white' : 'bg-success text-bg'}`;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 2500);
+        }
+
+        // ============ DELETE ============
+        function askDelete(record) {
+            deleteTarget = record;
+            document.getElementById('delete-overlay').classList.remove('hidden');
+        }
+
+        function cancelDelete() {
+            deleteTarget = null;
+            document.getElementById('delete-overlay').classList.add('hidden');
+        }
+
+        async function confirmDelete() {
+            if (!deleteTarget) return;
+            document.getElementById('delete-overlay').classList.add('hidden');
+            const r = await window.dataSdk.delete(deleteTarget);
+            if (r.isOk) showToast('Excluído!');
+            else showToast('Erro ao excluir', true);
+            deleteTarget = null;
+        }
+
+        function askDeletePerson(person) {
+            deletePerson = person;
+            document.getElementById('delete-person-msg').textContent = `Tem certeza que deseja excluir "${person.person}"?`;
+            document.getElementById('delete-person-overlay').classList.remove('hidden');
+        }
+
+        function cancelDeletePerson() {
+            deletePerson = null;
+            document.getElementById('delete-person-overlay').classList.add('hidden');
+        }
+
+        async function confirmDeletePerson() {
+            if (!deletePerson) return;
+            document.getElementById('delete-person-overlay').classList.add('hidden');
+            const r = await window.dataSdk.delete(deletePerson);
+            if (r.isOk) showToast('Pessoa removida!');
+            else showToast('Erro ao remover', true);
+            deletePerson = null;
+        }
+
+        function askDeleteMacro(macro) {
+            deleteMacro = macro;
+            document.getElementById('delete-macro-msg').textContent = `Tem certeza que deseja excluir "${macro.macro_category}"?`;
+            document.getElementById('delete-macro-overlay').classList.remove('hidden');
+        }
+
+        function cancelDeleteMacro() {
+            deleteMacro = null;
+            document.getElementById('delete-macro-overlay').classList.add('hidden');
+        }
+
+        async function confirmDeleteMacro() {
+            if (!deleteMacro) return;
+            document.getElementById('delete-macro-overlay').classList.add('hidden');
+            const r = await window.dataSdk.delete(deleteMacro);
+            if (r.isOk) showToast('Categoria macro removida!');
+            else showToast('Erro ao remover', true);
+            deleteMacro = null;
+        }
+
+        // ============ TOGGLE STATUS ============
+        async function togglePago(record) {
+            const newStatus = record.status === 'Pago' ? 'Em aberto' : 'Pago';
+            const updated = { ...record, status: newStatus, paid_at: newStatus === 'Pago' ? new Date().toISOString().slice(0, 10) : '' };
+            const r = await window.dataSdk.update(updated);
+            if (!r.isOk) showToast('Erro ao atualizar', true);
+        }
+
+        // ============ RENDER ============
+        let isFirstRender = true;
+
+        function renderAll() {
+            if (isFirstRender) {
+                const start = document.getElementById('f-comp-start');
+                const end = document.getElementById('f-comp-end');
+                const dStart = new Date(); dStart.setMonth(dStart.getMonth() - 6);
+                const dEnd = new Date(); dEnd.setMonth(dEnd.getMonth() + 5);
+                start.value = dStart.getFullYear() + '-' + String(dStart.getMonth() + 1).padStart(2, '0');
+                end.value = dEnd.getFullYear() + '-' + String(dEnd.getMonth() + 1).padStart(2, '0');
+                isFirstRender = false;
+            }
+            updatePersonFilters();
+            updateMacroFilters();
+            if (currentTab === 'dashboard') renderDashboard();
+            if (currentTab === 'saidas') renderSaidas();
+            if (currentTab === 'entradas') renderEntradas();
+            if (currentTab === 'categorias') renderCategorias();
+        }
+
+        function getFiltered(typeFilter) {
+            const cStart = document.getElementById('f-comp-start').value;
+            const cEnd = document.getElementById('f-comp-end').value;
+            const person = document.getElementById('f-person').value;
+            const macro = document.getElementById('f-macro').value;
+            const status = document.getElementById('f-status').value;
+            return allRecords.filter(r => {
+                if (typeFilter && r.type !== typeFilter) return false;
+                if (cStart && r.competence < cStart) return false;
+                if (cEnd && r.competence > cEnd) return false;
+                if (person && r.person !== person) return false;
+                if (macro && r.macro_category !== macro) return false;
+                if (status && r.status !== status) return false;
+                return true;
+            });
+        }
+
+        function clearDashboardFilters() {
+            document.getElementById('f-comp-start').value = '';
+            document.getElementById('f-comp-end').value = '';
+            document.getElementById('f-person').value = '';
+            document.getElementById('f-macro').value = '';
+            document.getElementById('f-status').value = '';
+            setFocusedCard(null); // isso já chama renderDashboard()
+        }
+            const sel = document.getElementById('f-comp');
+            const current = sel.value;
+            const comps = [...new Set(allRecords.map(r => r.competence).filter(Boolean))].sort().reverse();
+        function updatePersonFilters() {
+            const pessoas = allRecords.filter(r => r.type === 'pessoa').map(p => p.person).sort();
+            const selDashboard = document.getElementById('f-person');
+            const selForm = document.getElementById('form-person');
+
+            const currentDash = selDashboard.value;
+            const currentForm = selForm.value;
+
+            const dashOptions = '<option value="">Todas Pessoas</option>' + pessoas.map(p => `<option value="${p}" ${p === currentDash ? 'selected' : ''}>${p}</option>`).join('');
+            const formOptions = pessoas.map(p => `<option value="${p}" ${p === currentForm ? 'selected' : ''}>${p}</option>`).join('');
+
+            selDashboard.innerHTML = dashOptions;
+            selForm.innerHTML = formOptions;
+        }
+
+        function updateMacroFilters() {
+            const macros = allRecords.filter(r => r.type === 'macro').map(m => m.macro_category).sort();
+            const selDashboard = document.getElementById('f-macro');
+            const selForm = document.getElementById('form-macro');
+
+            const currentDash = selDashboard.value;
+            const currentForm = selForm.value;
+
+            const dashOptions = '<option value="">Todas Categorias</option>' + macros.map(m => `<option value="${m}" ${m === currentDash ? 'selected' : ''}>${m}</option>`).join('');
+            const formOptions = '<option value="">Selecione...</option>' + macros.map(m => `<option value="${m}" ${m === currentForm ? 'selected' : ''}>${m}</option>`).join('');
+
+            selDashboard.innerHTML = dashOptions;
+            selForm.innerHTML = formOptions;
+        }
+
+        function fmt(v) { return 'R$ ' + (Number(v) || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+        function formatCompetence(comp) {
+            if (!comp) return '';
+            const parts = comp.split('-');
+            if (parts.length !== 2) return comp;
+            const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            const m = parseInt(parts[1], 10) - 1;
+            return `${months[m]}/${parts[0]}`;
+        }
+
+        function setFocusedCard(card) {
+            if (focusedDashboardCard === card) focusedDashboardCard = null;
+            else focusedDashboardCard = card;
+            renderDashboard();
+            if (focusedDashboardCard) {
+                document.getElementById('recent-container').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function renderDashboard() {
+            const saidas = getFiltered('saida');
+            const entradas = getFiltered('entrada');
+
+            const totalEntradas = entradas.reduce((s, r) => {
+                const v = Number(r.amount) || 0;
+                return r.macro_category === 'Dedução' ? s - v : s + v;
+            }, 0);
+            const totalSaidas = saidas.filter(r => r.status !== 'Cancelado').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+            const totalAberto = saidas.filter(r => r.status === 'Em aberto').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+            const saldo = totalEntradas - totalSaidas;
+
+            document.getElementById('summary-cards').innerHTML = `
+    <div onclick="setFocusedCard('entradas')" class="glass rounded-xl p-3 card-hover transition-colors ${focusedDashboardCard === 'entradas' ? 'border-success shadow-[0_0_15px_rgba(52,211,153,0.3)]' : 'border-surfaceLight'}" title="Ver detalhes de entradas">
+      <p class="text-xs text-textSecondary">Entradas</p>
+      <p class="text-lg font-bold text-success">${fmt(totalEntradas)}</p>
+    </div>
+    <div onclick="setFocusedCard('saidas')" class="glass rounded-xl p-3 card-hover transition-colors ${focusedDashboardCard === 'saidas' ? 'border-danger shadow-[0_0_15px_rgba(244,63,94,0.3)]' : 'border-surfaceLight'}" title="Ver detalhes de saídas">
+      <p class="text-xs text-textSecondary">Saídas</p>
+      <p class="text-lg font-bold text-danger">${fmt(totalSaidas)}</p>
+    </div>
+    <div onclick="setFocusedCard('saldo')" class="glass rounded-xl p-3 card-hover transition-colors ${focusedDashboardCard === 'saldo' ? 'border-accent shadow-[0_0_15px_rgba(56,189,248,0.3)]' : 'border-surfaceLight'}" title="Ver movimentações gerais">
+      <p class="text-xs text-textSecondary">Saldo</p>
+      <p class="text-lg font-bold ${saldo >= 0 ? 'text-success' : 'text-danger'}">${fmt(saldo)}</p>
+    </div>
+    <div onclick="setFocusedCard('aberto')" class="glass rounded-xl p-3 card-hover transition-colors ${focusedDashboardCard === 'aberto' ? 'border-warn shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'border-surfaceLight'}" title="Ver contas em aberto">
+      <p class="text-xs text-textSecondary">Em Aberto</p>
+      <p class="text-lg font-bold text-warn">${fmt(totalAberto)}</p>
+    </div>
+  `;
+
+            const byCat = {};
+            saidas.filter(r => r.status !== 'Cancelado').forEach(r => {
+                const k = r.macro_category || 'Outros';
+                byCat[k] = (byCat[k] || 0) + (Number(r.amount) || 0);
+            });
+
+            const catCtx = document.getElementById('chart-category');
+            if (chartInstances.category) chartInstances.category.destroy();
+            chartInstances.category = new Chart(catCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(byCat),
+                    datasets: [{
+                        data: Object.values(byCat),
+                        backgroundColor: ['#38bdf8', '#fbbf24', '#34d399'],
+                        borderColor: '#1e293b',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (event, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = chart.data.labels[index];
+                            document.getElementById('f-macro').value = label;
+                            renderDashboard();
+                            document.getElementById('summary-cards').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#64748b', font: { size: 11 }, padding: 10 }
+                        }
+                    }
+                }
+            });
+
+            const byPerson = {};
+            saidas.filter(r => r.status !== 'Cancelado').forEach(r => {
+                const k = r.person || '?';
+                byPerson[k] = (byPerson[k] || 0) + (Number(r.amount) || 0);
+            });
+
+            const personCtx = document.getElementById('chart-person');
+            if (chartInstances.person) chartInstances.person.destroy();
+            chartInstances.person = new Chart(personCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(byPerson),
+                    datasets: [{
+                        label: 'Gastos',
+                        data: Object.values(byPerson),
+                        backgroundColor: '#38bdf8',
+                        borderColor: '#0284c7',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (event, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = chart.data.labels[index];
+                            document.getElementById('f-person').value = label;
+                            renderDashboard();
+                            document.getElementById('summary-cards').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#e2e8f0', drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 11 } }
+                        },
+                        y: {
+                            ticks: { color: '#64748b', font: { size: 11 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            const startVal = document.getElementById('f-comp-start').value;
+            const endVal = document.getElementById('f-comp-end').value;
+            
+            const monthsData = {};
+            
+            let tmpStrStart = startVal || '2020-01';
+            let tmpStrEnd = endVal || '2030-12';
+            
+            let [sy, sm] = tmpStrStart.split('-').map(Number);
+            let [ey, em] = tmpStrEnd.split('-').map(Number);
+            
+            // Generate sequence to guarantee all month slots exist in the chart
+            let count = 0;
+            const tmpd = new Date(sy, sm - 1, 1);
+            while (count < 120 && (tmpd.getFullYear() < ey || (tmpd.getFullYear() === ey && tmpd.getMonth() + 1 <= em))) {
+                const monthStr = tmpd.getFullYear() + '-' + String(tmpd.getMonth() + 1).padStart(2, '0');
+                monthsData[monthStr] = { entrada: 0, saida: 0 };
+                tmpd.setMonth(tmpd.getMonth() + 1);
+                count++;
+            }
+
+            // Populate with data, using the already filtered records array (so the trend only shows selected person/category)
+            getFiltered().forEach(r => {
+                const comp = r.competence;
+                if (monthsData[comp] !== undefined) {
+                    if (r.type === 'entrada') {
+                        const v = Number(r.amount) || 0;
+                        monthsData[comp].entrada += r.macro_category === 'Dedução' ? -v : v;
+                    } else if (r.type === 'saida') {
+                        monthsData[comp].saida += Number(r.amount) || 0;
+                    }
+                }
+            });
+
+            const trendCtx = document.getElementById('chart-trend');
+            if (chartInstances.trend) chartInstances.trend.destroy();
+            chartInstances.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthsData).map(formatCompetence),
+                    datasets: [
+                        {
+                            label: 'Entradas',
+                            data: Object.values(monthsData).map(m => m.entrada),
+                            borderColor: '#34d399',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#34d399',
+                            pointBorderColor: '#1e293b',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'Saídas',
+                            data: Object.values(monthsData).map(m => m.saida),
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#f43f5e',
+                            pointBorderColor: '#1e293b',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#64748b', font: { size: 12 }, padding: 15 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#e2e8f0', drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: '#e2e8f0', drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            let recentSource = [];
+            let recentTitle = "Lançamentos Recentes";
+            
+            if (focusedDashboardCard === 'entradas') {
+                recentSource = entradas;
+                recentTitle = "Detalhes: Todas Entradas";
+            } else if (focusedDashboardCard === 'saidas') {
+                recentSource = saidas.filter(r => r.status !== 'Cancelado');
+                recentTitle = "Detalhes: Todas Saídas";
+            } else if (focusedDashboardCard === 'saldo') {
+                recentSource = [...entradas, ...saidas.filter(r => r.status !== 'Cancelado')];
+                recentTitle = "Detalhes: Entradas e Saídas";
+            } else if (focusedDashboardCard === 'aberto') {
+                recentSource = saidas.filter(r => r.status === 'Em aberto');
+                recentTitle = "Detalhes: Contas em Aberto";
+            } else {
+                recentSource = [...allRecords].filter(r => r.type === 'saida' || r.type === 'entrada');
+            }
+
+            const limit = focusedDashboardCard ? 50 : 10;
+            const recent = recentSource.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, limit);
+            
+            document.getElementById('recent-title').textContent = recentTitle;
+            const btnClear = document.getElementById('btn-clear-card');
+            if (focusedDashboardCard) {
+                btnClear.classList.remove('hidden');
+            } else {
+                btnClear.classList.add('hidden');
+            }
+
+            document.getElementById('recent-list').innerHTML = recent.map(r => renderRow(r)).join('') || '<p class="text-xs text-textSecondary text-center py-4">Sem lançamentos correspondentes</p>';
+            lucide.createIcons();
+        }
+
+        function renderRow(r) {
+            const isEntrada = r.type === 'entrada';
+            const statusBadge = r.status === 'Pago' ? 'bg-success/20 text-success' : r.status === 'Cancelado' ? 'bg-danger/20 text-danger' : 'bg-warn/20 text-warn';
+            const icon = isEntrada ? 'arrow-down-left' : 'arrow-up-right';
+            const color = isEntrada ? 'text-success' : 'text-danger';
+            const desc = r.description || r.subcategory || r.earning_type || '';
+            const installTxt = r.total_installments > 0 ? ` (${r.installment_no}/${r.total_installments})` : '';
+
+            return `<div class="flex items-center gap-3 bg-surfaceLight/50 rounded-lg p-2.5 text-sm">
+    <i data-lucide="${icon}" class="w-4 h-4 ${color} flex-shrink-0"></i>
+    <div class="flex-1 min-w-0">
+      <p class="truncate font-medium">${desc}${installTxt}</p>
+      <p class="text-xs text-textSecondary">${r.person || ''} · ${formatCompetence(r.competence)} · ${r.macro_category || ''}</p>
+    </div>
+    <span class="text-xs px-2 py-0.5 rounded-full ${statusBadge}">${r.status}</span>
+    <span class="font-semibold ${color} whitespace-nowrap">${isEntrada && r.macro_category === 'Dedução' ? '-' : ''}${fmt(r.amount)}</span>
+    <button onclick='togglePago(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-success p-1">
+      <i data-lucide="${r.status === 'Pago' ? 'check-circle' : 'circle'}" class="w-4 h-4"></i>
+    </button>
+    <button onclick='askDelete(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-danger p-1">
+      <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+  </div>`;
+        }
+
+        function renderSaidas() {
+            const saidas = allRecords.filter(r => r.type === 'saida').sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            const list = document.getElementById('saidas-list');
+            const empty = document.getElementById('saidas-empty');
+            list.innerHTML = saidas.map(r => renderRow(r)).join('');
+            empty.classList.toggle('hidden', saidas.length > 0);
+            lucide.createIcons();
+        }
+
+        function renderEntradas() {
+            const entradas = allRecords.filter(r => r.type === 'entrada').sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            const list = document.getElementById('entradas-list');
+            const empty = document.getElementById('entradas-empty');
+
+            const groups = {};
+            entradas.forEach(r => {
+                const key = `${r.person}|${r.competence}`;
+                if (!groups[key]) groups[key] = { person: r.person, competence: r.competence, items: [] };
+                groups[key].items.push(r);
+            });
+
+            let html = '';
+            Object.values(groups).sort((a, b) => (b.competence || '').localeCompare(a.competence || '')).forEach(g => {
+                const earnings = g.items.filter(i => i.macro_category === 'Rendimento').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+                const benefits = g.items.filter(i => i.macro_category === 'Benefício').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+                const deductions = g.items.filter(i => i.macro_category === 'Dedução').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+                const net = earnings + benefits - deductions;
+
+                html += `<div class="bg-surface rounded-xl p-3 border border-surfaceLight mb-3">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="font-semibold text-sm">${g.person} — ${formatCompetence(g.competence)}</h3>
+        <span class="text-success font-bold text-sm">Líquido: ${fmt(net)}</span>
+      </div>
+      <div class="flex gap-3 text-xs text-textSecondary mb-2">
+        <span>Rendimentos: ${fmt(earnings)}</span>
+        <span>Benefícios: ${fmt(benefits)}</span>
+        <span>Deduções: -${fmt(deductions)}</span>
+      </div>
+      <div class="space-y-1">${g.items.map(r => renderRow(r)).join('')}</div>
+    </div>`;
+            });
+
+            list.innerHTML = html;
+            empty.classList.toggle('hidden', entradas.length > 0);
+            lucide.createIcons();
+        }
+
+        // ============ EXPORT PDF ============
+        function exportPDF() {
+            const lancamentos = getFiltered();
+            if (!lancamentos.length) { showToast('Sem lançamentos para exportar no filtro atual', true); return; }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'pt', 'a4');
+            
+            doc.setFontSize(16);
+            doc.text('Relatório Financeiro', 40, 40);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            doc.text(`Gerado em: ${hoje}`, 40, 55);
+
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+            
+            const tableRows = lancamentos.sort((a,b) => (a.occurred_date||'').localeCompare(b.occurred_date||'')).map(r => {
+                const val = Number(r.amount) || 0;
+                if(r.type === 'entrada') totalEntradas += val;
+                else totalSaidas += val;
+                
+                return [
+                    (r.occurred_date ? r.occurred_date.split('-').reverse().join('/') : ''),
+                    r.type.charAt(0).toUpperCase() + r.type.slice(1),
+                    r.person || '-',
+                    r.description || r.subcategory || r.earning_type || '-',
+                    fmt(val),
+                    r.status
+                ];
+            });
+
+            // Summary
+            doc.setFontSize(11);
+            doc.setTextColor(0);
+            doc.text(`Entradas Totais: ${fmt(totalEntradas)}`, 40, 80);
+            doc.text(`Saídas Totais: ${fmt(totalSaidas)}`, 200, 80);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Saldo Líquido: ${fmt(totalEntradas - totalSaidas)}`, 380, 80);
+            doc.setFont(undefined, 'normal');
+
+            // Add Charts
+            let currentY = 100;
+            try {
+                const cTrend = document.getElementById('chart-trend');
+                if (cTrend && cTrend.width > 0) {
+                    doc.addImage(cTrend.toDataURL('image/png', 1.0), 'PNG', 40, currentY, 515, 120);
+                    currentY += 140;
+                }
+                const cMacro = document.getElementById('chart-macro');
+                const cPerson = document.getElementById('chart-person');
+                if (cMacro && cMacro.width > 0 && cPerson && cPerson.width > 0) {
+                    doc.addImage(cMacro.toDataURL('image/png', 1.0), 'PNG', 40, currentY, 200, 120);
+                    doc.addImage(cPerson.toDataURL('image/png', 1.0), 'PNG', 315, currentY, 240, 120);
+                    currentY += 140;
+                }
+            } catch (err) {
+                console.warn('Não foi possível renderizar os gráficos no PDF', err);
+            }
+
+            // Table
+            doc.autoTable({
+                startY: currentY,
+                head: [['Data', 'Tipo', 'Pessoa', 'Descrição', 'Valor', 'Status']],
+                body: tableRows,
+                headStyles: { fillColor: [14, 165, 233] }, // accent color
+                alternateRowStyles: { fillColor: [248, 250, 252] }, // bg color
+                margin: { top: 20 },
+                styles: { fontSize: 8, cellPadding: 4 }
+            });
+
+            doc.save(`Relatorio_Financeiro_${hoje.replace(/\//g, '-')}.pdf`);
+            showToast('Relatório PDF exportado!');
+        }
+
+        // ============ CATEGORY MANAGEMENT ============
+        function openCategoryForm() {
+            editingCategoryId = null;
+            document.getElementById('cat-name').value = '';
+            document.getElementById('cat-macro').value = 'FIXO';
+            document.getElementById('cat-color').value = '#38bdf8';
+            document.getElementById('cat-icon').value = 'tag';
+            document.getElementById('category-modal').classList.remove('hidden');
+        }
+
+        function closeCategoryForm() {
+            document.getElementById('category-modal').classList.add('hidden');
+            editingCategoryId = null;
+        }
+
+        function selectColor(color) {
+            document.getElementById('cat-color').value = color;
+            document.querySelectorAll('#category-modal button[onclick*="selectColor"]').forEach(b => {
+                b.style.borderColor = b.onclick?.toString().includes(color) ? '#e2e8f0' : '#94a3b8';
+                b.style.borderWidth = b.onclick?.toString().includes(color) ? '3px' : '2px';
+            });
+        }
+
+        async function saveCategory() {
+            const name = document.getElementById('cat-name').value.trim();
+            const macro = document.getElementById('cat-macro').value;
+            const color = document.getElementById('cat-color').value;
+            const icon = document.getElementById('cat-icon').value || 'tag';
+
+            if (!name) { showToast('Informe o nome da categoria', true); return; }
+
+            try {
+                if (allRecords.filter(r => r.type === 'categoria').length >= 50) { showToast('Limite de 50 categorias!', true); return; }
+                const r = await window.dataSdk.create({
+                    type: 'categoria',
+                    person: '',
+                    macro_category: macro,
+                    subcategory: '',
+                    description: '',
+                    amount: 0,
+                    status: '',
+                    payment_method: '',
+                    occurred_date: '',
+                    due_date: '',
+                    competence: '',
+                    paid_at: '',
+                    installment_no: 0,
+                    total_installments: 0,
+                    parent_id: '',
+                    earning_type: '',
+                    recurrence: '',
+                    created_at: new Date().toISOString(),
+                    category_id: 'cat_' + Date.now(),
+                    category_name: name,
+                    category_color: color,
+                    category_icon: icon
+                });
+                if (r.isOk) showToast('Categoria criada!');
+                else showToast('Erro ao criar', true);
+                closeCategoryForm();
+            } catch (err) {
+                showToast('Erro ao salvar', true);
+            }
+        }
+
+        function renderCategorias() {
+            const categories = allRecords.filter(r => r.type === 'categoria');
+            const list = document.getElementById('categories-list');
+            const empty = document.getElementById('categories-empty');
+
+            if (!categories.length) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.innerHTML = categories.map(cat => `
+    <div class="bg-surface rounded-xl p-4 border border-surfaceLight flex items-center justify-between card-hover">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: ${cat.category_color}20; color: ${cat.category_color};">
+          <i data-lucide="${cat.category_icon}" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold">${cat.category_name}</h3>
+          <p class="text-xs text-textSecondary">${cat.macro_category}</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick='askDelete(${JSON.stringify(cat).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-danger p-2">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+            lucide.createIcons();
+        }
+
+        // ============ CONFIGURAÇÕES ============
+        function addPerson() {
+            document.getElementById('person-input').value = '';
+            document.getElementById('add-person-modal').classList.remove('hidden');
+            document.getElementById('person-input').focus();
+        }
+
+        function closeAddPersonModal() {
+            document.getElementById('add-person-modal').classList.add('hidden');
+        }
+
+        async function savePerson() {
+            const name = document.getElementById('person-input').value.trim();
+            if (!name) { showToast('Informe um nome', true); return; }
+
+            if (allRecords.length >= 999) { showToast('Limite de registros!', true); return; }
+
+            const r = await window.dataSdk.create({
+                type: 'pessoa',
+                person: name,
+                macro_category: '',
+                subcategory: '',
+                description: '',
+                amount: 0,
+                status: '',
+                payment_method: '',
+                occurred_date: '',
+                due_date: '',
+                competence: '',
+                paid_at: '',
+                installment_no: 0,
+                total_installments: 0,
+                parent_id: '',
+                earning_type: '',
+                recurrence: '',
+                created_at: new Date().toISOString(),
+                category_id: '',
+                category_name: '',
+                category_color: '',
+                category_icon: ''
+            });
+
+            if (r.isOk) {
+                showToast('Pessoa adicionada!');
+                closeAddPersonModal();
+            } else {
+                showToast('Erro ao adicionar', true);
+            }
+        }
+
+        function addMacroCategory() {
+            document.getElementById('macro-input').value = '';
+            document.getElementById('add-macro-modal').classList.remove('hidden');
+            document.getElementById('macro-input').focus();
+        }
+
+        function closeAddMacroModal() {
+            document.getElementById('add-macro-modal').classList.add('hidden');
+        }
+
+        async function saveMacroCategory() {
+            const name = document.getElementById('macro-input').value.trim();
+            if (!name) { showToast('Informe um nome', true); return; }
+
+            if (allRecords.length >= 999) { showToast('Limite de registros!', true); return; }
+
+            const r = await window.dataSdk.create({
+                type: 'macro',
+                person: '',
+                macro_category: name,
+                subcategory: '',
+                description: '',
+                amount: 0,
+                status: '',
+                payment_method: '',
+                occurred_date: '',
+                due_date: '',
+                competence: '',
+                paid_at: '',
+                installment_no: 0,
+                total_installments: 0,
+                parent_id: '',
+                earning_type: '',
+                recurrence: '',
+                created_at: new Date().toISOString(),
+                category_id: '',
+                category_name: '',
+                category_color: '',
+                category_icon: ''
+            });
+
+            if (r.isOk) {
+                showToast('Categoria macro adicionada!');
+                closeAddMacroModal();
+            } else {
+                showToast('Erro ao adicionar', true);
+            }
+        }
+
+        function renderConfiguracoes() {
+            const pessoas = allRecords.filter(r => r.type === 'pessoa');
+            const pessoasList = document.getElementById('pessoas-list');
+            const pessoasEmpty = document.getElementById('pessoas-empty');
+
+            if (!pessoas.length) {
+                pessoasList.innerHTML = '';
+                pessoasEmpty.classList.remove('hidden');
+            } else {
+                pessoasEmpty.classList.add('hidden');
+                pessoasList.innerHTML = pessoas.map(p => `
+      <div class="flex items-center justify-between bg-surfaceLight/50 rounded-lg p-2.5">
+        <span class="text-sm">${p.person}</span>
+        <button onclick='askDeletePerson(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-danger p-1">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    `).join('');
+            }
+
+            const macros = allRecords.filter(r => r.type === 'macro');
+            const macroList = document.getElementById('macro-list');
+            const macroEmpty = document.getElementById('macro-empty');
+
+            if (!macros.length) {
+                macroList.innerHTML = '';
+                macroEmpty.classList.remove('hidden');
+            } else {
+                macroEmpty.classList.add('hidden');
+                macroList.innerHTML = macros.map(m => `
+      <div class="flex items-center justify-between bg-surfaceLight/50 rounded-lg p-2.5">
+        <span class="text-sm">${m.macro_category}</span>
+        <button onclick='askDeleteMacro(${JSON.stringify(m).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-danger p-1">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    `).join('');
+            }
+
+            lucide.createIcons();
+        }
+
+        lucide.createIcons();
+    </script>
+                <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9e49476d40d0caaa',t:'MTc3NDg5NjQwNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
