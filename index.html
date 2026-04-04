@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR" class="h-full">
 
 <head>
@@ -182,7 +182,7 @@
                     </div>
                 </div>
                 <div class="glass rounded-xl p-4 mb-4">
-                    <h3 class="text-sm font-semibold text-textSecondary mb-4">Fluxo Mensal (12 meses - Histórico e Previsão)</h3>
+                    <h3 id="chart-trend-title" class="text-sm font-semibold text-textSecondary mb-4">Fluxo do Mês Atual</h3>
                     <div class="chart-container" style="height: 300px;">
                         <canvas id="chart-trend"></canvas>
                     </div>
@@ -1898,10 +1898,12 @@
             if (isFirstRender) {
                 const start = document.getElementById('f-comp-start');
                 const end = document.getElementById('f-comp-end');
-                const dStart = new Date(); dStart.setMonth(dStart.getMonth() - 6);
-                const dEnd = new Date(); dEnd.setMonth(dEnd.getMonth() + 5);
-                start.value = dStart.getFullYear() + '-' + String(dStart.getMonth() + 1).padStart(2, '0');
-                end.value = dEnd.getFullYear() + '-' + String(dEnd.getMonth() + 1).padStart(2, '0');
+                const now = new Date();
+                const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+                start.value = currentMonth;
+                end.value = currentMonth;
+                const dStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                dStart.setMonth(dStart.getMonth() - 6);
                 const archiveCutoff = document.getElementById('archive-cutoff');
                 if (archiveCutoff) archiveCutoff.value = dStart.getFullYear() + '-' + String(dStart.getMonth() + 1).padStart(2, '0');
                 isFirstRender = false;
@@ -1940,8 +1942,8 @@
         }
 
         function clearDashboardFilters() {
-            document.getElementById('f-comp-start').value = '';
-            document.getElementById('f-comp-end').value = '';
+            document.getElementById('f-comp-start').value = thisMonth;
+            document.getElementById('f-comp-end').value = thisMonth;
             document.getElementById('f-person').value = '';
             document.getElementById('f-macro').value = '';
             document.getElementById('f-cycle').value = '';
@@ -2217,6 +2219,34 @@
             return `${months[m]}/${parts[0]}`;
         }
 
+        function formatDayLabel(isoDate) {
+            if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate || '';
+            return isoDate.slice(8, 10);
+        }
+
+        function getDaysInCompetenceMonth(competence) {
+            const normalized = normalizeCompetenceValue(competence);
+            if (!normalized) return 0;
+            const [year, month] = normalized.split('-').map(Number);
+            return new Date(year, month, 0).getDate();
+        }
+
+        function getSaidaTrendDate(record, targetMonth = '') {
+            const candidates = [
+                record.status === 'Pago' ? record.paid_at : '',
+                record.due_date,
+                record.occurred_date,
+                competenceToIsoDate(record.competence)
+            ].filter(Boolean);
+
+            if (targetMonth) {
+                const inTargetMonth = candidates.find((dateValue) => dateValue.startsWith(`${targetMonth}-`));
+                if (inTargetMonth) return inTargetMonth;
+            }
+
+            return candidates[0] || '';
+        }
+
         function setFocusedCard(card) {
             if (focusedDashboardCard === card) focusedDashboardCard = null;
             else focusedDashboardCard = card;
@@ -2389,75 +2419,114 @@
 
             const startVal = document.getElementById('f-comp-start').value;
             const endVal = document.getElementById('f-comp-end').value;
-            
-            const monthsData = {};
-            
-            let tmpStrStart = startVal || '2020-01';
-            let tmpStrEnd = endVal || '2030-12';
-            
-            let [sy, sm] = tmpStrStart.split('-').map(Number);
-            let [ey, em] = tmpStrEnd.split('-').map(Number);
-            
-            // Generate sequence to guarantee all month slots exist in the chart
-            let count = 0;
-            const tmpd = new Date(sy, sm - 1, 1);
-            while (count < 120 && (tmpd.getFullYear() < ey || (tmpd.getFullYear() === ey && tmpd.getMonth() + 1 <= em))) {
-                const monthStr = tmpd.getFullYear() + '-' + String(tmpd.getMonth() + 1).padStart(2, '0');
-                monthsData[monthStr] = { entrada: 0, saida: 0 };
-                tmpd.setMonth(tmpd.getMonth() + 1);
-                count++;
-            }
+            const trendTitle = document.getElementById('chart-trend-title');
+            const isSingleSelectedMonth = Boolean(startVal && endVal && startVal === endVal);
+            const trendLabels = [];
+            const trendDatasets = [];
 
-            // Populate with data, using the already filtered records array (so the trend only shows selected person/category)
-            filteredRecords.forEach(r => {
-                const comp = r.competence;
-                if (monthsData[comp] !== undefined) {
-                    if (r.type === 'entrada' && isFinancialEntradaRecord(r)) {
-                        const v = Number(r.amount) || 0;
-                        monthsData[comp].entrada += r.macro_category === 'Dedução' ? -v : v;
-                    } else if (r.type === 'saida' && r.status === 'Pago') {
-                        monthsData[comp].saida += Number(r.amount) || 0;
-                    }
+            if (isSingleSelectedMonth) {
+                const daysInMonth = getDaysInCompetenceMonth(startVal);
+                const dailyData = {};
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayStr = String(day).padStart(2, '0');
+                    dailyData[`${startVal}-${dayStr}`] = 0;
                 }
-            });
+
+                filteredRecords.forEach((record) => {
+                    if (record.type !== 'saida' || (record.status !== 'Pago' && record.status !== 'Em aberto')) return;
+                    const trendDate = getSaidaTrendDate(record, startVal);
+                    if (dailyData[trendDate] !== undefined) {
+                        dailyData[trendDate] += Number(record.amount) || 0;
+                    }
+                });
+
+                if (trendTitle) trendTitle.textContent = `Gastos Diários (${formatCompetence(startVal)})`;
+                trendLabels.push(...Object.keys(dailyData).map(formatDayLabel));
+                trendDatasets.push({
+                    label: 'Gastos diários',
+                    data: Object.values(dailyData),
+                    borderColor: '#f43f5e',
+                    backgroundColor: 'rgba(244, 63, 94, 0.12)',
+                    tension: 0.25,
+                    fill: true,
+                    pointBackgroundColor: '#f43f5e',
+                    pointBorderColor: '#1e293b',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                });
+            } else {
+                const monthsData = {};
+                let tmpStrStart = startVal || thisMonth;
+                let tmpStrEnd = endVal || thisMonth;
+
+                let [sy, sm] = tmpStrStart.split('-').map(Number);
+                let [ey, em] = tmpStrEnd.split('-').map(Number);
+
+                let count = 0;
+                const tmpd = new Date(sy, sm - 1, 1);
+                while (count < 120 && (tmpd.getFullYear() < ey || (tmpd.getFullYear() === ey && tmpd.getMonth() + 1 <= em))) {
+                    const monthStr = tmpd.getFullYear() + '-' + String(tmpd.getMonth() + 1).padStart(2, '0');
+                    monthsData[monthStr] = { entrada: 0, saida: 0 };
+                    tmpd.setMonth(tmpd.getMonth() + 1);
+                    count++;
+                }
+
+                filteredRecords.forEach((record) => {
+                    const comp = record.competence;
+                    if (monthsData[comp] !== undefined) {
+                        if (record.type === 'entrada' && isFinancialEntradaRecord(record)) {
+                            const v = Number(record.amount) || 0;
+                            monthsData[comp].entrada += record.macro_category === 'Dedução' ? -v : v;
+                        } else if (record.type === 'saida' && (record.status === 'Pago' || record.status === 'Em aberto')) {
+                            monthsData[comp].saida += Number(record.amount) || 0;
+                        }
+                    }
+                });
+
+                if (trendTitle) trendTitle.textContent = 'Fluxo Mensal';
+                const monthlyLabels = Object.keys(monthsData).map(formatCompetence);
+                const monthlyValues = Object.values(monthsData);
+                trendLabels.push(...monthlyLabels);
+                trendDatasets.push(
+                    {
+                        label: 'Entradas',
+                        data: monthlyValues.map((month) => month.entrada),
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        tension: monthlyLabels.length <= 1 ? 0 : 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#34d399',
+                        pointBorderColor: '#1e293b',
+                        pointBorderWidth: 2,
+                        pointRadius: monthlyLabels.length <= 1 ? 6 : 4
+                    },
+                    {
+                        label: 'Saídas',
+                        data: monthlyValues.map((month) => month.saida),
+                        borderColor: '#f43f5e',
+                        backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                        tension: monthlyLabels.length <= 1 ? 0 : 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#f43f5e',
+                        pointBorderColor: '#1e293b',
+                        pointBorderWidth: 2,
+                        pointRadius: monthlyLabels.length <= 1 ? 6 : 4
+                    }
+                );
+            }
 
             const trendCtx = document.getElementById('chart-trend');
             if (chartInstances.trend) chartInstances.trend.destroy();
-            const trendValues = Object.values(monthsData).flatMap((m) => [m.entrada, m.saida]);
+            const trendValues = trendDatasets.flatMap((dataset) => dataset.data);
             const trendMin = trendValues.length ? Math.min(...trendValues) : 0;
             const trendMax = trendValues.length ? Math.max(...trendValues) : 0;
-            const singleMonthTrend = Object.keys(monthsData).length <= 1;
+            const singleMonthTrend = trendLabels.length <= 1;
             const trendPadding = singleMonthTrend ? Math.max(200, Math.abs(trendMax - trendMin) * 0.4 || Math.abs(trendMax || trendMin) * 0.2 || 200) : 0;
             chartInstances.trend = new Chart(trendCtx, {
                 type: 'line',
                 data: {
-                    labels: Object.keys(monthsData).map(formatCompetence),
-                    datasets: [
-                        {
-                            label: 'Entradas',
-                            data: Object.values(monthsData).map(m => m.entrada),
-                            borderColor: '#34d399',
-                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                            tension: singleMonthTrend ? 0 : 0.4,
-                            fill: true,
-                            pointBackgroundColor: '#34d399',
-                            pointBorderColor: '#1e293b',
-                            pointBorderWidth: 2,
-                            pointRadius: singleMonthTrend ? 6 : 4
-                        },
-                        {
-                            label: 'Saídas',
-                            data: Object.values(monthsData).map(m => m.saida),
-                            borderColor: '#f43f5e',
-                            backgroundColor: 'rgba(244, 63, 94, 0.1)',
-                            tension: singleMonthTrend ? 0 : 0.4,
-                            fill: true,
-                            pointBackgroundColor: '#f43f5e',
-                            pointBorderColor: '#1e293b',
-                            pointBorderWidth: 2,
-                            pointRadius: singleMonthTrend ? 6 : 4
-                        }
-                    ]
+                    labels: trendLabels,
+                    datasets: trendDatasets
                 },
                 options: {
                     responsive: true,
