@@ -2034,7 +2034,7 @@
             } else if (tab === 'saidas' && listDetailFilters.saidas === 'pago') {
                 records = records.filter((record) => record.status === 'Pago');
             }
-            return records.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            return sortRecordsNewestFirst(records);
         }
 
         function clearListDetailFilter(tab) {
@@ -2245,6 +2245,25 @@
             }
 
             return candidates[0] || '';
+        }
+
+        function getRecordSortDate(record) {
+            if (!record) return '';
+            if (record.type === 'saida') {
+                return record.paid_at || record.due_date || record.occurred_date || competenceToIsoDate(record.competence) || record.created_at || '';
+            }
+            if (record.type === 'entrada') {
+                return record.occurred_date || record.due_date || competenceToIsoDate(record.competence) || record.created_at || '';
+            }
+            return record.created_at || '';
+        }
+
+        function sortRecordsNewestFirst(records = []) {
+            return [...records].sort((a, b) => {
+                const primary = getRecordSortDate(b).localeCompare(getRecordSortDate(a));
+                if (primary !== 0) return primary;
+                return (b.created_at || '').localeCompare(a.created_at || '');
+            });
         }
 
         function setFocusedCard(card) {
@@ -2590,7 +2609,7 @@
             if (contextParts.length) recentTitle += ` • ${contextParts.join(' • ')}`;
 
             const limit = focusedDashboardCard ? 50 : 10;
-            const recent = recentSource.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, limit);
+            const recent = sortRecordsNewestFirst(recentSource).slice(0, limit);
             
             document.getElementById('recent-title').textContent = recentTitle;
             const btnClear = document.getElementById('btn-clear-card');
