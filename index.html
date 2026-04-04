@@ -382,6 +382,19 @@
                             <label class="text-xs text-textSecondary mb-1 block">Competência
                                 (auto-sugerida)</label><input id="form-competence" type="month" class="w-full text-sm">
                         </div>
+                        <div class="mt-3">
+                            <label class="text-xs text-textSecondary mb-2 block">Ciclo</label>
+                            <div class="flex gap-2" id="form-cycle-group-saida">
+                                <button type="button" id="cycle-saida-inicio-mes" onclick="setFormCycle('INICIO_MES')"
+                                    class="px-3 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-textSecondary hover:bg-surfaceLight">
+                                    Início do mês
+                                </button>
+                                <button type="button" id="cycle-saida-quinzena" onclick="setFormCycle('QUINZENA')"
+                                    class="px-3 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-textSecondary hover:bg-surfaceLight">
+                                    Quinzena
+                                </button>
+                            </div>
+                        </div>
                         <div class="mt-3 flex items-center gap-3">
                             <label class="text-xs text-textSecondary flex items-center gap-2"><input type="checkbox"
                                     id="form-installment-check" onchange="toggleInstallments()" class="accent-accent">
@@ -501,12 +514,12 @@
                         </div>
                         <div>
                             <label class="text-xs text-textSecondary mb-2 block">Ciclo</label>
-                            <div class="flex gap-2" id="form-cycle-group">
-                                <button type="button" id="cycle-inicio-mes" onclick="setFormCycle('INICIO_MES')"
+                            <div class="flex gap-2" id="form-cycle-group-entrada">
+                                <button type="button" id="cycle-entrada-inicio-mes" onclick="setFormCycle('INICIO_MES')"
                                     class="px-3 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-textSecondary hover:bg-surfaceLight">
                                     Início do mês
                                 </button>
-                                <button type="button" id="cycle-quinzena" onclick="setFormCycle('QUINZENA')"
+                                <button type="button" id="cycle-entrada-quinzena" onclick="setFormCycle('QUINZENA')"
                                     class="px-3 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-textSecondary hover:bg-surfaceLight">
                                     Quinzena
                                 </button>
@@ -1265,7 +1278,6 @@
             const t = document.getElementById('form-type').value;
             document.getElementById('saida-fields').classList.toggle('hidden', t !== 'saida');
             document.getElementById('entrada-fields').classList.toggle('hidden', t !== 'entrada');
-            if (t !== 'entrada') setFormCycle('');
             handleEarningTypeChange();
         }
 
@@ -1275,8 +1287,16 @@
             const isQuinzena = value === 'QUINZENA';
             const selected = 'px-3 py-2 rounded-full text-sm font-medium transition-colors bg-accent text-white';
             const idle = 'px-3 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-textSecondary hover:bg-surfaceLight';
-            document.getElementById('cycle-inicio-mes').className = isInicioMes ? selected : idle;
-            document.getElementById('cycle-quinzena').className = isQuinzena ? selected : idle;
+            const inicioButtons = ['cycle-saida-inicio-mes', 'cycle-entrada-inicio-mes'];
+            const quinzenaButtons = ['cycle-saida-quinzena', 'cycle-entrada-quinzena'];
+            inicioButtons.forEach((id) => {
+                const button = document.getElementById(id);
+                if (button) button.className = isInicioMes ? selected : idle;
+            });
+            quinzenaButtons.forEach((id) => {
+                const button = document.getElementById(id);
+                if (button) button.className = isQuinzena ? selected : idle;
+            });
         }
 
         function togglePaidAt() {
@@ -1399,6 +1419,7 @@
                 document.getElementById('form-installment-check').checked = false;
                 document.getElementById('form-recurrence').value = record.recurrence || '';
                 document.getElementById('form-total-amount').value = '';
+                setFormCycle(record.cycle || '');
                 toggleInstallments();
                 togglePaidAt();
             }
@@ -1674,6 +1695,7 @@
                             due_date: document.getElementById('form-due').value || '',
                             competence: document.getElementById('form-competence').value || '',
                             paid_at: status === 'Pago' ? document.getElementById('form-paid-at').value : '',
+                            cycle: formCycle,
                             recurrence: recurrence,
                             id: editingRecord.id
                         });
@@ -1709,7 +1731,7 @@
                                 due_date: dueDateStr, competence: compMonth,
                                 paid_at: i === 0 && status === 'Pago' ? document.getElementById('form-paid-at').value : '',
                                 installment_no: i + 1, total_installments: n, parent_id: parentId,
-                                earning_type: '', recurrence: '', created_at: new Date().toISOString(),
+                                earning_type: '', cycle: formCycle, recurrence: '', created_at: new Date().toISOString(),
                                 category_id: '', category_name: '', category_color: '', category_icon: '',
                                 ...getHourExtraRecordDefaults()
                             });
@@ -1738,7 +1760,7 @@
                                 occurred_date: '', due_date: dueDateStr, competence: dueDateStr.slice(0, 7),
                                 paid_at: i === 0 && status === 'Pago' ? document.getElementById('form-paid-at').value : '',
                                 installment_no: 0, total_installments: 0, parent_id: parentId,
-                                earning_type: '', recurrence: recurrence, created_at: new Date().toISOString(),
+                                earning_type: '', cycle: formCycle, recurrence: recurrence, created_at: new Date().toISOString(),
                                 category_id: '', category_name: '', category_color: '', category_icon: '',
                                 ...getHourExtraRecordDefaults()
                             });
@@ -1759,7 +1781,7 @@
                             competence: document.getElementById('form-competence').value || '',
                             paid_at: status === 'Pago' ? document.getElementById('form-paid-at').value : '',
                             installment_no: 0, total_installments: 0, parent_id: '',
-                            earning_type: '', recurrence: '', created_at: new Date().toISOString(),
+                            earning_type: '', cycle: formCycle, recurrence: '', created_at: new Date().toISOString(),
                             category_id: '', category_name: '', category_color: '', category_icon: '',
                             ...getHourExtraRecordDefaults()
                         });
