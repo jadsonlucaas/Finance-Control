@@ -108,6 +108,9 @@
         <!-- Header -->
         <header class="mobile-header flex-shrink-0 glass border-b border-surfaceLight px-4 py-3 flex items-center justify-between z-10 sticky top-0">
             <div class="mobile-header-brand flex items-center gap-3">
+                <button id="btn-go-back" type="button" onclick="goBackTab()" title="Voltar para a tela anterior" class="hidden p-2 -ml-2 rounded-lg hover:bg-surfaceLight transition-colors text-textSecondary hover:text-accent">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
                 <button onclick="toggleSidebar()" class="p-2 -ml-2 rounded-lg hover:bg-surfaceLight transition-colors text-textSecondary hover:text-accent">
                     <i data-lucide="menu" class="w-6 h-6"></i>
                 </button>
@@ -167,11 +170,17 @@
                     </div>
                 </div>
                 <div class="mobile-summary-grid grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" id="summary-cards"></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
                     <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no gráfico para filtrar">
                         <h3 class="text-sm font-semibold text-textSecondary mb-4">Distribuição por Categoria</h3>
                         <div class="chart-container">
                             <canvas id="chart-category"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass rounded-xl p-4" title="Distribuição detalhada por subcategoria">
+                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Detalhe por Subcategoria</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-category-detail"></canvas>
                         </div>
                     </div>
                     <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no gráfico para filtrar">
@@ -183,6 +192,7 @@
                 </div>
                 <div class="glass rounded-xl p-4 mb-4">
                     <h3 id="chart-trend-title" class="text-sm font-semibold text-textSecondary mb-4">Fluxo do Mês Atual</h3>
+                    <div id="trend-insights" class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4"></div>
                     <div class="chart-container" style="height: 300px;">
                         <canvas id="chart-trend"></canvas>
                     </div>
@@ -193,6 +203,47 @@
                         <button id="btn-clear-card" onclick="setFocusedCard(null)" class="hidden text-xs text-accent hover:text-accentLight hover:underline px-2 py-1">Limpar Seleção</button>
                     </div>
                     <div id="recent-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
+                </div>
+            </section>
+            <section id="view-mes-detalhe" class="fade-in hidden">
+                <div class="glass rounded-2xl p-4 mb-4">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.18em] text-textSecondary">Análise Mensal</p>
+                            <h2 id="month-detail-title" class="text-xl font-bold text-textPrimary">Visão do mês</h2>
+                            <p id="month-detail-subtitle" class="text-sm text-textSecondary mt-1">Resumo executivo do período selecionado no gráfico mensal.</p>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button type="button" onclick="goToDashboardHome()" class="text-xs bg-surfaceLight hover:bg-surfaceLight/80 px-3 py-2 rounded-lg text-textSecondary hover:text-textPrimary transition-colors font-medium">Voltar ao dashboard</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="month-detail-summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+                    <div class="glass rounded-xl p-4 xl:col-span-2">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h3 class="text-sm font-semibold text-textSecondary">Indicadores do mês</h3>
+                            <span id="month-detail-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-surfaceLight text-textSecondary">Sem status</span>
+                        </div>
+                        <div id="month-detail-highlights" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                    </div>
+                    <div class="glass rounded-xl p-4">
+                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Top categorias</h3>
+                        <div id="month-detail-categories" class="space-y-3"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                    <div class="glass rounded-xl p-4">
+                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Por pessoa</h3>
+                        <div id="month-detail-people" class="space-y-3"></div>
+                    </div>
+                    <div class="glass rounded-xl p-4 xl:col-span-2">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h3 class="text-sm font-semibold text-textSecondary">Lançamentos do mês</h3>
+                            <span id="month-detail-records-meta" class="text-xs text-textSecondary"></span>
+                        </div>
+                        <div id="month-detail-records" class="space-y-2 max-h-[460px] overflow-y-auto pr-1"></div>
+                    </div>
                 </div>
             </section><!-- SAÍDAS LIST -->
             <section id="view-saidas" class="fade-in hidden">
@@ -210,6 +261,12 @@
                         <select id="saidas-payment-filter" onchange="setSaidasPaymentFilter(this.value)" class="text-xs rounded-lg border border-surfaceLight bg-surfaceLight/40 text-textSecondary px-3 py-1.5">
                             <option value="">Todos pagamentos</option>
                         </select>
+                        <input
+                            id="saidas-search"
+                            type="search"
+                            placeholder="Buscar saida"
+                            oninput="setListSearchFilter('saidas', this.value)"
+                            class="text-xs rounded-lg border border-surfaceLight bg-surfaceLight/40 text-textPrimary placeholder:text-textSecondary px-3 py-1.5 min-w-[180px]">
                         <button
                             onclick="openNewRecordFlow('saida')"
                             class="bg-accent hover:bg-accentDark text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
@@ -236,6 +293,12 @@
                             <button id="entradas-filter-archived" onclick="setListArchiveFilter('entradas','archived')" class="px-3 py-1.5 text-xs rounded-md text-textSecondary">Arquivados</button>
                             <button id="entradas-filter-all" onclick="setListArchiveFilter('entradas','all')" class="px-3 py-1.5 text-xs rounded-md text-textSecondary">Todos</button>
                         </div>
+                        <input
+                            id="entradas-search"
+                            type="search"
+                            placeholder="Buscar entrada"
+                            oninput="setListSearchFilter('entradas', this.value)"
+                            class="text-xs rounded-lg border border-surfaceLight bg-surfaceLight/40 text-textPrimary placeholder:text-textSecondary px-3 py-1.5 min-w-[180px]">
                         <button
                             onclick="openNewRecordFlow('entrada')"
                             class="bg-success hover:bg-success/80 text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
@@ -252,7 +315,7 @@
             <section id="view-categorias" class="fade-in hidden max-w-2xl mx-auto">
                 <div id="category-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                     <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4 w-full">
-                        <h3 class="font-semibold mb-4">Nova Categoria</h3>
+                        <h3 id="category-modal-title" class="font-semibold mb-4">Nova Categoria</h3>
                         <div class="space-y-3">
                             <div>
                                 <label class="text-xs text-textSecondary mb-1 block">Nome</label><input id="cat-name"
@@ -292,7 +355,7 @@
                         <div class="flex gap-2 justify-end mt-5">
                             <button onclick="closeCategoryForm()"
                                 class="px-3 py-1.5 text-sm text-textSecondary bg-surfaceLight rounded-lg">Cancelar</button><button
-                                onclick="saveCategory()"
+                                id="category-save-button" onclick="saveCategory()"
                                 class="px-3 py-1.5 text-sm text-white bg-accent rounded-lg">Salvar</button>
                         </div>
                     </div>
@@ -923,9 +986,11 @@
         let deletePerson = null;
         let deleteMacro = null;
         let currentTab = 'dashboard';
+        let tabHistory = [];
         let chartInstances = {};
         let editingCategoryId = null;
         let focusedDashboardCard = null; // 'entradas', 'saidas', 'aberto'
+        let selectedDashboardMonth = '';
         let formCycle = '';
         let editingRecordId = null;
         const MAX_TRANSACTION_RECORDS = 20000;
@@ -937,6 +1002,7 @@
         const listPagination = { saidas: LIST_PAGE_SIZE, entradas: LIST_PAGE_SIZE };
         const listDetailFilters = { saidas: '', entradas: '' };
         const listPaymentFilters = { saidas: '' };
+        const listSearchFilters = { saidas: '', entradas: '' };
         let lastImportReport = null;
         let lastEntradasImportReport = null;
         let bulkOperationState = null;
@@ -1229,19 +1295,42 @@
             }
         }
 
-        function switchTab(tab) {
+        function updateBackButton() {
+            const button = document.getElementById('btn-go-back');
+            if (!button) return;
+            const canGoBack = tabHistory.length > 0;
+            button.classList.toggle('hidden', !canGoBack);
+        }
+
+        function switchTab(tab, options = {}) {
+            const { fromHistory = false } = options;
+            if (!fromHistory && currentTab && currentTab !== tab) {
+                tabHistory.push(currentTab);
+            }
             currentTab = tab;
             document.querySelectorAll('#main-tabs button').forEach(b => {
                 b.className = b.dataset.tab === tab ? 
                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-accent/10 text-accent' : 
                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary';
             });
-            ['dashboard', 'saidas', 'entradas', 'novo', 'configuracoes'].forEach(v => {
+            ['dashboard', 'mes-detalhe', 'saidas', 'entradas', 'novo', 'configuracoes'].forEach(v => {
                 const el = document.getElementById('view-' + v);
                 if (el) el.classList.toggle('hidden', v !== tab);
             });
+            updateBackButton();
             renderCurrentTab();
             if (isSidebarOpen) toggleSidebar();
+        }
+
+        function goBackTab() {
+            while (tabHistory.length) {
+                const previousTab = tabHistory.pop();
+                if (previousTab && previousTab !== currentTab) {
+                    switchTab(previousTab, { fromHistory: true });
+                    return;
+                }
+            }
+            switchTab('dashboard', { fromHistory: true });
         }
 
         function openNewRecordFlow(type = 'saida') {
@@ -1941,9 +2030,250 @@
 
         function renderCurrentTab() {
             if (currentTab === 'dashboard') renderDashboard();
+            if (currentTab === 'mes-detalhe') renderMonthlyDetailTab();
             if (currentTab === 'saidas') renderSaidas();
             if (currentTab === 'entradas') renderEntradas();
             if (currentTab === 'configuracoes') renderConfiguracoes();
+        }
+
+        function getFilteredForCompetence(competence) {
+            if (!competence) return [];
+            return getFiltered().filter((record) => record.competence === competence);
+        }
+
+        function openMonthlyDetailTab(competence) {
+            if (!competence) return;
+            selectedDashboardMonth = competence;
+            switchTab('mes-detalhe');
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderMetricBarList(items, emptyLabel, tone = 'accent') {
+            if (!items.length) {
+                return `<p class="text-sm text-textSecondary">${emptyLabel}</p>`;
+            }
+
+            const maxValue = Math.max(...items.map((item) => Number(item.value) || 0), 0);
+            const palette = tone === 'danger'
+                ? { bar: 'bg-danger/70', text: 'text-danger' }
+                : tone === 'success'
+                    ? { bar: 'bg-success/70', text: 'text-success' }
+                    : { bar: 'bg-accent/70', text: 'text-accent' };
+
+            return items.map((item) => {
+                const width = maxValue > 0 ? Math.max(8, ((Number(item.value) || 0) / maxValue) * 100) : 8;
+                return `
+                    <div class="rounded-xl border border-surfaceLight bg-surfaceLight/20 p-3">
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <span class="text-sm font-medium text-textPrimary">${escapeHtml(item.label)}</span>
+                            <span class="text-sm font-semibold ${palette.text}">${fmt(item.value)}</span>
+                        </div>
+                        <div class="h-2 rounded-full bg-surfaceLight overflow-hidden">
+                            <div class="h-full rounded-full ${palette.bar}" style="width:${width}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPersonFinancialBreakdown(items) {
+            if (!items.length) {
+                return '<p class="text-sm text-textSecondary">Nenhuma pessoa vinculada neste mês.</p>';
+            }
+
+            const maxBase = Math.max(...items.map((item) => Math.max(item.receber, item.pagar, Math.abs(item.sobra))), 0);
+
+            return items.map((item) => {
+                const receiveWidth = maxBase > 0 ? Math.max(8, (item.receber / maxBase) * 100) : 8;
+                const payWidth = maxBase > 0 ? Math.max(8, (item.pagar / maxBase) * 100) : 8;
+                const sobraWidth = maxBase > 0 ? Math.max(8, (Math.abs(item.sobra) / maxBase) * 100) : 8;
+                return `
+                    <div class="rounded-xl border border-surfaceLight bg-surfaceLight/20 p-4">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <p class="text-base font-semibold text-textPrimary">${escapeHtml(item.label)}</p>
+                                <p class="text-xs text-textSecondary mt-1">Resumo individual do mês selecionado</p>
+                            </div>
+                            <span class="text-sm font-bold ${item.sobra >= 0 ? 'text-success' : 'text-danger'}">Sobra: ${fmt(item.sobra)}</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
+                                <p class="text-[11px] uppercase tracking-[0.12em] text-textSecondary">Vai receber</p>
+                                <p class="mt-1 text-sm font-semibold text-success">${fmt(item.receber)}</p>
+                            </div>
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
+                                <p class="text-[11px] uppercase tracking-[0.12em] text-textSecondary">Vai pagar</p>
+                                <p class="mt-1 text-sm font-semibold text-danger">${fmt(item.pagar)}</p>
+                            </div>
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
+                                <p class="text-[11px] uppercase tracking-[0.12em] text-textSecondary">Vai sobrar</p>
+                                <p class="mt-1 text-sm font-semibold ${item.sobra >= 0 ? 'text-accent' : 'text-danger'}">${fmt(item.sobra)}</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex items-center justify-between gap-3 mb-1">
+                                    <span class="text-xs uppercase tracking-[0.12em] text-textSecondary">Receber</span>
+                                    <span class="text-sm font-semibold text-success">${fmt(item.receber)}</span>
+                                </div>
+                                <div class="h-2 rounded-full bg-surfaceLight overflow-hidden">
+                                    <div class="h-full rounded-full bg-success/70" style="width:${receiveWidth}%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between gap-3 mb-1">
+                                    <span class="text-xs uppercase tracking-[0.12em] text-textSecondary">Pagar</span>
+                                    <span class="text-sm font-semibold text-danger">${fmt(item.pagar)}</span>
+                                </div>
+                                <div class="h-2 rounded-full bg-surfaceLight overflow-hidden">
+                                    <div class="h-full rounded-full bg-danger/70" style="width:${payWidth}%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between gap-3 mb-1">
+                                    <span class="text-xs uppercase tracking-[0.12em] text-textSecondary">Sobra</span>
+                                    <span class="text-sm font-semibold ${item.sobra >= 0 ? 'text-accent' : 'text-danger'}">${fmt(item.sobra)}</span>
+                                </div>
+                                <div class="h-2 rounded-full bg-surfaceLight overflow-hidden">
+                                    <div class="h-full rounded-full ${item.sobra >= 0 ? 'bg-accent/70' : 'bg-danger/60'}" style="width:${sobraWidth}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderMonthlyDetailTab() {
+            const competence = selectedDashboardMonth || document.getElementById('f-comp-start')?.value || thisMonth;
+            const records = getFilteredForCompetence(competence);
+            const title = document.getElementById('month-detail-title');
+            const subtitle = document.getElementById('month-detail-subtitle');
+            const summary = document.getElementById('month-detail-summary');
+            const highlights = document.getElementById('month-detail-highlights');
+            const categoriesWrap = document.getElementById('month-detail-categories');
+            const peopleWrap = document.getElementById('month-detail-people');
+            const recordsWrap = document.getElementById('month-detail-records');
+            const recordsMeta = document.getElementById('month-detail-records-meta');
+            const statusBadge = document.getElementById('month-detail-status-badge');
+
+            const saidas = records.filter((record) => record.type === 'saida');
+            const entradas = records.filter((record) => record.type === 'entrada');
+            const financialEntradas = entradas.filter(isFinancialEntradaRecord);
+            const paidSaidas = saidas.filter((record) => record.status === 'Pago');
+            const openSaidas = saidas.filter((record) => record.status === 'Em aberto');
+
+            const totalEntradas = financialEntradas.reduce((sum, record) => {
+                const value = Number(record.amount) || 0;
+                return record.macro_category === 'Dedução' ? sum - value : sum + value;
+            }, 0);
+            const totalSaidas = paidSaidas.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+            const totalAberto = openSaidas.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+            const sobra = totalEntradas - totalSaidas;
+            const saldoProjetado = sobra - totalAberto;
+            const comprometimento = totalEntradas > 0 ? (totalSaidas / totalEntradas) * 100 : 0;
+            const statusTone = getFinancialStatusTone(saldoProjetado);
+
+            const byCategory = {};
+            paidSaidas.forEach((record) => {
+                const key = record.macro_category || 'Outros';
+                byCategory[key] = (byCategory[key] || 0) + (Number(record.amount) || 0);
+            });
+            const topCategories = Object.entries(byCategory)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([label, value]) => ({ label, value }));
+
+            const personFinancialMap = {};
+            financialEntradas.forEach((record) => {
+                const key = record.person || 'Sem pessoa';
+                if (!personFinancialMap[key]) personFinancialMap[key] = { label: key, receber: 0, pagar: 0, sobra: 0 };
+                const value = Number(record.amount) || 0;
+                personFinancialMap[key].receber += record.macro_category === 'Dedução' ? -value : value;
+            });
+            saidas
+                .filter((record) => record.status !== 'Cancelado')
+                .forEach((record) => {
+                    const key = record.person || 'Sem pessoa';
+                    if (!personFinancialMap[key]) personFinancialMap[key] = { label: key, receber: 0, pagar: 0, sobra: 0 };
+                    personFinancialMap[key].pagar += Number(record.amount) || 0;
+                });
+            const personFinancialSummary = Object.values(personFinancialMap)
+                .map((item) => ({
+                    ...item,
+                    sobra: item.receber - item.pagar
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+
+            const topExpense = [...paidSaidas].sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))[0] || null;
+            const topEntry = [...financialEntradas].sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))[0] || null;
+            const latestRecords = sortRecordsNewestFirst(records).slice(0, 20);
+
+            if (title) title.textContent = `Visão de ${formatCompetence(competence)}`;
+            if (subtitle) subtitle.textContent = 'Resumo tático do mês escolhido no gráfico mensal, com foco em receita, despesa, sobra e pendências.';
+            if (statusBadge) {
+                statusBadge.className = `px-3 py-1 rounded-full text-xs font-semibold border ${statusTone.badgeClass}`;
+                statusBadge.textContent = statusTone.text;
+            }
+
+            if (summary) {
+                summary.innerHTML = `
+                    <div class="glass rounded-xl p-3 border border-surfaceLight">
+                        <p class="text-xs text-textSecondary">Entradas</p>
+                        <p class="text-lg font-bold text-success">${fmt(totalEntradas)}</p>
+                    </div>
+                    <div class="glass rounded-xl p-3 border border-surfaceLight">
+                        <p class="text-xs text-textSecondary">Saídas pagas</p>
+                        <p class="text-lg font-bold text-danger">${fmt(totalSaidas)}</p>
+                    </div>
+                    <div class="glass rounded-xl p-3 border border-surfaceLight">
+                        <p class="text-xs text-textSecondary">Em aberto</p>
+                        <p class="text-lg font-bold text-warn">${fmt(totalAberto)}</p>
+                    </div>
+                    <div class="glass rounded-xl p-3 border border-surfaceLight">
+                        <p class="text-xs text-textSecondary">Sobra do mês</p>
+                        <p class="text-lg font-bold ${sobra >= 0 ? 'text-success' : 'text-danger'}">${fmt(sobra)}</p>
+                    </div>
+                `;
+            }
+
+            if (highlights) {
+                highlights.innerHTML = `
+                    <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
+                        <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Saldo projetado</p>
+                        <p class="mt-2 text-lg font-bold ${saldoProjetado >= 0 ? 'text-success' : 'text-danger'}">${fmt(saldoProjetado)}</p>
+                        <p class="mt-1 text-xs text-textSecondary">Sobra após considerar pendências em aberto.</p>
+                    </div>
+                    <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
+                        <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Comprometimento</p>
+                        <p class="mt-2 text-lg font-bold ${comprometimento >= 80 ? 'text-danger' : comprometimento >= 60 ? 'text-warn' : 'text-success'}">${comprometimento.toFixed(1).replace('.', ',')}%</p>
+                        <p class="mt-1 text-xs text-textSecondary">Percentual das entradas já consumido por saídas pagas.</p>
+                    </div>
+                    <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
+                        <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Maior saída paga</p>
+                        <p class="mt-2 text-base font-bold text-danger">${topExpense ? fmt(topExpense.amount) : 'R$ 0,00'}</p>
+                        <p class="mt-1 text-xs text-textSecondary">${topExpense ? escapeHtml(topExpense.description || topExpense.subcategory || topExpense.macro_category || 'Sem descrição') : 'Sem saídas pagas no mês.'}</p>
+                    </div>
+                    <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
+                        <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Maior entrada</p>
+                        <p class="mt-2 text-base font-bold text-success">${topEntry ? fmt(topEntry.amount) : 'R$ 0,00'}</p>
+                        <p class="mt-1 text-xs text-textSecondary">${topEntry ? escapeHtml(topEntry.description || topEntry.subcategory || topEntry.earning_type || 'Sem descrição') : 'Sem entradas financeiras no mês.'}</p>
+                    </div>
+                `;
+            }
+
+            if (categoriesWrap) categoriesWrap.innerHTML = renderMetricBarList(topCategories, 'Nenhuma categoria relevante neste mês.', 'danger');
+            if (peopleWrap) peopleWrap.innerHTML = renderPersonFinancialBreakdown(personFinancialSummary);
+
+            if (recordsMeta) recordsMeta.textContent = `${latestRecords.length} de ${records.length} lançamento(s) exibidos`;
+            if (recordsWrap) {
+                recordsWrap.innerHTML = latestRecords.length
+                    ? latestRecords.map((record) => renderRow(record)).join('')
+                    : '<p class="text-sm text-textSecondary text-center py-8">Sem lançamentos neste mês dentro do filtro atual.</p>';
+            }
+
+            lucide.createIcons();
         }
 
         function getFiltered(typeFilter, options = {}) {
@@ -2056,7 +2386,46 @@
             } else if (tab === 'saidas' && listDetailFilters.saidas === 'pago') {
                 records = records.filter((record) => record.status === 'Pago');
             }
+            records = records.filter((record) => matchesListSearch(record, tab));
             return sortRecordsNewestFirst(records);
+        }
+
+        function normalizeListSearchValue(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        }
+
+        function getListSearchHaystack(record) {
+            return normalizeListSearchValue([
+                record?.subcategory,
+                record?.earning_type,
+                record?.person,
+                record?.macro_category,
+                record?.payment_method,
+                record?.status,
+                record?.competence,
+                formatCompetence(record?.competence)
+            ].filter(Boolean).join(' '));
+        }
+
+        function matchesListSearch(record, tab) {
+            const searchTerm = normalizeListSearchValue(listSearchFilters[tab]);
+            if (!searchTerm) return true;
+
+            const descriptionText = normalizeListSearchValue(record?.description || '');
+            if (descriptionText.includes(searchTerm)) return true;
+
+            return getListSearchHaystack(record).includes(searchTerm);
+        }
+
+        function setListSearchFilter(tab, value) {
+            listSearchFilters[tab] = value || '';
+            listPagination[tab] = LIST_PAGE_SIZE;
+            if (tab === 'saidas') renderSaidas();
+            if (tab === 'entradas') renderEntradas();
         }
 
         function clearListDetailFilter(tab) {
@@ -2232,6 +2601,291 @@
 
         function fmt(v) { return 'R$ ' + (Number(v) || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 
+        function fmtCompactCurrency(value) {
+            const amount = Number(value) || 0;
+            const abs = Math.abs(amount);
+            if (abs >= 1000000) return `R$ ${(amount / 1000000).toFixed(1).replace('.', ',')} mi`;
+            if (abs >= 1000) return `R$ ${(amount / 1000).toFixed(1).replace('.', ',')} mil`;
+            return `R$ ${Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+        }
+
+        function getFinancialStatusTone(value) {
+            return (Number(value) || 0) >= 0
+                ? {
+                    text: 'Positivo',
+                    valueClass: 'text-success',
+                    badgeClass: 'bg-success/10 text-success border-success/20'
+                }
+                : {
+                    text: 'Negativo',
+                    valueClass: 'text-danger',
+                    badgeClass: 'bg-danger/10 text-danger border-danger/20'
+                };
+        }
+
+        function renderTrendInsights(summary) {
+            const wrap = document.getElementById('trend-insights');
+            if (!wrap) return;
+
+            if (!summary) {
+                wrap.innerHTML = '';
+                wrap.className = 'hidden';
+                return;
+            }
+
+            const statusTone = getFinancialStatusTone(summary.currentValue);
+            wrap.className = 'grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4';
+            wrap.innerHTML = `
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Sobra média mensal</p>
+                    <p class="mt-2 text-base font-bold ${getFinancialStatusTone(summary.average).valueClass}">${fmt(summary.average)}</p>
+                </div>
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Melhor mês</p>
+                    <p class="mt-2 text-base font-bold text-success">${fmt(summary.bestValue)}</p>
+                    <p class="mt-1 text-xs text-textSecondary">${summary.bestLabel}</p>
+                </div>
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Pior mês</p>
+                    <p class="mt-2 text-base font-bold ${getFinancialStatusTone(summary.worstValue).valueClass}">${fmt(summary.worstValue)}</p>
+                    <p class="mt-1 text-xs text-textSecondary">${summary.worstLabel}</p>
+                </div>
+                <div class="rounded-xl border ${statusTone.badgeClass} bg-surface px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Situação atual</p>
+                    <p class="mt-2 text-base font-bold ${statusTone.valueClass}">${statusTone.text}</p>
+                    <p class="mt-1 text-xs text-textSecondary">${summary.currentLabel} • ${fmt(summary.currentValue)}</p>
+                </div>
+            `;
+        }
+
+        function renderDailyTrendInsights(summary) {
+            const wrap = document.getElementById('trend-insights');
+            if (!wrap) return;
+
+            if (!summary) {
+                wrap.innerHTML = '';
+                wrap.className = 'hidden';
+                return;
+            }
+
+            wrap.className = 'grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4';
+            wrap.innerHTML = `
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Total do mês</p>
+                    <p class="mt-2 text-base font-bold text-danger">${fmt(summary.total)}</p>
+                </div>
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Dia mais pesado</p>
+                    <p class="mt-2 text-base font-bold text-danger">${fmt(summary.peakValue)}</p>
+                    <p class="mt-1 text-xs text-textSecondary">Dia ${summary.peakLabel}</p>
+                </div>
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Média por dia com gasto</p>
+                    <p class="mt-2 text-base font-bold ${summary.averageActive > 0 ? 'text-warn' : 'text-textPrimary'}">${fmt(summary.averageActive)}</p>
+                    <p class="mt-1 text-xs text-textSecondary">${summary.activeDays} dia(s) com movimento</p>
+                </div>
+                <div class="rounded-xl border border-surfaceLight bg-surfaceLight/35 px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Semana mais forte</p>
+                    <p class="mt-2 text-base font-bold text-danger">${fmt(summary.peakWeekValue)}</p>
+                    <p class="mt-1 text-xs text-textSecondary">${summary.peakWeekLabel}</p>
+                </div>
+            `;
+        }
+
+        const dashboardDataLabelPlugin = {
+            id: 'dashboardDataLabelPlugin',
+            beforeDatasetsDraw(chart, args, pluginOptions) {
+                if (pluginOptions?.mode !== 'financial-combo-monthly') return;
+
+                const yScale = chart.scales?.y;
+                const chartArea = chart.chartArea;
+                if (!yScale || !chartArea) return;
+
+                const zeroY = yScale.getPixelForValue(0);
+                if (!Number.isFinite(zeroY) || zeroY < chartArea.top || zeroY > chartArea.bottom) return;
+
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, zeroY);
+                ctx.lineTo(chartArea.right, zeroY);
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+                ctx.stroke();
+                ctx.restore();
+            },
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                const mode = pluginOptions?.mode;
+                if (!mode) return;
+
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea || {};
+
+                ctx.save();
+                ctx.font = '600 11px "DM Sans", sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+                ctx.lineWidth = 3;
+                ctx.lineJoin = 'round';
+
+                if (mode === 'daily-spend-objective') {
+                    const datasetIndex = Number.isInteger(pluginOptions?.datasetIndex) ? pluginOptions.datasetIndex : 0;
+                    const dataset = chart.data.datasets?.[datasetIndex];
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    const elements = meta?.data || [];
+                    if (!dataset || !elements.length) {
+                        ctx.restore();
+                        return;
+                    }
+
+                    const values = (dataset.data || []).map((value) => Number(value) || 0);
+                    const nonZeroIndexes = values
+                        .map((value, index) => ({ value, index }))
+                        .filter((item) => item.value > 0);
+
+                    if (nonZeroIndexes.length) {
+                        const lastNonZero = nonZeroIndexes[nonZeroIndexes.length - 1].index;
+                        const peakIndex = nonZeroIndexes.reduce((best, item) => item.value > values[best] ? item.index : best, nonZeroIndexes[0].index);
+                        const indexes = new Set([lastNonZero, peakIndex]);
+
+                        [...indexes].forEach((index) => {
+                            const element = elements[index];
+                            if (!element) return;
+                            const value = values[index];
+                            const text = fmtCompactCurrency(value);
+                            const y = Math.max(element.y - 12, chartArea.top + 12);
+                            ctx.fillStyle = '#be123c';
+                            ctx.textAlign = 'center';
+                            ctx.strokeText(text, element.x, y);
+                            ctx.fillText(text, element.x, y);
+                        });
+                    }
+
+                    const weekLabels = pluginOptions?.weekLabels || [];
+                    if (weekLabels.length) {
+                        const xScale = chart.scales?.x;
+                        if (xScale) {
+                            ctx.font = '600 10px "DM Sans", sans-serif';
+                            ctx.fillStyle = '#94a3b8';
+                            ctx.strokeStyle = 'transparent';
+                            ctx.textAlign = 'center';
+                            const labelY = chartArea.bottom + 24;
+
+                            weekLabels.forEach((week) => {
+                                const firstX = xScale.getPixelForTick(week.startIndex);
+                                const lastX = xScale.getPixelForTick(week.endIndex);
+                                const centerX = (firstX + lastX) / 2;
+                                ctx.fillText(week.label, centerX, labelY);
+
+                                if (week.endIndex < (chart.data.labels?.length || 0) - 1) {
+                                    const boundaryX = (lastX + xScale.getPixelForTick(week.endIndex + 1)) / 2;
+                                    ctx.save();
+                                    ctx.beginPath();
+                                    ctx.moveTo(boundaryX, chartArea.bottom + 4);
+                                    ctx.lineTo(boundaryX, chartArea.bottom + 16);
+                                    ctx.lineWidth = 1;
+                                    ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+                                    ctx.stroke();
+                                    ctx.restore();
+                                }
+                            });
+                        }
+                    }
+
+                    ctx.restore();
+                    return;
+                }
+
+                if (mode === 'financial-combo-monthly') {
+                    const datasetIndex = Number.isInteger(pluginOptions?.datasetIndex) ? pluginOptions.datasetIndex : (chart.data.datasets?.length || 1) - 1;
+                    const dataset = chart.data.datasets?.[datasetIndex];
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    const elements = meta?.data || [];
+                    if (!dataset || !elements.length) {
+                        ctx.restore();
+                        return;
+                    }
+
+                    const values = (dataset.data || []).map((value) => Number(value) || 0);
+                    const indexes = new Set([values.length - 1]);
+                    let maxIndex = 0;
+                    let minIndex = 0;
+                    values.forEach((value, index) => {
+                        if (value > values[maxIndex]) maxIndex = index;
+                        if (value < values[minIndex]) minIndex = index;
+                    });
+                    indexes.add(maxIndex);
+                    indexes.add(minIndex);
+
+                    [...indexes].forEach((index) => {
+                        const element = elements[index];
+                        if (!element) return;
+                        const value = values[index];
+                        const text = fmtCompactCurrency(value);
+                        const yOffset = value >= 0 ? -14 : 16;
+                        const y = Math.min(Math.max(element.y + yOffset, chartArea.top + 12), chartArea.bottom - 12);
+                        ctx.fillStyle = value >= 0 ? '#0f766e' : '#be123c';
+                        ctx.textAlign = 'center';
+                        ctx.strokeText(text, element.x, y);
+                        ctx.fillText(text, element.x, y);
+                    });
+                    ctx.restore();
+                    return;
+                }
+
+                const dataset = chart.data.datasets?.[0];
+                const meta = chart.getDatasetMeta(0);
+                const elements = meta?.data || [];
+                if (!dataset || !elements.length) {
+                    ctx.restore();
+                    return;
+                }
+
+                const values = (dataset.data || []).map((value) => Number(value) || 0);
+                const total = values.reduce((sum, value) => sum + value, 0);
+                ctx.fillStyle = '#0f172a';
+
+                elements.forEach((element, index) => {
+                    const value = values[index];
+                    if (!value) return;
+
+                    let text = '';
+                    let x = 0;
+                    let y = 0;
+                    let textAlign = 'center';
+
+                    if (mode === 'doughnut-percentage') {
+                        if (!total) return;
+                        const ratio = (value / total) * 100;
+                        if (ratio < 7) return;
+                        const percentage = ratio.toFixed(1).replace('.', ',') + '%';
+                        const angle = (element.startAngle + element.endAngle) / 2;
+                        const radius = element.innerRadius + ((element.outerRadius - element.innerRadius) * 0.62);
+                        x = element.x + Math.cos(angle) * radius;
+                        y = element.y + Math.sin(angle) * radius;
+                        text = percentage;
+                    } else if (mode === 'bar-currency-vertical') {
+                        x = element.x;
+                        y = Math.max(element.y - 10, chartArea.top + 10);
+                        text = fmtCompactCurrency(value);
+                    } else if (mode === 'bar-currency-horizontal') {
+                        x = Math.min(element.x + 10, (chartArea.right || element.x) - 4);
+                        y = element.y;
+                        text = fmtCompactCurrency(value);
+                        textAlign = x >= (chartArea.right || x) - 8 ? 'right' : 'left';
+                    } else {
+                        return;
+                    }
+
+                    ctx.textAlign = textAlign;
+                    ctx.strokeText(text, x, y);
+                    ctx.fillText(text, x, y);
+                });
+
+                ctx.restore();
+            }
+        };
+
         function formatCompetence(comp) {
             if (!comp) return '';
             const parts = comp.split('-');
@@ -2280,11 +2934,43 @@
             return record.created_at || '';
         }
 
+        function dateValueToTimestamp(value) {
+            if (!value) return Number.NEGATIVE_INFINITY;
+            if (value instanceof Date) {
+                const time = value.getTime();
+                return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+            }
+
+            const normalizedValue = String(value).trim();
+            if (!normalizedValue) return Number.NEGATIVE_INFINITY;
+
+            const brMatch = normalizedValue.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (brMatch) {
+                const time = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T00:00:00`).getTime();
+                return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+            }
+
+            const competenceMatch = normalizedValue.match(/^(\d{4})-(\d{2})$/);
+            if (competenceMatch) {
+                const time = new Date(`${normalizedValue}-01T00:00:00`).getTime();
+                return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+            }
+
+            const isoDateMatch = normalizedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (isoDateMatch) {
+                const time = new Date(`${normalizedValue}T00:00:00`).getTime();
+                return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+            }
+
+            const time = new Date(normalizedValue).getTime();
+            return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+        }
+
         function sortRecordsNewestFirst(records = []) {
             return [...records].sort((a, b) => {
-                const primary = getRecordSortDate(b).localeCompare(getRecordSortDate(a));
+                const primary = dateValueToTimestamp(getRecordSortDate(b)) - dateValueToTimestamp(getRecordSortDate(a));
                 if (primary !== 0) return primary;
-                return (b.created_at || '').localeCompare(a.created_at || '');
+                return dateValueToTimestamp(b.created_at) - dateValueToTimestamp(a.created_at);
             });
         }
 
@@ -2325,6 +3011,21 @@
                 switchTab('dashboard');
                 document.getElementById('recent-container')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+        }
+
+        function openDashboardCategoryDetail(label) {
+            const detailLabel = String(label || '').trim();
+            if (!detailLabel) return;
+
+            listDetailFilters.saidas = '';
+            listPaymentFilters.saidas = '';
+            listSearchFilters.saidas = detailLabel;
+            listPagination.saidas = LIST_PAGE_SIZE;
+
+            switchTab('saidas');
+
+            const searchInput = document.getElementById('saidas-search');
+            if (searchInput) searchInput.value = detailLabel;
         }
 
         function renderDashboard() {
@@ -2374,22 +3075,35 @@
                 byCat[k] = (byCat[k] || 0) + (Number(r.amount) || 0);
             });
 
+            const bySubcategory = {};
+            saidas.forEach((r) => {
+                const key = r.subcategory || r.description || 'Sem detalhe';
+                bySubcategory[key] = (bySubcategory[key] || 0) + (Number(r.amount) || 0);
+            });
+            const topSubcategories = Object.entries(bySubcategory)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
             const catCtx = document.getElementById('chart-category');
             if (chartInstances.category) chartInstances.category.destroy();
             chartInstances.category = new Chart(catCtx, {
                 type: 'doughnut',
+                plugins: [dashboardDataLabelPlugin],
                 data: {
                     labels: Object.keys(byCat),
                     datasets: [{
                         data: Object.values(byCat),
                         backgroundColor: ['#38bdf8', '#fbbf24', '#34d399'],
-                        borderColor: '#1e293b',
-                        borderWidth: 2
+                        borderColor: '#ffffff',
+                        borderWidth: 3,
+                        hoverOffset: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '62%',
+                    layout: { padding: 8 },
                     onClick: (event, elements, chart) => {
                         if (elements.length > 0) {
                             const index = elements[0].index;
@@ -2400,9 +3114,86 @@
                         }
                     },
                     plugins: {
+                        dashboardDataLabelPlugin: {
+                            mode: 'doughnut-percentage'
+                        },
                         legend: {
                             position: 'bottom',
-                            labels: { color: '#64748b', font: { size: 11 }, padding: 10 }
+                            labels: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                padding: 8,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const totalValue = context.dataset.data.reduce((sum, item) => sum + (Number(item) || 0), 0);
+                                    const currentValue = Number(context.parsed) || 0;
+                                    const percent = totalValue ? ((currentValue / totalValue) * 100).toFixed(1).replace('.', ',') : '0,0';
+                                    return `${context.label}: ${fmt(currentValue)} (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const categoryDetailCtx = document.getElementById('chart-category-detail');
+            if (chartInstances.categoryDetail) chartInstances.categoryDetail.destroy();
+            chartInstances.categoryDetail = new Chart(categoryDetailCtx, {
+                type: 'bar',
+                plugins: [dashboardDataLabelPlugin],
+                data: {
+                    labels: topSubcategories.map(([label]) => label),
+                    datasets: [{
+                        label: 'Saídas por subcategoria',
+                        data: topSubcategories.map(([, value]) => value),
+                        backgroundColor: ['#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd', '#e0f2fe'],
+                        borderRadius: 6,
+                        borderWidth: 0,
+                        barPercentage: 0.68,
+                        categoryPercentage: 0.72
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20 } },
+                    onClick: (event, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = chart.data.labels[index];
+                            openDashboardCategoryDetail(label);
+                        }
+                    },
+                    plugins: {
+                        dashboardDataLabelPlugin: {
+                            mode: 'bar-currency-vertical'
+                        },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value);
+                                    return label && label.length > 14 ? `${label.slice(0, 14)}...` : label;
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: {
+                                display: false
+                            }
                         }
                     }
                 }
@@ -2413,26 +3204,31 @@
                 const k = r.person || '?';
                 byPerson[k] = (byPerson[k] || 0) + (Number(r.amount) || 0);
             });
+            const sortedPeople = Object.entries(byPerson).sort((a, b) => b[1] - a[1]);
 
             const personCtx = document.getElementById('chart-person');
             if (chartInstances.person) chartInstances.person.destroy();
             chartInstances.person = new Chart(personCtx, {
                 type: 'bar',
+                plugins: [dashboardDataLabelPlugin],
                 data: {
-                    labels: Object.keys(byPerson),
+                    labels: sortedPeople.map(([label]) => label),
                     datasets: [{
                         label: 'Gastos',
-                        data: Object.values(byPerson),
+                        data: sortedPeople.map(([, value]) => value),
                         backgroundColor: '#38bdf8',
                         borderColor: '#0284c7',
                         borderWidth: 1,
-                        borderRadius: 4
+                        borderRadius: 4,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.7
                     }]
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { right: 18 } },
                     onClick: (event, elements, chart) => {
                         if (elements.length > 0) {
                             const index = elements[0].index;
@@ -2443,12 +3239,15 @@
                         }
                     },
                     plugins: {
+                        dashboardDataLabelPlugin: {
+                            mode: 'bar-currency-horizontal'
+                        },
                         legend: { display: false }
                     },
                     scales: {
                         x: {
-                            grid: { color: '#e2e8f0', drawBorder: false },
-                            ticks: { color: '#64748b', font: { size: 11 } }
+                            grid: { display: false, drawBorder: false },
+                            ticks: { display: false }
                         },
                         y: {
                             ticks: { color: '#64748b', font: { size: 11 } },
@@ -2461,9 +3260,14 @@
             const startVal = document.getElementById('f-comp-start').value;
             const endVal = document.getElementById('f-comp-end').value;
             const trendTitle = document.getElementById('chart-trend-title');
+            const trendInsights = document.getElementById('trend-insights');
             const isSingleSelectedMonth = Boolean(startVal && endVal && startVal === endVal);
             const trendLabels = [];
             const trendDatasets = [];
+            let trendSummary = null;
+            let trendChartType = 'line';
+            let dailyWeekLabels = [];
+            let monthlyTrendKeys = [];
 
             if (isSingleSelectedMonth) {
                 const daysInMonth = getDaysInCompetenceMonth(startVal);
@@ -2482,18 +3286,62 @@
                 });
 
                 if (trendTitle) trendTitle.textContent = `Gastos Diários (${formatCompetence(startVal)})`;
+                const dailyValues = Object.values(dailyData);
+                const activeDailyValues = dailyValues.filter((value) => value > 0);
+                let peakDayIndex = 0;
+                dailyValues.forEach((value, index) => {
+                    if (value > dailyValues[peakDayIndex]) peakDayIndex = index;
+                });
+
+                dailyWeekLabels = Array.from({ length: Math.ceil(daysInMonth / 7) }, (_, weekIndex) => ({
+                    label: `Sem ${weekIndex + 1}`,
+                    startIndex: weekIndex * 7,
+                    endIndex: Math.min(daysInMonth - 1, (weekIndex * 7) + 6)
+                }));
+                const weeklyTotals = dailyWeekLabels.map((week) => ({
+                    label: week.label,
+                    total: dailyValues.slice(week.startIndex, week.endIndex + 1).reduce((sum, value) => sum + value, 0)
+                }));
+                const peakWeek = weeklyTotals.reduce((best, item) => item.total > best.total ? item : best, weeklyTotals[0] || { label: 'Sem 1', total: 0 });
+
+                renderDailyTrendInsights({
+                    total: dailyValues.reduce((sum, value) => sum + value, 0),
+                    peakLabel: formatDayLabel(Object.keys(dailyData)[peakDayIndex] || ''),
+                    peakValue: dailyValues[peakDayIndex] || 0,
+                    averageActive: activeDailyValues.length ? activeDailyValues.reduce((sum, value) => sum + value, 0) / activeDailyValues.length : 0,
+                    activeDays: activeDailyValues.length,
+                    peakWeekLabel: peakWeek.label,
+                    peakWeekValue: peakWeek.total
+                });
+
                 trendLabels.push(...Object.keys(dailyData).map(formatDayLabel));
+                trendChartType = 'bar';
                 trendDatasets.push({
+                    type: 'bar',
                     label: 'Gastos diários',
-                    data: Object.values(dailyData),
-                    borderColor: '#f43f5e',
-                    backgroundColor: 'rgba(244, 63, 94, 0.12)',
-                    tension: 0.25,
-                    fill: true,
-                    pointBackgroundColor: '#f43f5e',
-                    pointBorderColor: '#1e293b',
-                    pointBorderWidth: 2,
-                    pointRadius: 4
+                    data: dailyValues,
+                    backgroundColor: dailyValues.map((value, index) => {
+                        if (!value) return 'rgba(226, 232, 240, 0.55)';
+                        if (index === peakDayIndex) return 'rgba(225, 29, 72, 0.85)';
+                        return 'rgba(244, 63, 94, 0.45)';
+                    }),
+                    borderColor: dailyValues.map((value, index) => index === peakDayIndex ? '#be123c' : '#f43f5e'),
+                    borderWidth: dailyValues.map((value) => value > 0 ? 1 : 0),
+                    borderRadius: 6,
+                    categoryPercentage: 0.92,
+                    barPercentage: 0.92
+                }, {
+                    type: 'line',
+                    label: 'Média diária',
+                    data: dailyValues.map(() => activeDailyValues.length ? activeDailyValues.reduce((sum, value) => sum + value, 0) / activeDailyValues.length : 0),
+                    borderColor: 'rgba(71, 85, 105, 0.9)',
+                    backgroundColor: 'transparent',
+                    tension: 0,
+                    fill: false,
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    pointHoverRadius: 0
                 });
             } else {
                 const monthsData = {};
@@ -2524,36 +3372,96 @@
                     }
                 });
 
-                if (trendTitle) trendTitle.textContent = 'Fluxo Mensal';
-                const monthlyLabels = Object.keys(monthsData).map(formatCompetence);
+                if (trendTitle) trendTitle.textContent = 'Fluxo Financeiro Mensal';
+                monthlyTrendKeys = Object.keys(monthsData);
+                const monthlyLabels = monthlyTrendKeys.map(formatCompetence);
                 const monthlyValues = Object.values(monthsData);
+                const monthlyEntradas = monthlyValues.map((month) => month.entrada);
+                const monthlySaidas = monthlyValues.map((month) => month.saida);
+                const monthlyBalance = monthlyValues.map((month) => month.entrada - month.saida);
+                const averageBalance = monthlyBalance.length
+                    ? monthlyBalance.reduce((sum, value) => sum + value, 0) / monthlyBalance.length
+                    : 0;
+                let bestIndex = 0;
+                let worstIndex = 0;
+                monthlyBalance.forEach((value, index) => {
+                    if (value > monthlyBalance[bestIndex]) bestIndex = index;
+                    if (value < monthlyBalance[worstIndex]) worstIndex = index;
+                });
+
+                trendSummary = {
+                    average: averageBalance,
+                    bestLabel: monthlyLabels[bestIndex] || '-',
+                    bestValue: monthlyBalance[bestIndex] || 0,
+                    worstLabel: monthlyLabels[worstIndex] || '-',
+                    worstValue: monthlyBalance[worstIndex] || 0,
+                    currentLabel: monthlyLabels[monthlyLabels.length - 1] || '-',
+                    currentValue: monthlyBalance[monthlyBalance.length - 1] || 0
+                };
+                renderTrendInsights(trendSummary);
+
                 trendLabels.push(...monthlyLabels);
+                trendChartType = 'bar';
                 trendDatasets.push(
                     {
+                        type: 'bar',
                         label: 'Entradas',
-                        data: monthlyValues.map((month) => month.entrada),
-                        borderColor: '#34d399',
-                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                        tension: monthlyLabels.length <= 1 ? 0 : 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#34d399',
-                        pointBorderColor: '#1e293b',
-                        pointBorderWidth: 2,
-                        pointRadius: monthlyLabels.length <= 1 ? 6 : 4
+                        data: monthlyEntradas,
+                        backgroundColor: 'rgba(52, 211, 153, 0.32)',
+                        borderColor: 'rgba(52, 211, 153, 0.75)',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        categoryPercentage: 0.7,
+                        barPercentage: 0.82,
+                        order: 3
                     },
                     {
+                        type: 'bar',
                         label: 'Saídas',
-                        data: monthlyValues.map((month) => month.saida),
-                        borderColor: '#f43f5e',
-                        backgroundColor: 'rgba(244, 63, 94, 0.1)',
-                        tension: monthlyLabels.length <= 1 ? 0 : 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#f43f5e',
-                        pointBorderColor: '#1e293b',
+                        data: monthlySaidas,
+                        backgroundColor: 'rgba(244, 63, 94, 0.26)',
+                        borderColor: 'rgba(244, 63, 94, 0.7)',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        categoryPercentage: 0.7,
+                        barPercentage: 0.82,
+                        order: 3
+                    },
+                    {
+                        type: 'line',
+                        label: 'Sobra',
+                        data: monthlyBalance,
+                        borderColor: '#0369a1',
+                        backgroundColor: 'rgba(3, 105, 161, 0.12)',
+                        tension: monthlyLabels.length <= 1 ? 0 : 0.28,
+                        fill: false,
+                        borderWidth: 3,
+                        pointBackgroundColor: monthlyBalance.map((value) => value >= 0 ? '#0369a1' : '#e11d48'),
+                        pointBorderColor: monthlyBalance.map((value) => value >= 0 ? '#e0f2fe' : '#ffe4e6'),
                         pointBorderWidth: 2,
-                        pointRadius: monthlyLabels.length <= 1 ? 6 : 4
+                        pointRadius: monthlyBalance.map((value) => value < 0 ? 5 : 4),
+                        pointHoverRadius: monthlyBalance.map((value) => value < 0 ? 6 : 5),
+                        order: 1
+                    },
+                    {
+                        type: 'line',
+                        label: 'Média da sobra',
+                        data: monthlyBalance.map(() => averageBalance),
+                        borderColor: 'rgba(71, 85, 105, 0.9)',
+                        backgroundColor: 'transparent',
+                        tension: 0,
+                        fill: false,
+                        borderWidth: 1.5,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        order: 2
                     }
                 );
+            }
+
+            if (!trendSummary && !isSingleSelectedMonth) {
+                renderTrendInsights(null);
             }
 
             const trendCtx = document.getElementById('chart-trend');
@@ -2564,7 +3472,8 @@
             const singleMonthTrend = trendLabels.length <= 1;
             const trendPadding = singleMonthTrend ? Math.max(200, Math.abs(trendMax - trendMin) * 0.4 || Math.abs(trendMax || trendMin) * 0.2 || 200) : 0;
             chartInstances.trend = new Chart(trendCtx, {
-                type: 'line',
+                type: trendChartType,
+                plugins: [dashboardDataLabelPlugin],
                 data: {
                     labels: trendLabels,
                     datasets: trendDatasets
@@ -2572,10 +3481,32 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { top: 26, right: 14, left: 6, bottom: isSingleSelectedMonth ? 34 : 0 } },
                     interaction: { mode: 'index', intersect: false },
+                    onClick: isSingleSelectedMonth ? undefined : (event, elements, chart) => {
+                        if (!elements.length) return;
+                        const index = elements[0].index;
+                        const monthKey = monthlyTrendKeys[index];
+                        openMonthlyDetailTab(monthKey);
+                    },
                     plugins: {
+                        dashboardDataLabelPlugin: isSingleSelectedMonth ? {
+                            mode: 'daily-spend-objective',
+                            datasetIndex: 0,
+                            weekLabels: dailyWeekLabels
+                        } : {
+                            mode: 'financial-combo-monthly',
+                            datasetIndex: 2
+                        },
                         legend: {
-                            labels: { color: '#64748b', font: { size: 12 }, padding: 15 }
+                            labels: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                padding: 12,
+                                usePointStyle: true,
+                                pointStyle: 'line',
+                                boxWidth: 8
+                            }
                         },
                         tooltip: {
                             callbacks: {
@@ -2585,17 +3516,19 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: '#e2e8f0', drawBorder: false },
+                            grid: { display: false, drawBorder: false },
                             ticks: { color: '#64748b', font: { size: 11 } },
                             offset: singleMonthTrend
                         },
                         y: {
-                            grid: { color: '#e2e8f0', drawBorder: false },
+                            grid: { color: 'rgba(226, 232, 240, 0.8)', drawBorder: false },
                             ticks: {
+                                display: true,
                                 color: '#64748b',
                                 font: { size: 11 },
-                                callback: (value) => fmt(value)
+                                callback: (value) => fmtCompactCurrency(value)
                             },
+                            beginAtZero: !isSingleSelectedMonth,
                             suggestedMin: singleMonthTrend ? trendMin - trendPadding : undefined,
                             suggestedMax: singleMonthTrend ? trendMax + trendPadding : undefined
                         }
@@ -2696,7 +3629,8 @@
             const pagination = document.getElementById('saidas-pagination');
             const totalBox = document.getElementById('saidas-total');
             const counts = getArchiveCounts('saida');
-            const visibleRecords = saidas.slice(0, listPagination.saidas);
+            const hasSearch = Boolean(normalizeListSearchValue(listSearchFilters.saidas));
+            const visibleRecords = hasSearch ? saidas : saidas.slice(0, listPagination.saidas);
             const totalVisible = visibleRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
             list.innerHTML = visibleRecords.map(r => renderRow(r)).join('');
             empty.classList.toggle('hidden', saidas.length > 0);
@@ -2714,7 +3648,8 @@
                 const clearAction = detailLabel
                     ? ' <button onclick="clearListDetailFilter(\'saidas\')" class="text-accent hover:underline ml-1">limpar</button>'
                     : '';
-                meta.innerHTML = `${visibleRecords.length} de ${saidas.length} exibidos • ${counts.active} ativos • ${counts.archived} arquivados${paymentLabel}${paymentClearAction}${detail}${clearAction}`;
+                const searchLabel = listSearchFilters.saidas ? ` • busca: ${listSearchFilters.saidas}` : '';
+                meta.innerHTML = `${visibleRecords.length} de ${saidas.length} exibidos • ${counts.active} ativos • ${counts.archived} arquivados${paymentLabel}${paymentClearAction}${detail}${clearAction}${searchLabel}`;
             }
             if (totalBox) {
                 if (visibleRecords.length) {
@@ -2730,7 +3665,7 @@
                     totalBox.innerHTML = '';
                 }
             }
-            pagination.classList.toggle('hidden', saidas.length <= visibleRecords.length);
+            pagination.classList.toggle('hidden', hasSearch || saidas.length <= visibleRecords.length);
             lucide.createIcons();
         }
 
@@ -2775,13 +3710,16 @@
         <span>Deduções: -${fmt(deductions)}</span>
       </div>
       ${referenceSalary ? `<div class="mb-2 text-xs text-accent font-medium">Salário base de referência: ${fmt(referenceSalary.amount)}</div>` : ''}
-      <div class="space-y-1">${g.items.map(r => renderRow(r)).join('')}</div>
+      <div class="space-y-1">${sortRecordsNewestFirst(g.items).map(r => renderRow(r)).join('')}</div>
     </div>`;
             });
 
             list.innerHTML = html;
             empty.classList.toggle('hidden', entradas.length > 0);
-            if (meta) meta.textContent = `${visibleEntries.length} de ${entradas.length} exibidos • ${counts.active} ativos • ${counts.archived} arquivados`;
+            if (meta) {
+                const searchLabel = listSearchFilters.entradas ? ` • busca: ${listSearchFilters.entradas}` : '';
+                meta.textContent = `${visibleEntries.length} de ${entradas.length} exibidos • ${counts.active} ativos • ${counts.archived} arquivados${searchLabel}`;
+            }
             pagination.classList.toggle('hidden', entradas.length <= visibleEntries.length);
             lucide.createIcons();
         }
@@ -3345,15 +4283,45 @@
         // ============ CATEGORY MANAGEMENT ============
         function openCategoryForm() {
             editingCategoryId = null;
+            const modal = document.getElementById('category-modal');
+            if (modal && modal.parentElement?.id === 'view-categorias') {
+                document.getElementById('app')?.appendChild(modal);
+            }
+            document.getElementById('category-modal-title').textContent = 'Nova Categoria';
+            document.getElementById('category-save-button').textContent = 'Salvar';
             document.getElementById('cat-name').value = '';
             document.getElementById('cat-macro').value = 'FIXO';
             document.getElementById('cat-color').value = '#38bdf8';
             document.getElementById('cat-icon').value = 'tag';
-            document.getElementById('category-modal').classList.remove('hidden');
+            selectColor('#38bdf8');
+            modal?.classList.remove('hidden');
+        }
+
+        function openEditCategory(categoryId) {
+            const category = allRecords.find((record) => record.type === 'categoria' && record.id === categoryId);
+            if (!category) {
+                showToast('Categoria não encontrada', true);
+                return;
+            }
+
+            const modal = document.getElementById('category-modal');
+            if (modal && modal.parentElement?.id === 'view-categorias') {
+                document.getElementById('app')?.appendChild(modal);
+            }
+
+            editingCategoryId = category.id;
+            document.getElementById('category-modal-title').textContent = 'Editar Categoria';
+            document.getElementById('category-save-button').textContent = 'Salvar alterações';
+            document.getElementById('cat-name').value = category.category_name || '';
+            document.getElementById('cat-macro').value = category.macro_category || 'FIXO';
+            document.getElementById('cat-color').value = category.category_color || '#38bdf8';
+            document.getElementById('cat-icon').value = category.category_icon || 'tag';
+            selectColor(category.category_color || '#38bdf8');
+            modal?.classList.remove('hidden');
         }
 
         function closeCategoryForm() {
-            document.getElementById('category-modal').classList.add('hidden');
+            document.getElementById('category-modal')?.classList.add('hidden');
             editingCategoryId = null;
         }
 
@@ -3370,38 +4338,71 @@
             const macro = document.getElementById('cat-macro').value;
             const color = document.getElementById('cat-color').value;
             const icon = document.getElementById('cat-icon').value || 'tag';
+            const isEditing = Boolean(editingCategoryId);
+            const currentCategory = isEditing
+                ? allRecords.find((record) => record.type === 'categoria' && record.id === editingCategoryId)
+                : null;
 
             if (!name) { showToast('Informe o nome da categoria', true); return; }
 
             try {
-                if (allRecords.filter(r => r.type === 'categoria').length >= 50) { showToast('Limite de 50 categorias!', true); return; }
-                const r = await window.dataSdk.create({
-                    type: 'categoria',
-                    person: '',
-                    macro_category: macro,
-                    subcategory: '',
-                    description: '',
-                    amount: 0,
-                    status: '',
-                    payment_method: '',
-                    occurred_date: '',
-                    due_date: '',
-                    competence: '',
-                    paid_at: '',
-                    installment_no: 0,
-                    total_installments: 0,
-                    parent_id: '',
-                    earning_type: '',
-                    recurrence: '',
-                    created_at: new Date().toISOString(),
-                    category_id: 'cat_' + Date.now(),
-                    category_name: name,
-                    category_color: color,
-                    category_icon: icon,
-                    ...getHourExtraRecordDefaults()
-                });
-                if (r.isOk) showToast('Categoria criada!');
-                else showToast('Erro ao criar', true);
+                if (!isEditing && allRecords.filter(r => r.type === 'categoria').length >= 50) { showToast('Limite de 50 categorias!', true); return; }
+
+                const duplicate = allRecords.find((record) =>
+                    record.type === 'categoria' &&
+                    record.id !== editingCategoryId &&
+                    String(record.category_name || '').trim().toLowerCase() === name.toLowerCase() &&
+                    String(record.macro_category || '') === macro
+                );
+                if (duplicate) {
+                    showToast('Já existe uma categoria com esse nome nessa macro', true);
+                    return;
+                }
+
+                let r;
+                if (isEditing) {
+                    if (!currentCategory) {
+                        showToast('Categoria não encontrada', true);
+                        return;
+                    }
+                    r = await window.dataSdk.update({
+                        ...currentCategory,
+                        category_name: name,
+                        macro_category: macro,
+                        category_color: color,
+                        category_icon: icon,
+                        id: currentCategory.id
+                    });
+                } else {
+                    r = await window.dataSdk.create({
+                        type: 'categoria',
+                        person: '',
+                        macro_category: macro,
+                        subcategory: '',
+                        description: '',
+                        amount: 0,
+                        status: '',
+                        payment_method: '',
+                        occurred_date: '',
+                        due_date: '',
+                        competence: '',
+                        paid_at: '',
+                        installment_no: 0,
+                        total_installments: 0,
+                        parent_id: '',
+                        earning_type: '',
+                        recurrence: '',
+                        created_at: new Date().toISOString(),
+                        category_id: 'cat_' + Date.now(),
+                        category_name: name,
+                        category_color: color,
+                        category_icon: icon,
+                        ...getHourExtraRecordDefaults()
+                    });
+                }
+
+                if (r.isOk) showToast(isEditing ? 'Categoria atualizada!' : 'Categoria criada!');
+                else showToast(isEditing ? 'Erro ao atualizar' : 'Erro ao criar', true);
                 closeCategoryForm();
             } catch (err) {
                 showToast('Erro ao salvar', true);
@@ -3409,7 +4410,13 @@
         }
 
         function renderCategorias() {
-            const categories = allRecords.filter(r => r.type === 'categoria');
+            const categories = allRecords
+                .filter(r => r.type === 'categoria')
+                .sort((a, b) => {
+                    const macroCompare = String(a.macro_category || '').localeCompare(String(b.macro_category || ''), 'pt-BR');
+                    if (macroCompare !== 0) return macroCompare;
+                    return String(a.category_name || '').localeCompare(String(b.category_name || ''), 'pt-BR');
+                });
             const list = document.getElementById('categories-list');
             const empty = document.getElementById('categories-empty');
 
@@ -3432,6 +4439,9 @@
         </div>
       </div>
       <div class="flex gap-2">
+        <button onclick='openEditCategory(${JSON.stringify(cat.id).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-accent p-2" title="Editar categoria">
+          <i data-lucide="pencil" class="w-4 h-4"></i>
+        </button>
         <button onclick='askDelete(${JSON.stringify(cat).replace(/'/g, "&#39;")})' class="text-textSecondary hover:text-danger p-2">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
