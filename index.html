@@ -21,16 +21,16 @@
             theme: {
                 extend: {
                     colors: {
-                        bg: '#f8fafc',
-                        surface: '#ffffff',
-                        surfaceLight: '#f1f5f9',
-                        accent: '#0ea5e9',
-                        accentDark: '#0284c7',
-                        danger: '#e11d48',
-                        success: '#10b981',
-                        warn: '#f59e0b',
-                        textPrimary: '#0f172a',
-                        textSecondary: '#64748b'
+                        bg: 'rgb(var(--color-bg) / <alpha-value>)',
+                        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+                        surfaceLight: 'rgb(var(--color-surface-light) / <alpha-value>)',
+                        accent: 'rgb(var(--color-accent) / <alpha-value>)',
+                        accentDark: 'rgb(var(--color-accent-dark) / <alpha-value>)',
+                        danger: 'rgb(var(--color-danger) / <alpha-value>)',
+                        success: 'rgb(var(--color-success) / <alpha-value>)',
+                        warn: 'rgb(var(--color-warn) / <alpha-value>)',
+                        textPrimary: 'rgb(var(--color-text-primary) / <alpha-value>)',
+                        textSecondary: 'rgb(var(--color-text-secondary) / <alpha-value>)'
                     }
                 }
             }
@@ -120,6 +120,12 @@
                 <h1 id="app-title" class="mobile-title text-lg font-bold text-textPrimary">Controle Financeiro</h1>
             </div>
             <div class="mobile-header-actions flex items-center gap-2">
+                <button id="theme-toggle" type="button" onclick="toggleTheme()"
+                    class="text-xs bg-surfaceLight hover:bg-surfaceLight/80 px-3 py-1.5 rounded-lg text-textSecondary hover:text-textPrimary flex items-center gap-1 transition-colors font-medium"
+                    title="Alternar entre modo claro e escuro">
+                    <i data-lucide="moon" class="w-4 h-4"></i>
+                    <span class="mobile-action-label" id="theme-toggle-label">Modo escuro</span>
+                </button>
                 <button onclick="openNewRecordFlow()"
                     class="text-xs bg-accent hover:bg-accentDark px-3 py-1.5 rounded-lg text-white flex items-center gap-1 transition-colors font-semibold"><i
                         data-lucide="plus-circle" class="w-4 h-4"></i><span class="mobile-action-label">Novo lançamento</span></button>
@@ -133,9 +139,9 @@
                 <div class="glass rounded-2xl p-4 mb-4">
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                         <div>
-                            <p class="text-xs uppercase tracking-[0.18em] text-textSecondary">Visão Geral</p>
-                            <h2 class="text-xl font-bold text-textPrimary">Seu panorama financeiro</h2>
-                            <p class="text-sm text-textSecondary mt-1">Use o período como contexto principal e refine só quando necessário.</p>
+                            <p class="text-xs uppercase tracking-[0.18em] text-textSecondary">Visão Estratégica</p>
+                            <h2 class="text-xl font-bold text-textPrimary">Seu desempenho financeiro</h2>
+                            <p class="text-sm text-textSecondary mt-1">Acompanhe seus resultados em tempo real e refine a análise quando necessário.</p>
                         </div>
                         <div class="flex gap-2 flex-wrap">
                             <button onclick="toggleAdvancedFilters()" id="btn-advanced-filters" class="text-xs bg-surfaceLight hover:bg-surfaceLight/80 px-3 py-2 rounded-lg text-textSecondary hover:text-textPrimary flex items-center gap-1 transition-colors font-medium">
@@ -146,10 +152,16 @@
                     </div>
                     <div class="mobile-filter-bar flex flex-wrap gap-2 mt-4 items-center">
                         <div class="mobile-filter-period flex items-center gap-1 bg-surfaceLight/30 rounded-lg px-2 shadow-sm border border-surfaceLight/50">
+                        <button type="button" onclick="shiftDashboardCompetenceRange(-1)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textSecondary hover:text-textPrimary hover:bg-surface transition-colors" title="Mês anterior">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
                         <span class="text-xs text-textSecondary font-medium">De</span>
                         <input type="month" id="f-comp-start" onchange="renderDashboard()" class="text-sm bg-transparent border-0 ring-0 focus:ring-0 text-textPrimary py-1.5 w-[110px] cursor-pointer">
                         <span class="text-xs text-textSecondary font-medium">Até</span>
                         <input type="month" id="f-comp-end" onchange="renderDashboard()" class="text-sm bg-transparent border-0 ring-0 focus:ring-0 text-textPrimary py-1.5 w-[110px] cursor-pointer">
+                        <button type="button" onclick="shiftDashboardCompetenceRange(1)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textSecondary hover:text-textPrimary hover:bg-surface transition-colors" title="Próximo mês">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
                     </div>
                         <div id="dashboard-active-filters" class="flex flex-wrap gap-2"></div>
                     </div>
@@ -1259,6 +1271,54 @@
             font_size: 14
         };
         const OVERTIME_TYPES_STORAGE_KEY = 'finance-control-overtime-types-v1';
+        const THEME_STORAGE_KEY = 'finance-control-theme-v1';
+        let currentTheme = localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+
+        function getThemeChartColor(variableName, fallback) {
+            const value = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+            return value || fallback;
+        }
+
+        function getThemeTextSecondaryColor() {
+            return getThemeChartColor('--theme-text-secondary', '#64748b');
+        }
+
+        function getThemeSurfaceStrokeColor() {
+            return currentTheme === 'dark'
+                ? 'rgba(15, 23, 42, 0.9)'
+                : 'rgba(255, 255, 255, 0.95)';
+        }
+
+        function updateThemeToggleButton() {
+            const label = document.getElementById('theme-toggle-label');
+            const button = document.getElementById('theme-toggle');
+            if (!label || !button) return;
+
+            const isDark = currentTheme === 'dark';
+            label.textContent = isDark ? 'Modo claro' : 'Modo escuro';
+            button.title = isDark ? 'Ativar modo claro' : 'Ativar modo escuro';
+            button.innerHTML = `
+                <i data-lucide="${isDark ? 'sun' : 'moon'}" class="w-4 h-4"></i>
+                <span class="mobile-action-label" id="theme-toggle-label">${isDark ? 'Modo claro' : 'Modo escuro'}</span>
+            `;
+        }
+
+        function applyTheme(theme, options = {}) {
+            currentTheme = theme === 'dark' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = currentTheme;
+            document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+            localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
+            updateThemeToggleButton();
+            lucide.createIcons();
+
+            if (options.rerender !== false) {
+                renderCurrentTab();
+            }
+        }
+
+        function toggleTheme() {
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        }
 
         function getHourExtraRecordDefaults() {
             return {
@@ -1937,6 +1997,7 @@
         document.getElementById('form-earning-comp').value = thisMonth;
         setFormCycle('');
         updateFormModeUi();
+        applyTheme(currentTheme, { rerender: false });
 
         // ============ SUBMIT ============
         async function handleSubmit(e) {
@@ -2554,20 +2615,20 @@
                             <span class="px-2 py-1 rounded-full text-[11px] font-semibold ${tone.pill}">${item.sobra >= 0 ? 'Positivo' : 'Atenção'}</span>
                         </div>
                         <div class="mb-4">
-                            <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Vai sobrar</p>
+                            <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Saldo projetado</p>
                             <p class="mt-1 text-xl font-bold ${tone.value}">${fmt(item.sobra)}</p>
                         </div>
                         <div class="grid grid-cols-3 gap-2 text-xs">
                             <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
-                                <p class="text-textSecondary">Recebe</p>
+                                <p class="text-textSecondary">Receitas</p>
                                 <p class="mt-1 font-semibold text-success">${fmt(item.receber)}</p>
                             </div>
                             <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
-                                <p class="text-textSecondary">Pago</p>
+                                <p class="text-textSecondary">Despesas pagas</p>
                                 <p class="mt-1 font-semibold text-danger">${fmt(item.pagar)}</p>
                             </div>
                             <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
-                                <p class="text-textSecondary">Aberto</p>
+                                <p class="text-textSecondary">Pendências</p>
                                 <p class="mt-1 font-semibold text-warn">${fmt(item.emAberto)}</p>
                             </div>
                         </div>
@@ -2743,6 +2804,26 @@
             document.getElementById('f-macro').value = '';
             document.getElementById('f-cycle').value = '';
             setFocusedCard(null); // isso já chama renderDashboard()
+        }
+
+        function shiftMonthValue(monthValue, delta) {
+            if (!monthValue || !/^\d{4}-\d{2}$/.test(monthValue)) return '';
+            const [year, month] = monthValue.split('-').map(Number);
+            const date = new Date(year, month - 1, 1);
+            date.setMonth(date.getMonth() + delta);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function shiftDashboardCompetenceRange(delta) {
+            const startField = document.getElementById('f-comp-start');
+            const endField = document.getElementById('f-comp-end');
+            if (!startField || !endField) return;
+
+            const baseStart = startField.value || thisMonth;
+            const baseEnd = endField.value || baseStart;
+            startField.value = shiftMonthValue(baseStart, delta) || baseStart;
+            endField.value = shiftMonthValue(baseEnd, delta) || baseEnd;
+            renderDashboard();
         }
 
         function updateDashboardFilterChipState() {
@@ -3153,7 +3234,7 @@
                 ctx.moveTo(chartArea.left, zeroY);
                 ctx.lineTo(chartArea.right, zeroY);
                 ctx.lineWidth = 1.5;
-                ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+                ctx.strokeStyle = getThemeChartColor('--chart-grid-color', 'rgba(15, 23, 42, 0.35)');
                 ctx.stroke();
                 ctx.restore();
             },
@@ -3167,8 +3248,8 @@
                 ctx.save();
                 ctx.font = '600 11px "DM Sans", sans-serif';
                 ctx.textBaseline = 'middle';
-                ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-                ctx.lineWidth = 3;
+                ctx.strokeStyle = getThemeSurfaceStrokeColor();
+                ctx.lineWidth = currentTheme === 'dark' ? 4 : 3;
                 ctx.lineJoin = 'round';
 
                 if (mode === 'daily-spend-objective') {
@@ -3197,7 +3278,7 @@
                             const value = values[index];
                             const text = fmtCompactCurrency(value);
                             const y = Math.max(element.y - 12, chartArea.top + 12);
-                            ctx.fillStyle = '#be123c';
+                            ctx.fillStyle = getThemeChartColor('--chart-negative-color', '#be123c');
                             ctx.textAlign = 'center';
                             ctx.strokeText(text, element.x, y);
                             ctx.fillText(text, element.x, y);
@@ -3209,7 +3290,7 @@
                         const xScale = chart.scales?.x;
                         if (xScale) {
                             ctx.font = '600 10px "DM Sans", sans-serif';
-                            ctx.fillStyle = '#94a3b8';
+                            ctx.fillStyle = getThemeChartColor('--chart-muted-color', '#94a3b8');
                             ctx.strokeStyle = 'transparent';
                             ctx.textAlign = 'center';
                             const labelY = chartArea.bottom + 24;
@@ -3227,7 +3308,7 @@
                                     ctx.moveTo(boundaryX, chartArea.bottom + 4);
                                     ctx.lineTo(boundaryX, chartArea.bottom + 16);
                                     ctx.lineWidth = 1;
-                                    ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+                                    ctx.strokeStyle = getThemeChartColor('--chart-divider-color', 'rgba(148, 163, 184, 0.45)');
                                     ctx.stroke();
                                     ctx.restore();
                                 }
@@ -3267,7 +3348,9 @@
                         const text = fmtCompactCurrency(value);
                         const yOffset = value >= 0 ? -14 : 16;
                         const y = Math.min(Math.max(element.y + yOffset, chartArea.top + 12), chartArea.bottom - 12);
-                        ctx.fillStyle = value >= 0 ? '#0f766e' : '#be123c';
+                        ctx.fillStyle = value >= 0
+                            ? getThemeChartColor('--chart-positive-color', '#0f766e')
+                            : getThemeChartColor('--chart-negative-color', '#be123c');
                         ctx.textAlign = 'center';
                         ctx.strokeText(text, element.x, y);
                         ctx.fillText(text, element.x, y);
@@ -3286,7 +3369,7 @@
 
                 const values = (dataset.data || []).map((value) => Number(value) || 0);
                 const total = values.reduce((sum, value) => sum + value, 0);
-                ctx.fillStyle = '#0f172a';
+                ctx.fillStyle = getThemeChartColor('--chart-label-color', '#0f172a');
 
                 elements.forEach((element, index) => {
                     const value = values[index];
@@ -3538,7 +3621,7 @@
                     datasets: [{
                         data: Object.values(byCat),
                         backgroundColor: ['#38bdf8', '#fbbf24', '#34d399'],
-                        borderColor: '#ffffff',
+                        borderColor: currentTheme === 'dark' ? '#0f172a' : '#ffffff',
                         borderWidth: 3,
                         hoverOffset: 6
                     }]
@@ -3564,7 +3647,7 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                color: '#64748b',
+                                color: getThemeTextSecondaryColor(),
                                 font: { size: 10 },
                                 padding: 8,
                                 usePointStyle: true,
@@ -3624,7 +3707,7 @@
                         x: {
                             grid: { display: false },
                             ticks: {
-                                color: '#64748b',
+                                color: getThemeTextSecondaryColor(),
                                 font: { size: 10 },
                                 maxRotation: 0,
                                 callback: function(value) {
@@ -3694,7 +3777,7 @@
                             ticks: { display: false }
                         },
                         y: {
-                            ticks: { color: '#64748b', font: { size: 11 } },
+                            ticks: { color: getThemeTextSecondaryColor(), font: { size: 11 } },
                             grid: { display: false }
                         }
                     }
@@ -4469,6 +4552,56 @@
             return { label: 'Situação saudável', tone: 'success', note: 'O período apresenta boa folga e controle operacional.' };
         }
 
+        function pdfGetReportStatusMeta(status) {
+            const normalized = String(status || '').trim().toLowerCase();
+            if (normalized === 'pago') {
+                return {
+                    label: 'Pago',
+                    dot: [34, 197, 94],
+                    bg: [240, 253, 244],
+                    text: [21, 128, 61]
+                };
+            }
+            if (normalized === 'em aberto') {
+                return {
+                    label: 'Em aberto',
+                    dot: [245, 158, 11],
+                    bg: [255, 251, 235],
+                    text: [180, 83, 9]
+                };
+            }
+            if (normalized === 'cancelado') {
+                return {
+                    label: 'Cancelado',
+                    dot: [148, 163, 184],
+                    bg: [248, 250, 252],
+                    text: [100, 116, 139]
+                };
+            }
+            return {
+                label: status || '-',
+                dot: [148, 163, 184],
+                bg: [248, 250, 252],
+                text: [71, 85, 105]
+            };
+        }
+
+        function pdfDrawStatusBadge(doc, cell, status) {
+            const meta = pdfGetReportStatusMeta(status);
+            const badgeHeight = 12;
+            const badgeWidth = Math.min(cell.width - 8, Math.max(34, doc.getTextWidth(meta.label) + 22));
+            const badgeX = cell.x + 4;
+            const badgeY = cell.y + ((cell.height - badgeHeight) / 2);
+
+            doc.setFillColor(meta.bg[0], meta.bg[1], meta.bg[2]);
+            doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 6, 6, 'F');
+            doc.setFillColor(meta.dot[0], meta.dot[1], meta.dot[2]);
+            doc.circle(badgeX + 6.5, badgeY + (badgeHeight / 2), 2.2, 'F');
+            doc.setTextColor(meta.text[0], meta.text[1], meta.text[2]);
+            doc.setFontSize(7.3);
+            doc.text(meta.label, badgeX + 12, badgeY + 8.2);
+        }
+
         async function exportPDF() {
             const lancamentos = getPdfFilteredRecords();
             if (!lancamentos.length) { showToast('Sem lançamentos para exportar no filtro atual', true); return; }
@@ -4681,6 +4814,120 @@
             }
 
             doc.addPage();
+            const detailedRecords = [...lancamentos]
+                .sort((a, b) => ((a.occurred_date || a.due_date || '')).localeCompare(b.occurred_date || b.due_date || ''));
+            const polishedTableRows = detailedRecords.map((record) => ({
+                data: ((record.occurred_date || record.due_date || '') ? (record.occurred_date || record.due_date).split('-').reverse().join('/') : ''),
+                tipo: record.type === 'entrada' ? 'Entrada' : 'Saida',
+                pessoa: record.person || '-',
+                categoria: record.macro_category || record.subcategory || '-',
+                descricao: record.description || record.subcategory || record.earning_type || '-',
+                valor: fmt(record.amount),
+                status: record.status || '-',
+                competencia: record.competence || '-'
+            }));
+            const pagosCount = detailedRecords.filter((record) => String(record.status || '').trim() === 'Pago').length;
+            const abertoCount = detailedRecords.filter((record) => String(record.status || '').trim() === 'Em aberto').length;
+
+            pdfDrawRoundedBlock(doc, left, 28, contentWidth, 68, [248, 250, 252], [226, 232, 240], 16);
+            doc.setFillColor(15, 23, 42);
+            doc.roundedRect(left, 28, 8, 68, 8, 8, 'F');
+            doc.setFontSize(18);
+            doc.setTextColor(15, 23, 42);
+            doc.text('Tabela detalhada final', left + 22, 54);
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Base integral do mesmo periodo e filtros usados na tela no momento da exportacao.', left + 22, 72);
+
+            let tableChipX = 560;
+            const tableChipY = 54;
+            [
+                `${polishedTableRows.length} lancamentos`,
+                `${pagosCount} pagos`,
+                `${abertoCount} em aberto`
+            ].forEach((label, index) => {
+                const fill = index === 1 ? [240, 253, 244] : index === 2 ? [255, 251, 235] : [226, 232, 240];
+                const text = index === 1 ? [21, 128, 61] : index === 2 ? [180, 83, 9] : [51, 65, 85];
+                tableChipX += pdfDrawChip(doc, tableChipX, tableChipY, label, fill, text) + 8;
+            });
+
+            autoTable.call(doc, {
+                startY: 112,
+                columns: [
+                    { header: 'Data', dataKey: 'data' },
+                    { header: 'Tipo', dataKey: 'tipo' },
+                    { header: 'Pessoa', dataKey: 'pessoa' },
+                    { header: 'Categoria', dataKey: 'categoria' },
+                    { header: 'Descricao', dataKey: 'descricao' },
+                    { header: 'Valor', dataKey: 'valor' },
+                    { header: 'Status', dataKey: 'status' },
+                    { header: 'Competencia', dataKey: 'competencia' }
+                ],
+                body: polishedTableRows,
+                theme: 'plain',
+                margin: { left: 24, right: 24, bottom: 26 },
+                tableWidth: 794,
+                headStyles: {
+                    fillColor: [15, 23, 42],
+                    textColor: [255, 255, 255],
+                    fontSize: 8,
+                    fontStyle: 'bold',
+                    cellPadding: { top: 6, right: 8, bottom: 6, left: 8 },
+                    halign: 'left',
+                    valign: 'middle'
+                },
+                bodyStyles: {
+                    textColor: [71, 85, 105],
+                    fontSize: 7.6,
+                    cellPadding: { top: 6, right: 8, bottom: 6, left: 8 },
+                    lineColor: [241, 245, 249],
+                    lineWidth: 0.6,
+                    valign: 'middle'
+                },
+                alternateRowStyles: {
+                    fillColor: [250, 252, 255]
+                },
+                styles: {
+                    overflow: 'linebreak'
+                },
+                columnStyles: {
+                    data: { cellWidth: 60 },
+                    tipo: { cellWidth: 52 },
+                    pessoa: { cellWidth: 76 },
+                    categoria: { cellWidth: 98 },
+                    descricao: { cellWidth: 270 },
+                    valor: { cellWidth: 74, halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] },
+                    status: { cellWidth: 76 },
+                    competencia: { cellWidth: 72, halign: 'center' }
+                },
+                didParseCell(data) {
+                    if (data.section === 'body' && data.column.dataKey === 'status') {
+                        data.cell.text = [''];
+                    }
+                },
+                didDrawCell(data) {
+                    if (data.section === 'body' && data.column.dataKey === 'status') {
+                        pdfDrawStatusBadge(doc, data.cell, data.row.raw.status);
+                    }
+                }
+            });
+
+            const totalPages = doc.getNumberOfPages();
+            for (let page = 1; page <= totalPages; page++) {
+                doc.setPage(page);
+                const pageHeight = doc.internal.pageSize.getHeight();
+                doc.setDrawColor(226, 232, 240);
+                doc.line(24, pageHeight - 18, 818, pageHeight - 18);
+                doc.setFontSize(8);
+                doc.setTextColor(148, 163, 184);
+                doc.text('Relatorio Financeiro Gerencial', 24, pageHeight - 7);
+                doc.text(`Pagina ${page} de ${totalPages}`, 770, pageHeight - 7, { align: 'right' });
+            }
+
+            doc.save(`Relatorio_Financeiro_${hoje.replace(/\//g, '-')}.pdf`);
+            showToast('Relatorio PDF exportado!');
+            return;
+
             const tableRows = [...lancamentos]
                 .sort((a, b) => ((a.occurred_date || a.due_date || '')).localeCompare(b.occurred_date || b.due_date || ''))
                 .map((r) => [
