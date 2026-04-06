@@ -397,10 +397,11 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="text-xs text-textSecondary mb-1 block">Categoria</label><select
-                                    id="form-category" class="w-full text-sm">
-                                    <option value="">Selecione macro primeiro</option>
-                                </select>
+                                <label class="text-xs text-textSecondary mb-1 block">Categoria</label><input
+                                    id="form-category" list="form-category-options" class="w-full text-sm"
+                                    placeholder="Selecione ou digite uma categoria">
+                                <datalist id="form-category-options"></datalist>
+                                <p class="text-[11px] text-textSecondary mt-1">Categorias existentes aparecem como sugestão. Se digitar uma nova, ela vira padrão para os demais usuários.</p>
                             </div>
                         </div>
                         <div class="mt-3">
@@ -869,6 +870,9 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         let unsubscribeRecords = null;
+        let unsubscribeSharedCategories = null;
+        let latestUserRecords = [];
+        let latestSharedCategories = [];
 
         function getUserCollection(uid) {
             return collection(db, "users", uid, "finance_records");
@@ -876,6 +880,41 @@
 
         function getUserDoc(uid, id) {
             return doc(db, "users", uid, "finance_records", id);
+        }
+
+        function getSharedCategoriesCollection() {
+            return collection(db, "shared_categories");
+        }
+
+        function getSharedCategoryDoc(id) {
+            return doc(db, "shared_categories", id);
+        }
+
+        function isSharedCategoryRecord(record) {
+            return record?.type === 'categoria' && record?.shared_scope === 'global';
+        }
+
+        function emitCombinedRecords(dataHandler) {
+            const categoryKeys = new Set();
+            const combined = [];
+
+            latestSharedCategories.forEach((record) => {
+                const key = `${String(record.macro_category || '').trim().toLowerCase()}|${String(record.category_name || '').trim().toLowerCase()}`;
+                categoryKeys.add(key);
+                combined.push(record);
+            });
+
+            latestUserRecords.forEach((record) => {
+                if (record?.type !== 'categoria') {
+                    combined.push(record);
+                    return;
+                }
+
+                const key = `${String(record.macro_category || '').trim().toLowerCase()}|${String(record.category_name || '').trim().toLowerCase()}`;
+                if (!categoryKeys.has(key)) combined.push(record);
+            });
+
+            dataHandler.onDataChanged(combined);
         }
 
         window.firebaseBatchDeleteRecords = async (uid, records, batchSize = 200) => {
@@ -898,10 +937,16 @@
                 }
 
                 if (unsubscribeRecords) unsubscribeRecords();
+                if (unsubscribeSharedCategories) unsubscribeSharedCategories();
 
                 unsubscribeRecords = onSnapshot(getUserCollection(user.uid), (snapshot) => {
-                    const data = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data() }));
-                    dataHandler.onDataChanged(data);
+                    latestUserRecords = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data() }));
+                    emitCombinedRecords(dataHandler);
+                });
+
+                unsubscribeSharedCategories = onSnapshot(getSharedCategoriesCollection(), (snapshot) => {
+                    latestSharedCategories = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data(), shared_scope: 'global' }));
+                    emitCombinedRecords(dataHandler);
                 });
 
                 return { isOk: true };
@@ -911,11 +956,20 @@
                     const user = auth.currentUser;
                     if (!user) throw new Error("AUTH_REQUIRED");
 
-                    await addDoc(getUserCollection(user.uid), {
-                        ...record,
-                        owner_uid: user.uid,
-                        owner_email: user.email || ""
-                    });
+                    if (record?.type === 'categoria') {
+                        await addDoc(getSharedCategoriesCollection(), {
+                            ...record,
+                            shared_scope: 'global',
+                            owner_uid: user.uid,
+                            owner_email: user.email || ""
+                        });
+                    } else {
+                        await addDoc(getUserCollection(user.uid), {
+                            ...record,
+                            owner_uid: user.uid,
+                            owner_email: user.email || ""
+                        });
+                    }
                     return { isOk: true };
                 } catch (e) { console.error(e); return { isOk: false, error: e.message }; }
             },
@@ -925,7 +979,11 @@
                     const { id, ...data } = record;
                     if (!user) throw new Error("AUTH_REQUIRED");
                     if (!id) throw new Error("Documento precisa de um ID");
-                    await updateDoc(getUserDoc(user.uid, id), data);
+                    if (isSharedCategoryRecord(record)) {
+                        await updateDoc(getSharedCategoryDoc(id), { ...data, shared_scope: 'global' });
+                    } else {
+                        await updateDoc(getUserDoc(user.uid, id), data);
+                    }
                     return { isOk: true };
                 } catch (e) { console.error(e); return { isOk: false, error: e.message }; }
             },
@@ -934,7 +992,11 @@
                     const user = auth.currentUser;
                     if (!user) throw new Error("AUTH_REQUIRED");
                     if (!record.id) throw new Error("Documento precisa de um ID");
-                    await deleteDoc(getUserDoc(user.uid, record.id));
+                    if (isSharedCategoryRecord(record)) {
+                        await deleteDoc(getSharedCategoryDoc(record.id));
+                    } else {
+                        await deleteDoc(getUserDoc(user.uid, record.id));
+                    }
                     return { isOk: true };
                 } catch (e) { console.error(e); return { isOk: false, error: e.message }; }
             }
@@ -970,6 +1032,14 @@
             if (!user && unsubscribeRecords) {
                 unsubscribeRecords();
                 unsubscribeRecords = null;
+            }
+            if (!user && unsubscribeSharedCategories) {
+                unsubscribeSharedCategories();
+                unsubscribeSharedCategories = null;
+            }
+            if (!user) {
+                latestUserRecords = [];
+                latestSharedCategories = [];
             }
 
             window.dispatchEvent(new CustomEvent("authStateChanged", {
@@ -1518,9 +1588,64 @@
 
         function updateCategoryOptions() {
             const macro = document.getElementById('form-macro').value;
-            const sel = document.getElementById('form-category');
-            const cats = allRecords.filter(r => r.type === 'categoria' && r.macro_category === macro);
-            sel.innerHTML = '<option value="">Selecione categoria</option>' + cats.map(c => `<option value="${c.category_name}">${c.category_name}</option>`).join('');
+            const input = document.getElementById('form-category');
+            const list = document.getElementById('form-category-options');
+            const categories = [...new Set(
+                allRecords
+                    .filter((record) => record.type === 'categoria' && record.macro_category === macro)
+                    .map((record) => String(record.category_name || '').trim())
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            if (list) {
+                list.innerHTML = categories.map((category) => `<option value="${escapeHtml(category)}"></option>`).join('');
+            }
+
+            if (input) {
+                input.placeholder = macro
+                    ? 'Selecione ou digite uma categoria'
+                    : 'Selecione macro primeiro';
+            }
+        }
+
+        async function ensureSharedCategoryExists(macro, categoryName) {
+            const normalizedMacro = String(macro || '').trim();
+            const normalizedCategory = String(categoryName || '').trim();
+            if (!normalizedMacro || !normalizedCategory) return;
+
+            const exists = allRecords.some((record) =>
+                record.type === 'categoria' &&
+                String(record.macro_category || '').trim().toLowerCase() === normalizedMacro.toLowerCase() &&
+                String(record.category_name || '').trim().toLowerCase() === normalizedCategory.toLowerCase()
+            );
+
+            if (exists) return;
+
+            await window.dataSdk.create({
+                type: 'categoria',
+                person: '',
+                macro_category: normalizedMacro,
+                subcategory: '',
+                description: '',
+                amount: 0,
+                status: '',
+                payment_method: '',
+                occurred_date: '',
+                due_date: '',
+                competence: '',
+                paid_at: '',
+                installment_no: 0,
+                total_installments: 0,
+                parent_id: '',
+                earning_type: '',
+                recurrence: '',
+                created_at: new Date().toISOString(),
+                category_id: 'cat_' + Date.now(),
+                category_name: normalizedCategory,
+                category_color: '#38bdf8',
+                category_icon: 'tag',
+                ...getHourExtraRecordDefaults()
+            });
         }
 
         function syncOvertimeTypeOptions() {
@@ -1764,18 +1889,21 @@
                     if (!amount || amount <= 0) { showToast('Informe um valor válido', true); return; }
                     const status = document.getElementById('form-status').value;
                     if (status === 'Pago' && !document.getElementById('form-paid-at').value) { showToast('Informe a data de pagamento', true); return; }
+                    const selectedMacro = document.getElementById('form-macro').value;
+                    const selectedCategory = String(document.getElementById('form-category').value || '').trim();
 
                     const isInstallment = document.getElementById('form-installment-check').checked;
                     const recurrence = document.getElementById('form-recurrence').value;
                     const parentId = 'p_' + Date.now();
+                    await ensureSharedCategoryExists(selectedMacro, selectedCategory);
 
                     if (editingRecord) {
                         const result = await window.dataSdk.update({
                             ...editingRecord,
                             type: 'saida',
                             person: document.getElementById('form-person').value,
-                            macro_category: document.getElementById('form-macro').value,
-                            subcategory: document.getElementById('form-category').value || '',
+                            macro_category: selectedMacro,
+                            subcategory: selectedCategory,
                             description: document.getElementById('form-desc').value || '',
                             amount: amount,
                             status: status,
@@ -1811,8 +1939,8 @@
 
                             await window.dataSdk.create({
                                 type: 'saida', person: document.getElementById('form-person').value,
-                                macro_category: document.getElementById('form-macro').value,
-                                subcategory: document.getElementById('form-category').value || '',
+                                macro_category: selectedMacro,
+                                subcategory: selectedCategory,
                                 description: document.getElementById('form-desc').value + ` (${i + 1}/${n})`,
                                 amount: perInstallment, status: i === 0 ? status : 'Em aberto',
                                 payment_method: document.getElementById('form-payment').value || '',
@@ -1841,8 +1969,8 @@
 
                             await window.dataSdk.create({
                                 type: 'saida', person: document.getElementById('form-person').value,
-                                macro_category: document.getElementById('form-macro').value,
-                                subcategory: document.getElementById('form-category').value || '',
+                                macro_category: selectedMacro,
+                                subcategory: selectedCategory,
                                 description: document.getElementById('form-desc').value || '',
                                 amount: amount, status: i === 0 ? status : 'Em aberto',
                                 payment_method: document.getElementById('form-payment').value || '',
@@ -1860,8 +1988,8 @@
                         if (!hasTransactionCapacity()) { showToast(`Limite de ${MAX_TRANSACTION_RECORDS} lancamentos atingido!`, true); return; }
                         const result = await window.dataSdk.create({
                             type: 'saida', person: document.getElementById('form-person').value,
-                            macro_category: document.getElementById('form-macro').value,
-                            subcategory: document.getElementById('form-category').value || '',
+                            macro_category: selectedMacro,
+                            subcategory: selectedCategory,
                             description: document.getElementById('form-desc').value || '',
                             amount: amount, status: status,
                             payment_method: document.getElementById('form-payment').value || '',
