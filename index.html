@@ -170,6 +170,15 @@
                     </div>
                 </div>
                 <div class="mobile-summary-grid grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" id="summary-cards"></div>
+                <div class="glass rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-textSecondary">Saldo por Pessoa no Período Filtrado</h3>
+                            <p id="person-balance-meta" class="text-xs text-textSecondary mt-1"></p>
+                        </div>
+                    </div>
+                    <div id="person-balance-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
                     <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no gráfico para filtrar">
                         <h3 class="text-sm font-semibold text-textSecondary mb-4">Distribuição por Categoria</h3>
@@ -853,7 +862,8 @@
             updateDoc,
             deleteDoc,
             doc,
-            writeBatch
+            writeBatch,
+            setDoc
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -870,9 +880,25 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         let unsubscribeRecords = null;
+        let unsubscribeSharedMacros = null;
         let unsubscribeSharedCategories = null;
         let latestUserRecords = [];
+        let latestSharedMacros = [];
         let latestSharedCategories = [];
+        const DEFAULT_SHARED_MACROS = ['FIXO', 'VARIAVEL', 'RESERVA'];
+        const DEFAULT_SHARED_CATEGORIES = [
+            { macro: 'FIXO', name: 'Habitação', color: '#38bdf8', icon: 'home' },
+            { macro: 'FIXO', name: 'Assinaturas', color: '#0ea5e9', icon: 'repeat' },
+            { macro: 'FIXO', name: 'Educação', color: '#6366f1', icon: 'book-open' },
+            { macro: 'FIXO', name: 'Transporte', color: '#14b8a6', icon: 'bus' },
+            { macro: 'VARIAVEL', name: 'Alimentação', color: '#22c55e', icon: 'utensils-crossed' },
+            { macro: 'VARIAVEL', name: 'Lazer', color: '#f59e0b', icon: 'party-popper' },
+            { macro: 'VARIAVEL', name: 'Vestuário', color: '#ec4899', icon: 'shirt' },
+            { macro: 'VARIAVEL', name: 'Cuidados pessoais', color: '#8b5cf6', icon: 'sparkles' },
+            { macro: 'VARIAVEL', name: 'Outros', color: '#94a3b8', icon: 'tag' },
+            { macro: 'RESERVA', name: 'Investimentos', color: '#10b981', icon: 'piggy-bank' },
+            { macro: 'RESERVA', name: 'Reserva de emergência', color: '#06b6d4', icon: 'shield' }
+        ];
 
         function getUserCollection(uid) {
             return collection(db, "users", uid, "finance_records");
@@ -880,6 +906,14 @@
 
         function getUserDoc(uid, id) {
             return doc(db, "users", uid, "finance_records", id);
+        }
+
+        function getSharedMacrosCollection() {
+            return collection(db, "shared_macros");
+        }
+
+        function getSharedMacroDoc(id) {
+            return doc(db, "shared_macros", id);
         }
 
         function getSharedCategoriesCollection() {
@@ -890,13 +924,24 @@
             return doc(db, "shared_categories", id);
         }
 
+        function isSharedMacroRecord(record) {
+            return record?.type === 'macro' && record?.shared_scope === 'global';
+        }
+
         function isSharedCategoryRecord(record) {
             return record?.type === 'categoria' && record?.shared_scope === 'global';
         }
 
         function emitCombinedRecords(dataHandler) {
+            const macroKeys = new Set();
             const categoryKeys = new Set();
             const combined = [];
+
+            latestSharedMacros.forEach((record) => {
+                const key = String(record.macro_category || '').trim().toLowerCase();
+                macroKeys.add(key);
+                combined.push(record);
+            });
 
             latestSharedCategories.forEach((record) => {
                 const key = `${String(record.macro_category || '').trim().toLowerCase()}|${String(record.category_name || '').trim().toLowerCase()}`;
@@ -905,6 +950,12 @@
             });
 
             latestUserRecords.forEach((record) => {
+                if (record?.type === 'macro') {
+                    const key = String(record.macro_category || '').trim().toLowerCase();
+                    if (!macroKeys.has(key)) combined.push(record);
+                    return;
+                }
+
                 if (record?.type !== 'categoria') {
                     combined.push(record);
                     return;
@@ -915,6 +966,99 @@
             });
 
             dataHandler.onDataChanged(combined);
+        }
+
+        function slugifySharedId(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '');
+        }
+
+        function getSharedRecordDefaults() {
+            return {
+                nomeTipo: '',
+                percentualUsado: 0,
+                valorHoraCalculado: 0,
+                valorTotalCalculado: 0,
+                quantidadeHoras: 0,
+                quantidadeHorasFormatada: '',
+                valorBaseHora: 0,
+                tipoFinanceiroUsado: false,
+                horaInicial: '',
+                horaFinal: ''
+            };
+        }
+
+        async function ensureDefaultSharedReferences(user) {
+            const ownerUid = user?.uid || '';
+            const ownerEmail = user?.email || '';
+
+            await Promise.all(DEFAULT_SHARED_MACROS.map(async (macroName) => {
+                const docId = `macro_${slugifySharedId(macroName)}`;
+                await setDoc(getSharedMacroDoc(docId), {
+                    type: 'macro',
+                    person: '',
+                    macro_category: macroName,
+                    subcategory: '',
+                    description: '',
+                    amount: 0,
+                    status: '',
+                    payment_method: '',
+                    occurred_date: '',
+                    due_date: '',
+                    competence: '',
+                    paid_at: '',
+                    installment_no: 0,
+                    total_installments: 0,
+                    parent_id: '',
+                    earning_type: '',
+                    recurrence: '',
+                    created_at: new Date().toISOString(),
+                    category_id: '',
+                    category_name: '',
+                    category_color: '',
+                    category_icon: '',
+                    shared_scope: 'global',
+                    owner_uid: ownerUid,
+                    owner_email: ownerEmail,
+                    ...getSharedRecordDefaults()
+                }, { merge: true });
+            }));
+
+            await Promise.all(DEFAULT_SHARED_CATEGORIES.map(async (category) => {
+                const docId = `cat_${slugifySharedId(category.macro)}_${slugifySharedId(category.name)}`;
+                await setDoc(getSharedCategoryDoc(docId), {
+                    type: 'categoria',
+                    person: '',
+                    macro_category: category.macro,
+                    subcategory: '',
+                    description: '',
+                    amount: 0,
+                    status: '',
+                    payment_method: '',
+                    occurred_date: '',
+                    due_date: '',
+                    competence: '',
+                    paid_at: '',
+                    installment_no: 0,
+                    total_installments: 0,
+                    parent_id: '',
+                    earning_type: '',
+                    recurrence: '',
+                    created_at: new Date().toISOString(),
+                    category_id: docId,
+                    category_name: category.name,
+                    category_color: category.color,
+                    category_icon: category.icon,
+                    shared_scope: 'global',
+                    owner_uid: ownerUid,
+                    owner_email: ownerEmail,
+                    ...getSharedRecordDefaults()
+                }, { merge: true });
+            }));
         }
 
         window.firebaseBatchDeleteRecords = async (uid, records, batchSize = 200) => {
@@ -936,11 +1080,19 @@
                     return { isOk: false, error: "AUTH_REQUIRED" };
                 }
 
+                await ensureDefaultSharedReferences(user);
+
                 if (unsubscribeRecords) unsubscribeRecords();
+                if (unsubscribeSharedMacros) unsubscribeSharedMacros();
                 if (unsubscribeSharedCategories) unsubscribeSharedCategories();
 
                 unsubscribeRecords = onSnapshot(getUserCollection(user.uid), (snapshot) => {
                     latestUserRecords = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data() }));
+                    emitCombinedRecords(dataHandler);
+                });
+
+                unsubscribeSharedMacros = onSnapshot(getSharedMacrosCollection(), (snapshot) => {
+                    latestSharedMacros = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data(), shared_scope: 'global' }));
                     emitCombinedRecords(dataHandler);
                 });
 
@@ -956,7 +1108,14 @@
                     const user = auth.currentUser;
                     if (!user) throw new Error("AUTH_REQUIRED");
 
-                    if (record?.type === 'categoria') {
+                    if (record?.type === 'macro') {
+                        await addDoc(getSharedMacrosCollection(), {
+                            ...record,
+                            shared_scope: 'global',
+                            owner_uid: user.uid,
+                            owner_email: user.email || ""
+                        });
+                    } else if (record?.type === 'categoria') {
                         await addDoc(getSharedCategoriesCollection(), {
                             ...record,
                             shared_scope: 'global',
@@ -979,7 +1138,9 @@
                     const { id, ...data } = record;
                     if (!user) throw new Error("AUTH_REQUIRED");
                     if (!id) throw new Error("Documento precisa de um ID");
-                    if (isSharedCategoryRecord(record)) {
+                    if (isSharedMacroRecord(record)) {
+                        await updateDoc(getSharedMacroDoc(id), { ...data, shared_scope: 'global' });
+                    } else if (isSharedCategoryRecord(record)) {
                         await updateDoc(getSharedCategoryDoc(id), { ...data, shared_scope: 'global' });
                     } else {
                         await updateDoc(getUserDoc(user.uid, id), data);
@@ -992,7 +1153,9 @@
                     const user = auth.currentUser;
                     if (!user) throw new Error("AUTH_REQUIRED");
                     if (!record.id) throw new Error("Documento precisa de um ID");
-                    if (isSharedCategoryRecord(record)) {
+                    if (isSharedMacroRecord(record)) {
+                        await deleteDoc(getSharedMacroDoc(record.id));
+                    } else if (isSharedCategoryRecord(record)) {
                         await deleteDoc(getSharedCategoryDoc(record.id));
                     } else {
                         await deleteDoc(getUserDoc(user.uid, record.id));
@@ -1033,12 +1196,17 @@
                 unsubscribeRecords();
                 unsubscribeRecords = null;
             }
+            if (!user && unsubscribeSharedMacros) {
+                unsubscribeSharedMacros();
+                unsubscribeSharedMacros = null;
+            }
             if (!user && unsubscribeSharedCategories) {
                 unsubscribeSharedCategories();
                 unsubscribeSharedCategories = null;
             }
             if (!user) {
                 latestUserRecords = [];
+                latestSharedMacros = [];
                 latestSharedCategories = [];
             }
 
@@ -1587,12 +1755,11 @@
         }
 
         function updateCategoryOptions() {
-            const macro = document.getElementById('form-macro').value;
             const input = document.getElementById('form-category');
             const list = document.getElementById('form-category-options');
             const categories = [...new Set(
                 allRecords
-                    .filter((record) => record.type === 'categoria' && record.macro_category === macro)
+                    .filter((record) => record.type === 'categoria')
                     .map((record) => String(record.category_name || '').trim())
                     .filter(Boolean)
             )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -1602,9 +1769,7 @@
             }
 
             if (input) {
-                input.placeholder = macro
-                    ? 'Selecione ou digite uma categoria'
-                    : 'Selecione macro primeiro';
+                input.placeholder = 'Selecione ou digite uma categoria';
             }
         }
 
@@ -2266,6 +2431,156 @@
                                 <div class="h-2 rounded-full bg-surfaceLight overflow-hidden">
                                     <div class="h-full rounded-full ${item.sobra >= 0 ? 'bg-accent/70' : 'bg-danger/60'}" style="width:${sobraWidth}%"></div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getDashboardPersonBalances() {
+            const filteredRecords = getFiltered();
+            const map = {};
+            const ensurePersonBalance = (key) => {
+                if (!map[key]) {
+                    map[key] = {
+                        label: key,
+                        receber: 0,
+                        pagar: 0,
+                        emAberto: 0,
+                        sobra: 0,
+                        ciclos: {
+                            INICIO_MES: { receber: 0, pagar: 0, emAberto: 0, sobra: 0 },
+                            QUINZENA: { receber: 0, pagar: 0, emAberto: 0, sobra: 0 }
+                        }
+                    };
+                }
+                return map[key];
+            };
+
+            filteredRecords
+                .filter((record) => record.type === 'entrada' && !isReferenceSalaryRecord(record))
+                .forEach((record) => {
+                    const key = record.person || 'Sem pessoa';
+                    const personBalance = ensurePersonBalance(key);
+                    const value = Number(record.amount) || 0;
+                    const adjustedValue = record.macro_category === 'Dedução' ? -value : value;
+                    personBalance.receber += adjustedValue;
+                    if (record.cycle && personBalance.ciclos[record.cycle]) {
+                        personBalance.ciclos[record.cycle].receber += adjustedValue;
+                    }
+                });
+
+            filteredRecords
+                .filter((record) => record.type === 'saida' && record.status !== 'Cancelado')
+                .forEach((record) => {
+                    const key = record.person || 'Sem pessoa';
+                    const personBalance = ensurePersonBalance(key);
+                    const value = Number(record.amount) || 0;
+                    if (record.status === 'Pago') {
+                        personBalance.pagar += value;
+                        if (record.cycle && personBalance.ciclos[record.cycle]) {
+                            personBalance.ciclos[record.cycle].pagar += value;
+                        }
+                    }
+                    if (record.status === 'Em aberto') {
+                        personBalance.emAberto += value;
+                        if (record.cycle && personBalance.ciclos[record.cycle]) {
+                            personBalance.ciclos[record.cycle].emAberto += value;
+                        }
+                    }
+                });
+
+            return Object.values(map)
+                .map((item) => ({
+                    ...item,
+                    sobra: item.receber - item.pagar - item.emAberto,
+                    ciclos: {
+                        INICIO_MES: {
+                            ...item.ciclos.INICIO_MES,
+                            sobra: item.ciclos.INICIO_MES.receber - item.ciclos.INICIO_MES.pagar - item.ciclos.INICIO_MES.emAberto
+                        },
+                        QUINZENA: {
+                            ...item.ciclos.QUINZENA,
+                            sobra: item.ciclos.QUINZENA.receber - item.ciclos.QUINZENA.pagar - item.ciclos.QUINZENA.emAberto
+                        }
+                    }
+                }))
+                .sort((a, b) => a.sobra - b.sobra);
+        }
+
+        function renderDashboardPersonBalanceCards() {
+            const wrap = document.getElementById('person-balance-cards');
+            const meta = document.getElementById('person-balance-meta');
+            if (!wrap || !meta) return;
+
+            const items = getDashboardPersonBalances();
+            const start = document.getElementById('f-comp-start')?.value || '';
+            const end = document.getElementById('f-comp-end')?.value || '';
+            const periodLabel = start && end
+                ? (start === end ? formatCompetence(start) : `${formatCompetence(start)} até ${formatCompetence(end)}`)
+                : start
+                    ? `A partir de ${formatCompetence(start)}`
+                    : end
+                        ? `Até ${formatCompetence(end)}`
+                        : 'Todos os períodos';
+            meta.textContent = `Período: ${periodLabel}`;
+
+            if (!items.length) {
+                wrap.innerHTML = '<p class="text-sm text-textSecondary">Nenhum lançamento encontrado para o período filtrado.</p>';
+                return;
+            }
+
+            wrap.innerHTML = items.map((item) => {
+                const tone = item.sobra >= 0
+                    ? {
+                        card: 'border-success/20',
+                        pill: 'bg-success/10 text-success',
+                        value: 'text-success'
+                    }
+                    : {
+                        card: 'border-danger/20',
+                        pill: 'bg-danger/10 text-danger',
+                        value: 'text-danger'
+                    };
+
+                return `
+                    <div class="rounded-xl border ${tone.card} bg-surfaceLight/20 p-4">
+                        <div class="flex items-start justify-between gap-3 mb-4">
+                            <div>
+                                <p class="text-base font-semibold text-textPrimary">${escapeHtml(item.label)}</p>
+                                <p class="text-xs text-textSecondary mt-1">Resumo previsto do período filtrado</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-[11px] font-semibold ${tone.pill}">${item.sobra >= 0 ? 'Positivo' : 'Atenção'}</span>
+                        </div>
+                        <div class="mb-4">
+                            <p class="text-[11px] uppercase tracking-[0.14em] text-textSecondary">Vai sobrar</p>
+                            <p class="mt-1 text-xl font-bold ${tone.value}">${fmt(item.sobra)}</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
+                                <p class="text-textSecondary">Recebe</p>
+                                <p class="mt-1 font-semibold text-success">${fmt(item.receber)}</p>
+                            </div>
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
+                                <p class="text-textSecondary">Pago</p>
+                                <p class="mt-1 font-semibold text-danger">${fmt(item.pagar)}</p>
+                            </div>
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-2">
+                                <p class="text-textSecondary">Aberto</p>
+                                <p class="mt-1 font-semibold text-warn">${fmt(item.emAberto)}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.12em] text-textSecondary">Início do mês</p>
+                                <p class="mt-1 text-sm font-semibold ${item.ciclos.INICIO_MES.sobra >= 0 ? 'text-success' : 'text-danger'}">${fmt(item.ciclos.INICIO_MES.sobra)}</p>
+                                <p class="mt-1 text-[11px] text-textSecondary">Recebe ${fmt(item.ciclos.INICIO_MES.receber)} • Paga ${fmt(item.ciclos.INICIO_MES.pagar + item.ciclos.INICIO_MES.emAberto)}</p>
+                            </div>
+                            <div class="rounded-lg border border-surfaceLight bg-surface px-3 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.12em] text-textSecondary">Quinzena</p>
+                                <p class="mt-1 text-sm font-semibold ${item.ciclos.QUINZENA.sobra >= 0 ? 'text-success' : 'text-danger'}">${fmt(item.ciclos.QUINZENA.sobra)}</p>
+                                <p class="mt-1 text-[11px] text-textSecondary">Recebe ${fmt(item.ciclos.QUINZENA.receber)} • Paga ${fmt(item.ciclos.QUINZENA.pagar + item.ciclos.QUINZENA.emAberto)}</p>
                             </div>
                         </div>
                     </div>
@@ -3196,6 +3511,7 @@
     </div>
   `;
             renderActiveDashboardFilters();
+            renderDashboardPersonBalanceCards();
 
             const byCat = {};
             paidSaidas.forEach(r => {
@@ -4778,6 +5094,11 @@
             if (!name) { showToast('Informe um nome', true); return; }
 
             if (countRecordsByType('macro') >= MAX_MACRO_RECORDS) { showToast(`Limite de ${MAX_MACRO_RECORDS} macros atingido!`, true); return; }
+            const duplicate = allRecords.find((record) =>
+                record.type === 'macro' &&
+                String(record.macro_category || '').trim().toLowerCase() === name.toLowerCase()
+            );
+            if (duplicate) { showToast('Essa categoria macro já existe', true); return; }
 
             const r = await window.dataSdk.create({
                 type: 'macro',
