@@ -12725,6 +12725,9 @@
 
             function getPercentageCycleBaseValue(consolidated = {}, base = 'liquido', cycle = 'INICIO_MES') {
                 const normalizedCycle = cycle === 'QUINZENA' ? 'QUINZENA' : 'INICIO_MES';
+                if (base === 'base_total') return Number(consolidated.baseTotal || 0);
+                if (base === 'bruta') return Number(consolidated.baseTotal || 0);
+                if (base === 'salario') return Number(consolidated.salaryBase || consolidated.salarioBase || 0);
                 if (base === 'extra') {
                     return normalizedCycle === 'QUINZENA'
                         ? 0
@@ -12747,6 +12750,10 @@
 
             function getPercentageRuleBaseValue(consolidated = {}, rule = {}) {
                 const ruleCycle = rule.cycle === 'QUINZENA' ? 'QUINZENA' : 'INICIO_MES';
+                if (rule.base === 'base_total') return Number(consolidated.baseTotal || 0);
+                if (rule.base === 'bruta') return Number(consolidated.baseTotal || 0);
+                if (rule.base === 'salario') return Number(consolidated.salaryBase || consolidated.salarioBase || 0);
+                if (rule.base === 'extra') return getPercentageCycleBaseValue(consolidated, 'extra', ruleCycle);
                 if (isReserveOrInvestmentPercentageRule(rule)) {
                     return ruleCycle === 'QUINZENA'
                         ? Number(consolidated.adiantamentoQuinzena || 0)
@@ -12782,17 +12789,48 @@
 
             function getPercentageExitRecordKey(record = {}) {
                 if (!record?.generated_percentage_rule) return '';
-                const ruleKey = String(record.percentage_rule_id || record.id || record.description || '').trim().toLowerCase();
+                const descriptionKey = String(record.description || record.subcategory || record.category_name || '').trim().toLowerCase();
                 const personKey = String(record.person || '').trim().toLowerCase();
                 const competenceKey = normalizeCompetenceKey(record.competence || record.due_date || '');
+                const macroKey = String(record.macro_category || '').trim().toLowerCase();
                 const categoryKey = String(record.subcategory || record.category_name || '').trim().toLowerCase();
                 const rateKey = Number(record.percentage_rate || 0).toFixed(4);
-                return [ruleKey, personKey, competenceKey, categoryKey, rateKey].join('|');
+                const baseKey = String(record.percentage_base || '').trim().toLowerCase();
+                const cycleKey = String(record.cycle || '').trim().toLowerCase();
+                return [descriptionKey, personKey, competenceKey, macroKey, categoryKey, rateKey, baseKey, cycleKey].join('|');
+            }
+
+            function getPercentageRuleRecordKey(rule = {}, personName = '', competence = '') {
+                const normalizedRule = normalizePercentageExitRule(rule);
+                return getPercentageExitRecordKey({
+                    generated_percentage_rule: true,
+                    description: `${normalizedRule.name} (${Number(normalizedRule.percentage || 0).toFixed(2).replace('.', ',')}%)`,
+                    person: personName,
+                    competence,
+                    macro_category: normalizedRule.macro,
+                    subcategory: normalizedRule.category,
+                    percentage_rate: normalizedRule.percentage,
+                    percentage_base: normalizedRule.base,
+                    cycle: normalizedRule.cycle
+                });
+            }
+
+            function isCanonicalPercentageExitRecord(record = {}) {
+                return Boolean(record?.generated_percentage_rule && String(record.id || '').startsWith('percentage_exit_'));
+            }
+
+            function getPercentageExitRecordRank(record = {}) {
+                let rank = 0;
+                if (isCanonicalPercentageExitRecord(record)) rank += 8;
+                if (record.virtual_record !== true) rank += 4;
+                if (record.updated_at) rank += 2;
+                if (Number(record.percentage_base_amount || 0) > 0) rank += 1;
+                return rank;
             }
 
             function dedupePercentageExitRecords(records = []) {
-                const seenPercentageKeys = new Set();
                 const result = [];
+                const percentageIndexByKey = new Map();
 
                 records.forEach((record) => {
                     if (!record?.generated_percentage_rule) {
@@ -12806,8 +12844,15 @@
                         return;
                     }
 
-                    if (seenPercentageKeys.has(key)) return;
-                    seenPercentageKeys.add(key);
+                    if (percentageIndexByKey.has(key)) {
+                        const existingIndex = percentageIndexByKey.get(key);
+                        const existing = result[existingIndex];
+                        if (getPercentageExitRecordRank(record) > getPercentageExitRecordRank(existing)) {
+                            result[existingIndex] = record;
+                        }
+                        return;
+                    }
+                    percentageIndexByKey.set(key, result.length);
                     result.push(record);
                 });
 
@@ -12817,14 +12862,55 @@
             function hasPersistedPercentageExitRecord(rule = {}, personName = '', competence = '') {
                 const targetId = getPercentageGeneratedRecordId(rule, personName, competence);
                 const targetRuleId = String(rule.id || '').trim();
+                const targetSemanticKey = getPercentageRuleRecordKey(rule, personName, competence);
                 return (Array.isArray(allRecords) ? allRecords : []).some((record) => {
                     if (!isPersistedPercentageExitRecord(record)) return false;
                     if (record.id === targetId) return true;
+                    if (targetSemanticKey && getPercentageExitRecordKey(record) === targetSemanticKey) return true;
                     return targetRuleId &&
                         String(record.percentage_rule_id || '').trim() === targetRuleId &&
                         String(record.person || '').trim() === String(personName || '').trim() &&
                         normalizeCompetenceKey(record.competence || record.due_date || '') === normalizeCompetenceKey(competence);
                 });
+            }
+
+            function isPercentageExitRecordLinkedToRule(record = {}, rule = {}) {
+                if (!record?.generated_percentage_rule || !rule) return false;
+                const recordRuleId = String(record.percentage_rule_id || '').trim();
+                const ruleId = String(rule.id || '').trim();
+                if (recordRuleId && ruleId && recordRuleId === ruleId) return true;
+                const competence = normalizeCompetenceKey(record.competence || record.due_date || '');
+                if (rule.person && String(record.person || '').trim() !== rule.person) return false;
+                return getPercentageExitRecordKey(record) === getPercentageRuleRecordKey(rule, record.person || '', competence);
+            }
+
+            function isPercentageExitRecordLinkedToActiveRule(record = {}) {
+                if (!record?.generated_percentage_rule) return true;
+                const competence = normalizeCompetenceKey(record.competence || record.due_date || '');
+                return getPercentageRuleRecordsFromFirebase()
+                    .filter((rule) => rule.active !== false)
+                    .some((rule) => {
+                        if (rule.startCompetence && competence && competence < rule.startCompetence) return false;
+                        return isPercentageExitRecordLinkedToRule(record, rule);
+                    });
+            }
+
+            function filterOrphanPercentageExitRecords(records = []) {
+                return records.filter((record) => !record?.generated_percentage_rule || isPercentageExitRecordLinkedToActiveRule(record));
+            }
+
+            async function deleteGeneratedPercentageExitRecordsForRule(rule = {}) {
+                if (!rule?.id || !window.dataSdk?.delete) return 0;
+                const targets = (Array.isArray(allRecords) ? allRecords : [])
+                    .filter(isPersistedPercentageExitRecord)
+                    .filter((record) => isPercentageExitRecordLinkedToRule(record, rule));
+
+                let deleted = 0;
+                for (const record of targets) {
+                    const result = await window.dataSdk.delete(record);
+                    if (result?.isOk) deleted += 1;
+                }
+                return deleted;
             }
 
             function buildPercentageExitRecord(rule = {}, personName = '', competence = '', options = {}) {
@@ -12870,6 +12956,7 @@
                     percentage_base: rule.base,
                     percentage_base_amount: baseValue,
                     virtual_record: options.virtual === true,
+                    updated_at: new Date().toISOString(),
                     ...getHourExtraRecordDefaults()
                 };
             }
@@ -12895,7 +12982,6 @@
                             : people;
                         targetPeople.forEach((person) => {
                             months.forEach((competence) => {
-                                if (hasPersistedPercentageExitRecord(rule, person.person, competence)) return;
                                 const record = buildPercentageExitRecord(rule, person.person, competence, { virtual: false });
                                 if (!record) return;
                                 writes.push(window.dataSdk.upsert(record));
@@ -12919,8 +13005,16 @@
 
             Object.assign(window, {
                 getPercentageGeneratedRecordId,
+                getPercentageExitRecordKey,
+                getPercentageRuleRecordKey,
+                isCanonicalPercentageExitRecord,
+                getPercentageExitRecordRank,
                 isPersistedPercentageExitRecord,
                 hasPersistedPercentageExitRecord,
+                isPercentageExitRecordLinkedToRule,
+                isPercentageExitRecordLinkedToActiveRule,
+                filterOrphanPercentageExitRecords,
+                deleteGeneratedPercentageExitRecordsForRule,
                 buildPercentageExitRecord,
                 dedupePercentageExitRecords,
                 schedulePercentageExitMaterialization,
@@ -13218,6 +13312,9 @@
                     const result = await window.dataSdk.delete({ ...rule, id: ruleId, type: PERCENTAGE_EXIT_RULE_TYPE });
                     if (!result.isOk) { showToast('Erro ao remover regra percentual', true); return; }
                 }
+                if (rule) {
+                    await deleteGeneratedPercentageExitRecordsForRule(rule);
+                }
                 clearLocalPercentageExitRulesBackup();
                 percentageExitRules = percentageExitRules.filter((item) => item.id !== ruleId);
                 renderPercentageExitRules();
@@ -13345,7 +13442,7 @@
                     return true;
                 });
 
-                return dedupePercentageExitRecords([...baseRecords, ...generated]);
+                return dedupePercentageExitRecords(filterOrphanPercentageExitRecords([...baseRecords, ...generated]));
             };
 
             const _renderRowWithPercentageRules = renderRow;
@@ -14855,8 +14952,11 @@
                 ...getDashboardGeneratedPercentageSaidas(start, end)
             ];
 
+            const visibleSaidas = typeof window.filterOrphanPercentageExitRecords === 'function'
+                ? window.filterOrphanPercentageExitRecords(baseSaidas)
+                : baseSaidas;
             const dedupedSaidas = typeof window.dedupePercentageExitRecords === 'function'
-                ? window.dedupePercentageExitRecords(baseSaidas)
+                ? window.dedupePercentageExitRecords(visibleSaidas)
                 : baseSaidas;
             return dedupedSaidas.filter((record) => {
                 if (record.type !== 'saida') return false;
