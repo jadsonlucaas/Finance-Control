@@ -456,6 +456,12 @@ strong {
     display: none;
 }
 
+.mobile-list-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (max-width: 768px) {
     body {
         background-attachment: scroll;
@@ -546,9 +552,100 @@ strong {
         gap: 10px;
     }
 
+    .dashboard-detail-modal {
+        align-items: stretch;
+        padding: 8px;
+        z-index: 95;
+    }
+
+    .dashboard-detail-modal-panel {
+        width: 100%;
+        max-height: calc(100dvh - 16px);
+        margin: 0;
+        padding: 16px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .dashboard-detail-header {
+        flex-shrink: 0;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .dashboard-detail-header h3 {
+        font-size: 1rem;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    .dashboard-detail-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        flex-shrink: 0;
+        margin-bottom: 12px;
+    }
+
+    .dashboard-detail-summary > div {
+        padding: 10px;
+        border-radius: 8px;
+        min-width: 0;
+    }
+
+    .dashboard-detail-summary p:first-child {
+        font-size: 0.68rem;
+    }
+
+    .dashboard-detail-summary p:last-child {
+        font-size: 0.95rem;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+    }
+
+    .dashboard-detail-list {
+        overflow-y: auto;
+        padding-right: 2px;
+        min-height: 0;
+    }
+
+    #dashboard-expense-category-list .mobile-list-row {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        align-items: start;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    #dashboard-expense-category-list .mobile-list-icon {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        margin-top: 2px;
+    }
+
     .mobile-list-main {
         min-width: 0;
         width: calc(100% - 28px);
+    }
+
+    #dashboard-expense-category-list .mobile-list-main {
+        grid-column: 2;
+        width: 100%;
+    }
+
+    .mobile-list-title {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.25;
+    }
+
+    .mobile-list-meta {
+        margin-top: 4px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
     }
 
     .mobile-list-status {
@@ -556,9 +653,26 @@ strong {
         margin-left: 28px;
     }
 
+    #dashboard-expense-category-list .mobile-list-status {
+        grid-column: 2;
+        order: initial;
+        justify-self: start;
+        margin-left: 0;
+        margin-top: 6px;
+    }
+
     .mobile-list-value {
         order: 4;
         margin-left: auto;
+    }
+
+    #dashboard-expense-category-list .mobile-list-value {
+        grid-column: 2;
+        order: initial;
+        justify-self: end;
+        margin-left: 0;
+        margin-top: -24px;
+        font-size: 0.95rem;
     }
 
     .salary-discount-row {
@@ -571,6 +685,15 @@ strong {
         justify-content: flex-end;
         padding-top: 4px;
         border-top: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    #dashboard-expense-category-list .mobile-list-actions {
+        grid-column: 1 / -1;
+        order: initial;
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 8px;
+        padding-top: 8px;
     }
 
     .mobile-section-actions {
