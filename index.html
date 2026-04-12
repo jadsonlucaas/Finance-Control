@@ -17,6 +17,78 @@
     <link rel="stylesheet" href="style.css">
 
     <script>
+        (() => {
+            const PREFIX = 'finance-control-';
+            const nativeGetItem = Storage.prototype.getItem;
+            const nativeSetItem = Storage.prototype.setItem;
+            const nativeRemoveItem = Storage.prototype.removeItem;
+            const nativeKey = Storage.prototype.key;
+            const memory = window.__financeCloudMemoryStorage || {};
+
+            function shouldHandle(key) {
+                return typeof key === 'string' && key.startsWith(PREFIX);
+            }
+
+            for (let index = 0; index < window.localStorage.length; index += 1) {
+                const key = nativeKey.call(window.localStorage, index);
+                if (shouldHandle(key) && !(key in memory)) {
+                    memory[key] = nativeGetItem.call(window.localStorage, key) || '';
+                }
+            }
+
+            Object.keys(memory).forEach((key) => {
+                if (shouldHandle(key)) nativeRemoveItem.call(window.localStorage, key);
+            });
+
+            window.__financeCloudMemoryStorage = memory;
+            window.__financeCloudLocalKeys = () => Object.keys(memory).filter(shouldHandle);
+            window.__financeCloudLocalEntries = () => window.__financeCloudLocalKeys().map((key) => [key, memory[key] || '']);
+            window.__financeCloudSetMemoryStorage = (key, value) => {
+                if (shouldHandle(key)) memory[key] = String(value ?? '');
+            };
+            window.__financeCloudRemoveMemoryStorage = (key) => {
+                if (shouldHandle(key)) delete memory[key];
+            };
+
+            if (!window.__cloudLocalStorageVirtualInstalled) {
+                window.__cloudLocalStorageVirtualInstalled = true;
+
+                Storage.prototype.getItem = function (key) {
+                    const normalizedKey = String(key);
+                    if (this === window.localStorage && shouldHandle(normalizedKey)) {
+                        return Object.prototype.hasOwnProperty.call(memory, normalizedKey) ? memory[normalizedKey] : null;
+                    }
+                    return nativeGetItem.call(this, key);
+                };
+
+                Storage.prototype.setItem = function (key, value) {
+                    const normalizedKey = String(key);
+                    if (this === window.localStorage && shouldHandle(normalizedKey)) {
+                        memory[normalizedKey] = String(value ?? '');
+                        if (!window.__cloudLocalStorageApplying) {
+                            window.cloudLocalStorageSync?.set?.(normalizedKey, memory[normalizedKey]);
+                        }
+                        return;
+                    }
+                    nativeSetItem.call(this, key, value);
+                };
+
+                Storage.prototype.removeItem = function (key) {
+                    const normalizedKey = String(key);
+                    if (this === window.localStorage && shouldHandle(normalizedKey)) {
+                        delete memory[normalizedKey];
+                        if (!window.__cloudLocalStorageApplying) {
+                            window.cloudLocalStorageSync?.remove?.(normalizedKey);
+                        }
+                        return;
+                    }
+                    nativeRemoveItem.call(this, key);
+                };
+            }
+        })();
+    </script>
+
+    <script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -1087,9 +1159,15 @@
         let unsubscribeRecords = null;
         let unsubscribeSharedMacros = null;
         let unsubscribeSharedCategories = null;
+        let unsubscribeLocalStorageSync = null;
         let latestUserRecords = [];
         let latestSharedMacros = [];
         let latestSharedCategories = [];
+        let latestCloudLocalStorageKeys = new Set();
+        let localStorageSyncMigrated = false;
+        let localStorageSnapshotApplied = false;
+        const CLOUD_LOCAL_STORAGE_PREFIX = "finance-control-";
+        const CLOUD_LOCAL_STORAGE_RELOAD_FLAG = "finance-control-cloud-local-storage-reloaded-v1";
         const DEFAULT_SHARED_MACROS = ['FIXO', 'VARIAVEL', 'RESERVA'];
         const DEFAULT_SHARED_CATEGORIES = [
             { macro: 'FIXO', name: 'Habitação', color: '#38bdf8', icon: 'home' },
@@ -1111,6 +1189,14 @@
 
         function getUserDoc(uid, id) {
             return doc(db, "users", uid, "finance_records", id);
+        }
+
+        function getUserLocalStorageCollection(uid) {
+            return collection(db, "users", uid, "local_storage");
+        }
+
+        function getUserLocalStorageDoc(uid, key) {
+            return doc(db, "users", uid, "local_storage", encodeURIComponent(key));
         }
 
         function getSharedMacrosCollection() {
@@ -1136,6 +1222,103 @@
         function isSharedCategoryRecord(record) {
             return record?.type === 'categoria' && record?.shared_scope === 'global';
         }
+
+        function shouldSyncLocalStorageKey(key) {
+            return typeof key === 'string' && key.startsWith(CLOUD_LOCAL_STORAGE_PREFIX);
+        }
+
+        function setLocalStorageFromCloud(key, value) {
+            if (!shouldSyncLocalStorageKey(key)) return false;
+            const nextValue = String(value ?? "");
+            if (localStorage.getItem(key) === nextValue) return false;
+            window.__cloudLocalStorageApplying = true;
+            try {
+                window.__financeCloudSetMemoryStorage?.(key, nextValue);
+                localStorage.setItem(key, nextValue);
+            } finally {
+                window.__cloudLocalStorageApplying = false;
+            }
+            return true;
+        }
+
+        function removeLocalStorageFromCloud(key) {
+            if (!shouldSyncLocalStorageKey(key) || localStorage.getItem(key) === null) return false;
+            window.__cloudLocalStorageApplying = true;
+            try {
+                window.__financeCloudRemoveMemoryStorage?.(key);
+                localStorage.removeItem(key);
+            } finally {
+                window.__cloudLocalStorageApplying = false;
+            }
+            return true;
+        }
+
+        async function saveLocalStorageKeyToCloud(key, value) {
+            const user = auth.currentUser;
+            if (!user || !shouldSyncLocalStorageKey(key)) return;
+            await setDoc(getUserLocalStorageDoc(user.uid, key), {
+                key,
+                value: String(value ?? ""),
+                updated_at: new Date().toISOString(),
+                owner_uid: user.uid,
+                owner_email: user.email || ""
+            }, { merge: true });
+        }
+
+        async function deleteLocalStorageKeyFromCloud(key) {
+            const user = auth.currentUser;
+            if (!user || !shouldSyncLocalStorageKey(key)) return;
+            await deleteDoc(getUserLocalStorageDoc(user.uid, key));
+        }
+
+        async function migrateLocalStorageToCloud(user) {
+            if (localStorageSyncMigrated || !user) return;
+            localStorageSyncMigrated = true;
+            const entries = typeof window.__financeCloudLocalEntries === "function"
+                ? window.__financeCloudLocalEntries()
+                : [];
+            await Promise.all(entries.map(([key, value]) => saveLocalStorageKeyToCloud(key, value)));
+        }
+
+        function maybeReloadAfterCloudLocalStorageApply(changed) {
+            if (!changed) return;
+            if (sessionStorage.getItem(CLOUD_LOCAL_STORAGE_RELOAD_FLAG) === "1") return;
+            sessionStorage.setItem(CLOUD_LOCAL_STORAGE_RELOAD_FLAG, "1");
+            setTimeout(() => window.location.reload(), 80);
+        }
+
+        function installLocalStorageCloudSyncPatch() {
+            if (window.__cloudLocalStorageVirtualInstalled) {
+                window.__cloudLocalStorageSyncInstalled = true;
+                return;
+            }
+            if (window.__cloudLocalStorageSyncInstalled) return;
+            window.__cloudLocalStorageSyncInstalled = true;
+            const nativeSetItem = Storage.prototype.setItem;
+            const nativeRemoveItem = Storage.prototype.removeItem;
+
+            Storage.prototype.setItem = function (key, value) {
+                nativeSetItem.call(this, key, value);
+                if (this === window.localStorage && !window.__cloudLocalStorageApplying && shouldSyncLocalStorageKey(String(key))) {
+                    window.cloudLocalStorageSync?.set?.(String(key), String(value ?? ""));
+                }
+            };
+
+            Storage.prototype.removeItem = function (key) {
+                nativeRemoveItem.call(this, key);
+                if (this === window.localStorage && !window.__cloudLocalStorageApplying && shouldSyncLocalStorageKey(String(key))) {
+                    window.cloudLocalStorageSync?.remove?.(String(key));
+                }
+            };
+        }
+
+        window.cloudLocalStorageSync = {
+            set: (key, value) => saveLocalStorageKeyToCloud(key, value).catch((error) => console.error("Erro ao sincronizar localStorage", error)),
+            remove: (key) => deleteLocalStorageKeyFromCloud(key).catch((error) => console.error("Erro ao remover localStorage na nuvem", error)),
+            migrate: () => migrateLocalStorageToCloud(auth.currentUser).catch((error) => console.error("Erro ao migrar localStorage", error))
+        };
+
+        installLocalStorageCloudSyncPatch();
 
         function emitCombinedRecords(dataHandler) {
             const macroKeys = new Set();
@@ -1290,6 +1473,7 @@
                 if (unsubscribeRecords) unsubscribeRecords();
                 if (unsubscribeSharedMacros) unsubscribeSharedMacros();
                 if (unsubscribeSharedCategories) unsubscribeSharedCategories();
+                if (unsubscribeLocalStorageSync) unsubscribeLocalStorageSync();
 
                 unsubscribeRecords = onSnapshot(getUserCollection(user.uid), (snapshot) => {
                     latestUserRecords = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data() }));
@@ -1306,6 +1490,30 @@
                     emitCombinedRecords(dataHandler);
                 });
 
+                unsubscribeLocalStorageSync = onSnapshot(getUserLocalStorageCollection(user.uid), (snapshot) => {
+                    let changedLocalStorage = false;
+                    latestCloudLocalStorageKeys = new Set(snapshot.docs.map((storageDoc) => storageDoc.data()?.key || decodeURIComponent(storageDoc.id)));
+
+                    snapshot.docChanges().forEach((change) => {
+                        const data = change.doc.data() || {};
+                        const key = data.key || decodeURIComponent(change.doc.id);
+                        if (!shouldSyncLocalStorageKey(key)) return;
+                        if (change.type === "removed") {
+                            changedLocalStorage = removeLocalStorageFromCloud(key) || changedLocalStorage;
+                            return;
+                        }
+                        changedLocalStorage = setLocalStorageFromCloud(key, data.value ?? "") || changedLocalStorage;
+                    });
+
+                    migrateLocalStorageToCloud(user).catch((error) => console.error("Erro ao migrar localStorage", error));
+                    const isFirstLocalStorageSnapshot = !localStorageSnapshotApplied;
+                    localStorageSnapshotApplied = true;
+                    window.dispatchEvent(new CustomEvent("cloudLocalStorageChanged", { detail: { changed: changedLocalStorage } }));
+                    if (isFirstLocalStorageSnapshot) {
+                        maybeReloadAfterCloudLocalStorageApply(changedLocalStorage);
+                    }
+                });
+
                 return { isOk: true };
             },
             create: async (record) => {
@@ -1314,27 +1522,29 @@
                     if (!user) throw new Error("AUTH_REQUIRED");
 
                     if (record?.type === 'macro') {
-                        await addDoc(getSharedMacrosCollection(), {
+                        const docRef = await addDoc(getSharedMacrosCollection(), {
                             ...record,
                             shared_scope: 'global',
                             owner_uid: user.uid,
                             owner_email: user.email || ""
                         });
+                        return { isOk: true, id: docRef.id };
                     } else if (record?.type === 'categoria') {
-                        await addDoc(getSharedCategoriesCollection(), {
+                        const docRef = await addDoc(getSharedCategoriesCollection(), {
                             ...record,
                             shared_scope: 'global',
                             owner_uid: user.uid,
                             owner_email: user.email || ""
                         });
+                        return { isOk: true, id: docRef.id };
                     } else {
-                        await addDoc(getUserCollection(user.uid), {
+                        const docRef = await addDoc(getUserCollection(user.uid), {
                             ...record,
                             owner_uid: user.uid,
                             owner_email: user.email || ""
                         });
+                        return { isOk: true, id: docRef.id };
                     }
-                    return { isOk: true };
                 } catch (e) { console.error(e); return { isOk: false, error: e.message }; }
             },
             update: async (record) => {
@@ -1351,6 +1561,20 @@
                         await updateDoc(getUserDoc(user.uid, id), data);
                     }
                     return { isOk: true };
+                } catch (e) { console.error(e); return { isOk: false, error: e.message }; }
+            },
+            upsert: async (record) => {
+                try {
+                    const user = auth.currentUser;
+                    const { id, ...data } = record || {};
+                    if (!user) throw new Error("AUTH_REQUIRED");
+                    if (!id) throw new Error("Documento precisa de um ID");
+                    await setDoc(getUserDoc(user.uid, id), {
+                        ...data,
+                        owner_uid: user.uid,
+                        owner_email: user.email || ""
+                    }, { merge: true });
+                    return { isOk: true, id };
                 } catch (e) { console.error(e); return { isOk: false, error: e.message }; }
             },
             delete: async (record) => {
@@ -1409,10 +1633,17 @@
                 unsubscribeSharedCategories();
                 unsubscribeSharedCategories = null;
             }
+            if (!user && unsubscribeLocalStorageSync) {
+                unsubscribeLocalStorageSync();
+                unsubscribeLocalStorageSync = null;
+            }
             if (!user) {
                 latestUserRecords = [];
                 latestSharedMacros = [];
                 latestSharedCategories = [];
+                latestCloudLocalStorageKeys = new Set();
+                localStorageSyncMigrated = false;
+                localStorageSnapshotApplied = false;
             }
 
             window.dispatchEvent(new CustomEvent("authStateChanged", {
@@ -5020,11 +5251,11 @@
             const isReference = isReferenceSalaryRecord(r);
             const paymentLabel = r.payment_method ? ` · ${r.payment_method}` : '';
 
-            return `<div class="mobile-list-row flex items-center gap-3 bg-surfaceLight/50 rounded-lg p-2.5 text-sm">
-    <i data-lucide="${icon}" class="w-4 h-4 ${color} flex-shrink-0"></i>
+            return `<div class="mobile-list-row finance-record-row flex items-center gap-3 bg-surfaceLight/50 rounded-lg p-2.5 text-sm">
+    <i data-lucide="${icon}" class="mobile-list-icon w-4 h-4 ${color} flex-shrink-0"></i>
     <div class="mobile-list-main flex-1 min-w-0">
-      <p class="truncate font-medium">${desc}${installTxt}</p>
-      <p class="text-xs text-textSecondary">${r.person || ''} · ${formatCompetence(r.competence)} · ${r.macro_category || ''}${paymentLabel}${isReference ? ' · Referência' : ''}${isArchivedRecord(r) ? ' · Arquivado' : ''}</p>
+      <p class="mobile-list-title font-medium">${desc}${installTxt}</p>
+      <p class="mobile-list-meta text-xs text-textSecondary">${r.person || ''} · ${formatCompetence(r.competence)} · ${r.macro_category || ''}${paymentLabel}${isReference ? ' · Referência' : ''}${isArchivedRecord(r) ? ' · Arquivado' : ''}</p>
     </div>
     <span class="mobile-list-status text-xs px-2 py-0.5 rounded-full ${statusBadge}">${r.status}</span>
     <span class="mobile-list-value font-semibold ${color} whitespace-nowrap">${isEntrada && r.macro_category === 'Dedução' ? '-' : ''}${fmt(r.amount)}</span>
@@ -10557,18 +10788,18 @@
             if (document.getElementById('dashboard-expense-category-modal')) return;
             const modal = document.createElement('div');
             modal.id = 'dashboard-expense-category-modal';
-            modal.className = 'hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
+            modal.className = 'hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 dashboard-detail-modal';
             modal.innerHTML = `
-                <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-4xl mx-4 w-full max-h-[90vh] overflow-y-auto">
-                    <div class="flex items-start justify-between gap-3 mb-4">
+                <div class="dashboard-detail-modal-panel bg-surface rounded-xl p-5 border border-surfaceLight max-w-4xl mx-4 w-full max-h-[90vh] overflow-y-auto">
+                    <div class="dashboard-detail-header flex items-start justify-between gap-3 mb-4">
                         <div>
                             <h3 id="dashboard-expense-category-title" class="font-semibold">Despesas da categoria</h3>
                             <p id="dashboard-expense-category-subtitle" class="text-xs text-textSecondary mt-1"></p>
                         </div>
                         <button onclick="closeDashboardExpenseCategoryModal()" class="p-2 rounded-lg hover:bg-surfaceLight text-textSecondary"><i data-lucide="x" class="w-4 h-4"></i></button>
                     </div>
-                    <div id="dashboard-expense-category-summary" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"></div>
-                    <div id="dashboard-expense-category-list" class="space-y-2"></div>
+                    <div id="dashboard-expense-category-summary" class="dashboard-detail-summary grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"></div>
+                    <div id="dashboard-expense-category-list" class="dashboard-detail-list space-y-2"></div>
                 </div>
             `;
             document.getElementById('app')?.appendChild(modal);
@@ -12296,8 +12527,11 @@
             };
 
             const PERCENTAGE_EXIT_RULES_STORAGE_KEY = 'finance-control-percentage-exit-rules-v1';
+            const PERCENTAGE_EXIT_RULE_TYPE = 'percentage_rule';
             let percentageExitRules = [];
             let editingPercentageExitRuleId = '';
+            let percentageExitRulesMigrationStarted = false;
+            const percentageExitMaterializationKeys = new Set();
             let dashboardBreakdownCache = {
                 macro: new Map(),
                 subcategory: new Map(),
@@ -12322,20 +12556,164 @@
                 };
             }
 
-            function loadPercentageExitRules() {
+            function isPercentageExitRuleRecord(record) {
+                return record?.type === PERCENTAGE_EXIT_RULE_TYPE || record?.type === 'regra_percentual_saida';
+            }
+
+            function getPercentageRuleRecordsFromFirebase() {
+                return (Array.isArray(allRecords) ? allRecords : [])
+                    .filter(isPercentageExitRuleRecord)
+                    .map(normalizePercentageExitRule)
+                    .filter((rule) => rule.name && rule.percentage > 0);
+            }
+
+            function getLocalPercentageExitRules() {
                 try {
                     const parsed = JSON.parse(localStorage.getItem(PERCENTAGE_EXIT_RULES_STORAGE_KEY) || '[]');
-                    percentageExitRules = Array.isArray(parsed)
+                    return Array.isArray(parsed)
                         ? parsed.map(normalizePercentageExitRule).filter((rule) => rule.name && rule.percentage > 0)
                         : [];
                 } catch (error) {
-                    percentageExitRules = [];
+                    return [];
                 }
             }
 
-            function persistPercentageExitRules() {
-                localStorage.setItem(PERCENTAGE_EXIT_RULES_STORAGE_KEY, JSON.stringify(percentageExitRules));
+            function clearLocalPercentageExitRulesBackup() {
+                localStorage.removeItem(PERCENTAGE_EXIT_RULES_STORAGE_KEY);
             }
+
+            function getPercentageRuleIdentity(rule = {}) {
+                const normalized = normalizePercentageExitRule(rule);
+                return [
+                    normalized.name,
+                    normalized.person,
+                    normalized.percentage,
+                    normalized.base,
+                    normalized.macro,
+                    normalized.category,
+                    normalized.cycle,
+                    normalized.startCompetence
+                ].join('|').toLowerCase();
+            }
+
+            function getPercentageRuleFirebaseId(rule = {}) {
+                const identity = getPercentageRuleIdentity(rule)
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '_')
+                    .replace(/^_+|_+$/g, '')
+                    .slice(0, 140);
+                return `percentage_rule_${identity || Date.now()}`;
+            }
+
+            function loadPercentageExitRules() {
+                const firebaseRules = getPercentageRuleRecordsFromFirebase();
+                const mergedRules = new Map();
+                getLocalPercentageExitRules().forEach((rule) => {
+                    mergedRules.set(getPercentageRuleIdentity(rule), rule);
+                });
+                firebaseRules.forEach((rule) => {
+                    mergedRules.set(getPercentageRuleIdentity(rule), rule);
+                });
+                percentageExitRules = [...mergedRules.values()];
+            }
+
+            window.getSyncedPercentageExitRules = function () {
+                loadPercentageExitRules();
+                migrateLocalPercentageExitRulesToFirebase();
+                return [...percentageExitRules];
+            };
+
+            function buildPercentageRulePayload(rule = {}) {
+                const { id, ...normalizedRule } = normalizePercentageExitRule(rule);
+                return {
+                    ...normalizedRule,
+                    type: PERCENTAGE_EXIT_RULE_TYPE,
+                    person: normalizedRule.person || '',
+                    macro_category: '',
+                    subcategory: '',
+                    description: normalizedRule.name,
+                    amount: 0,
+                    status: normalizedRule.status,
+                    payment_method: '',
+                    occurred_date: '',
+                    due_date: '',
+                    competence: '',
+                    paid_at: '',
+                    installment_no: 0,
+                    total_installments: 0,
+                    parent_id: '',
+                    earning_type: '',
+                    recurrence: '',
+                    created_at: normalizedRule.createdAt || new Date().toISOString(),
+                    category_id: '',
+                    category_name: normalizedRule.category,
+                    category_color: '',
+                    category_icon: '',
+                    ...getHourExtraRecordDefaults()
+                };
+            }
+
+            async function upsertPercentageExitRule(rule = {}, preferredId = '') {
+                if (!window.dataSdk?.upsert) return { isOk: false, error: 'UPSERT_UNAVAILABLE' };
+                const normalizedRule = normalizePercentageExitRule(rule);
+                const id = preferredId || normalizedRule.id || getPercentageRuleFirebaseId(normalizedRule);
+                const payload = buildPercentageRulePayload({ ...normalizedRule, id });
+                return window.dataSdk.upsert({ ...payload, id });
+            }
+
+            async function migrateLocalPercentageExitRulesToFirebase() {
+                if (percentageExitRulesMigrationStarted || !window.dataSdk?.upsert || !window.authSdk?.getCurrentUser?.()) return;
+                const localRules = getLocalPercentageExitRules();
+                const firebaseRules = getPercentageRuleRecordsFromFirebase();
+                const firebaseRuleKeys = new Set(firebaseRules.map(getPercentageRuleIdentity));
+                const missingRules = localRules.filter((rule) => !firebaseRuleKeys.has(getPercentageRuleIdentity(rule)));
+                if (!missingRules.length) {
+                    if (localRules.length) clearLocalPercentageExitRulesBackup();
+                    return;
+                }
+
+                percentageExitRulesMigrationStarted = true;
+                let migratedCount = 0;
+                try {
+                    for (const rule of missingRules) {
+                        const result = await upsertPercentageExitRule(rule, getPercentageRuleFirebaseId(rule));
+                        if (!result.isOk) {
+                            showToast('Erro ao migrar regra percentual para a nuvem', true);
+                            return;
+                        }
+                        migratedCount += 1;
+                    }
+                } finally {
+                    percentageExitRulesMigrationStarted = false;
+                }
+                if (migratedCount) {
+                    clearLocalPercentageExitRulesBackup();
+                    schedulePercentageExitMaterialization(
+                        document.getElementById('f-comp-start')?.value || thisMonth,
+                        document.getElementById('f-comp-end')?.value || thisMonth
+                    );
+                    showToast('Regras percentuais migradas para a nuvem.');
+                }
+            }
+
+            async function refreshPercentageExitRulesFromCloudStorage() {
+                if (!window.authSdk?.getCurrentUser?.()) return;
+                loadPercentageExitRules();
+                await migrateLocalPercentageExitRulesToFirebase();
+                loadPercentageExitRules();
+                if (currentTab === 'configuracoes') {
+                    renderPercentageExitRules();
+                }
+                renderCurrentTab();
+            }
+
+            window.addEventListener('cloudLocalStorageChanged', (event) => {
+                if (!event.detail?.changed) return;
+                refreshPercentageExitRulesFromCloudStorage().catch((error) => {
+                    console.error('Erro ao atualizar regras percentuais da nuvem', error);
+                });
+            });
 
             function getPercentageBaseValue(consolidated, base) {
                 if (base === 'base_total') return Number(consolidated.baseTotal || 0);
@@ -12382,6 +12760,173 @@
                 return roundCurrency(baseValue * (Number(rule.percentage || 0) / 100));
             }
 
+            function getPercentageGeneratedRecordId(rule = {}, personName = '', competence = '') {
+                const raw = [
+                    rule.id || getPercentageRuleFirebaseId(rule),
+                    personName,
+                    normalizeCompetenceKey(competence)
+                ].join('|');
+                const slug = raw
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '_')
+                    .replace(/^_+|_+$/g, '')
+                    .slice(0, 150);
+                return `percentage_exit_${slug}`;
+            }
+
+            function isPersistedPercentageExitRecord(record = {}) {
+                return record?.type === 'saida' && record?.generated_percentage_rule === true && record?.virtual_record !== true;
+            }
+
+            function getPercentageExitRecordKey(record = {}) {
+                if (!record?.generated_percentage_rule) return '';
+                const ruleKey = String(record.percentage_rule_id || record.id || record.description || '').trim().toLowerCase();
+                const personKey = String(record.person || '').trim().toLowerCase();
+                const competenceKey = normalizeCompetenceKey(record.competence || record.due_date || '');
+                const categoryKey = String(record.subcategory || record.category_name || '').trim().toLowerCase();
+                const rateKey = Number(record.percentage_rate || 0).toFixed(4);
+                return [ruleKey, personKey, competenceKey, categoryKey, rateKey].join('|');
+            }
+
+            function dedupePercentageExitRecords(records = []) {
+                const seenPercentageKeys = new Set();
+                const result = [];
+
+                records.forEach((record) => {
+                    if (!record?.generated_percentage_rule) {
+                        result.push(record);
+                        return;
+                    }
+
+                    const key = getPercentageExitRecordKey(record);
+                    if (!key) {
+                        result.push(record);
+                        return;
+                    }
+
+                    if (seenPercentageKeys.has(key)) return;
+                    seenPercentageKeys.add(key);
+                    result.push(record);
+                });
+
+                return result;
+            }
+
+            function hasPersistedPercentageExitRecord(rule = {}, personName = '', competence = '') {
+                const targetId = getPercentageGeneratedRecordId(rule, personName, competence);
+                const targetRuleId = String(rule.id || '').trim();
+                return (Array.isArray(allRecords) ? allRecords : []).some((record) => {
+                    if (!isPersistedPercentageExitRecord(record)) return false;
+                    if (record.id === targetId) return true;
+                    return targetRuleId &&
+                        String(record.percentage_rule_id || '').trim() === targetRuleId &&
+                        String(record.person || '').trim() === String(personName || '').trim() &&
+                        normalizeCompetenceKey(record.competence || record.due_date || '') === normalizeCompetenceKey(competence);
+                });
+            }
+
+            function buildPercentageExitRecord(rule = {}, personName = '', competence = '', options = {}) {
+                const normalizedCompetence = normalizeCompetenceKey(competence);
+                if (!personName || !normalizedCompetence) return null;
+                if (rule.startCompetence && normalizedCompetence < rule.startCompetence) return null;
+
+                const consolidated = consolidarEntradaMensal(personName, normalizedCompetence);
+                const baseValue = roundCurrency(getPercentageRuleBaseValue(consolidated, rule));
+                const amount = getPercentageRuleAmount(consolidated, rule);
+                if (amount <= 0) return null;
+
+                const ruleCycle = rule.cycle === 'QUINZENA' ? 'QUINZENA' : 'INICIO_MES';
+                return {
+                    id: getPercentageGeneratedRecordId(rule, personName, normalizedCompetence),
+                    type: 'saida',
+                    person: personName,
+                    macro_category: rule.macro,
+                    subcategory: rule.category,
+                    description: `${rule.name} (${Number(rule.percentage).toFixed(2).replace('.', ',')}%)`,
+                    amount,
+                    status: rule.status,
+                    payment_method: 'Regra percentual',
+                    occurred_date: '',
+                    due_date: `${normalizedCompetence}-01`,
+                    competence: normalizedCompetence,
+                    paid_at: rule.status === 'Pago' ? `${normalizedCompetence}-01` : '',
+                    installment_no: 0,
+                    total_installments: 0,
+                    parent_id: '',
+                    earning_type: '',
+                    recurrence: 'mensal_percentual',
+                    cycle: ruleCycle,
+                    created_at: rule.createdAt,
+                    category_id: '',
+                    category_name: rule.category,
+                    category_color: '',
+                    category_icon: '',
+                    archived: false,
+                    generated_percentage_rule: true,
+                    percentage_rule_id: rule.id,
+                    percentage_rate: rule.percentage,
+                    percentage_base: rule.base,
+                    percentage_base_amount: baseValue,
+                    virtual_record: options.virtual === true,
+                    ...getHourExtraRecordDefaults()
+                };
+            }
+
+            async function materializePercentageExitRulesForRange(start = '', end = '') {
+                if (!window.dataSdk?.upsert || !window.authSdk?.getCurrentUser?.()) return;
+                if (typeof consolidarEntradaMensal !== 'function') return;
+                loadPercentageExitRules();
+                const rangeStart = normalizeCompetenceKey(start || document.getElementById('f-comp-start')?.value || thisMonth) || thisMonth;
+                const rangeEnd = normalizeCompetenceKey(end || document.getElementById('f-comp-end')?.value || rangeStart) || rangeStart;
+                const materializationKey = `${rangeStart}|${rangeEnd}|${percentageExitRules.map((rule) => rule.id).join(',')}|${allRecords.length}`;
+                if (percentageExitMaterializationKeys.has(materializationKey)) return;
+                percentageExitMaterializationKeys.add(materializationKey);
+
+                const months = buildCompetenceSequence(rangeStart, rangeEnd || rangeStart);
+                const people = getPeopleRecords();
+                const writes = [];
+                percentageExitRules
+                    .filter((rule) => rule.active)
+                    .forEach((rule) => {
+                        const targetPeople = rule.person
+                            ? people.filter((person) => person.person === rule.person)
+                            : people;
+                        targetPeople.forEach((person) => {
+                            months.forEach((competence) => {
+                                if (hasPersistedPercentageExitRecord(rule, person.person, competence)) return;
+                                const record = buildPercentageExitRecord(rule, person.person, competence, { virtual: false });
+                                if (!record) return;
+                                writes.push(window.dataSdk.upsert(record));
+                            });
+                        });
+                    });
+
+                const results = await Promise.all(writes);
+                if (results.some((result) => !result?.isOk)) {
+                    console.error('Falha ao materializar uma ou mais despesas percentuais', results);
+                }
+            }
+
+            function schedulePercentageExitMaterialization(start = '', end = '') {
+                setTimeout(() => {
+                    materializePercentageExitRulesForRange(start, end).catch((error) => {
+                        console.error('Erro ao gravar despesas percentuais no Firebase', error);
+                    });
+                }, 0);
+            }
+
+            Object.assign(window, {
+                getPercentageGeneratedRecordId,
+                isPersistedPercentageExitRecord,
+                hasPersistedPercentageExitRecord,
+                buildPercentageExitRecord,
+                dedupePercentageExitRecords,
+                schedulePercentageExitMaterialization,
+                materializePercentageExitRulesForRange
+            });
+
             function getPercentageRuleGeneratedRecords(options = {}) {
                 loadPercentageExitRules();
                 const start = normalizeCompetenceKey(options.start || document.getElementById('f-comp-start')?.value || thisMonth);
@@ -12398,43 +12943,9 @@
                             : people;
                         targetPeople.forEach((person) => {
                             competences.forEach((competence) => {
-                                if (rule.startCompetence && competence < rule.startCompetence) return;
-                                const consolidated = consolidarEntradaMensal(person.person, competence);
-                                const baseValue = roundCurrency(getPercentageRuleBaseValue(consolidated, rule));
-                                const amount = getPercentageRuleAmount(consolidated, rule);
-                                if (amount <= 0) return;
-                                records.push({
-                                    id: `pct_${rule.id}_${person.person}_${competence}`,
-                                    type: 'saida',
-                                    person: person.person,
-                                    macro_category: rule.macro,
-                                    subcategory: rule.category,
-                                    description: `${rule.name} (${Number(rule.percentage).toFixed(2).replace('.', ',')}%)`,
-                                    amount,
-                                    status: rule.status,
-                                    payment_method: 'Regra percentual',
-                                    occurred_date: '',
-                                    due_date: `${competence}-01`,
-                                    competence,
-                                    paid_at: rule.status === 'Pago' ? `${competence}-01` : '',
-                                    installment_no: 0,
-                                    total_installments: 0,
-                                    parent_id: '',
-                                    earning_type: '',
-                                    recurrence: 'mensal_percentual',
-                                    cycle: rule.cycle,
-                                    created_at: rule.createdAt,
-                                    category_id: '',
-                                    category_name: rule.category,
-                                    category_color: '',
-                                    category_icon: '',
-                                    generated_percentage_rule: true,
-                                    percentage_rule_id: rule.id,
-                                    percentage_rate: rule.percentage,
-                                    percentage_base: rule.base,
-                                    percentage_base_amount: baseValue,
-                                    virtual_record: true
-                                });
+                                if (hasPersistedPercentageExitRecord(rule, person.person, competence)) return;
+                                const record = buildPercentageExitRecord(rule, person.person, competence, { virtual: true });
+                                if (record) records.push(record);
                             });
                         });
                     });
@@ -12587,6 +13098,7 @@
 
             function renderPercentageExitRules() {
                 ensurePercentageExitRulesPanel();
+                migrateLocalPercentageExitRulesToFirebase();
                 syncPercentageRuleFormOptions();
                 const list = document.getElementById('percentage-exit-rules-list');
                 const empty = document.getElementById('percentage-exit-rules-empty');
@@ -12659,7 +13171,7 @@
                 document.getElementById('percentage-rule-name')?.focus();
             };
 
-            window.savePercentageExitRule = function () {
+            window.savePercentageExitRule = async function () {
                 const previousRule = percentageExitRules.find((item) => item.id === editingPercentageExitRuleId);
                 const rule = normalizePercentageExitRule({
                     id: editingPercentageExitRuleId || undefined,
@@ -12678,23 +13190,36 @@
                 if (rule.percentage <= 0) { showToast('Informe um percentual valido', true); return; }
                 if (!rule.category) { showToast('Informe a categoria da saida', true); return; }
                 loadPercentageExitRules();
+                const recordId = editingPercentageExitRuleId || getPercentageRuleFirebaseId(rule);
+                const result = await upsertPercentageExitRule(rule, recordId);
+                if (!result.isOk) { showToast('Erro ao salvar regra percentual', true); return; }
+                const savedRule = { ...rule, id: result.id || recordId };
+                clearLocalPercentageExitRulesBackup();
                 if (editingPercentageExitRuleId) {
-                    percentageExitRules = percentageExitRules.map((item) => item.id === editingPercentageExitRuleId ? rule : item);
+                    percentageExitRules = percentageExitRules.map((item) => item.id === editingPercentageExitRuleId ? savedRule : item);
                 } else {
-                    percentageExitRules.push(rule);
+                    percentageExitRules.push(savedRule);
                 }
-                persistPercentageExitRules();
                 const wasEditing = Boolean(editingPercentageExitRuleId);
                 clearPercentageExitRuleForm();
                 renderPercentageExitRules();
+                schedulePercentageExitMaterialization(
+                    document.getElementById('f-comp-start')?.value || rule.startCompetence || thisMonth,
+                    document.getElementById('f-comp-end')?.value || document.getElementById('f-comp-start')?.value || rule.startCompetence || thisMonth
+                );
                 renderCurrentTab();
                 showToast(wasEditing ? 'Regra percentual atualizada!' : 'Regra fixa percentual salva!');
             };
 
-            window.deletePercentageExitRule = function (ruleId = '') {
+            window.deletePercentageExitRule = async function (ruleId = '') {
                 loadPercentageExitRules();
-                percentageExitRules = percentageExitRules.filter((rule) => rule.id !== ruleId);
-                persistPercentageExitRules();
+                const rule = percentageExitRules.find((item) => item.id === ruleId);
+                if (rule && allRecords.some((record) => record.id === ruleId && isPercentageExitRuleRecord(record))) {
+                    const result = await window.dataSdk.delete({ ...rule, id: ruleId, type: PERCENTAGE_EXIT_RULE_TYPE });
+                    if (!result.isOk) { showToast('Erro ao remover regra percentual', true); return; }
+                }
+                clearLocalPercentageExitRulesBackup();
+                percentageExitRules = percentageExitRules.filter((item) => item.id !== ruleId);
                 renderPercentageExitRules();
                 renderCurrentTab();
                 showToast('Regra percentual removida!');
@@ -12809,6 +13334,7 @@
 
                 const cStart = document.getElementById('f-comp-start')?.value || thisMonth;
                 const cEnd = document.getElementById('f-comp-end')?.value || cStart;
+                schedulePercentageExitMaterialization(cStart, cEnd);
                 const person = document.getElementById('f-person')?.value || '';
                 const macro = document.getElementById('f-macro')?.value || '';
                 const cycle = document.getElementById('f-cycle')?.value || '';
@@ -12819,7 +13345,7 @@
                     return true;
                 });
 
-                return [...baseRecords, ...generated];
+                return dedupePercentageExitRecords([...baseRecords, ...generated]);
             };
 
             const _renderRowWithPercentageRules = renderRow;
@@ -13360,12 +13886,9 @@
 
             function buildFixedPercentageRecords(start, end) {
                 if (typeof consolidarEntradaMensal !== 'function' || typeof getPeopleRecords !== 'function') return [];
-                let rules = [];
-                try {
-                    rules = JSON.parse(localStorage.getItem('finance-control-percentage-exit-rules-v1') || '[]');
-                } catch (error) {
-                    rules = [];
-                }
+                const rules = typeof window.getSyncedPercentageExitRules === 'function'
+                    ? window.getSyncedPercentageExitRules()
+                    : [];
                 if (!Array.isArray(rules) || !rules.length || typeof buildCompetenceSequence !== 'function') return [];
 
                 const months = buildCompetenceSequence(start, end);
@@ -13806,12 +14329,9 @@
 
             function fixedPercentageExpenses(months) {
                 if (typeof consolidarEntradaMensal !== 'function' || typeof getPeopleRecords !== 'function') return [];
-                let rules = [];
-                try {
-                    rules = JSON.parse(localStorage.getItem('finance-control-percentage-exit-rules-v1') || '[]');
-                } catch (error) {
-                    rules = [];
-                }
+                const rules = typeof window.getSyncedPercentageExitRules === 'function'
+                    ? window.getSyncedPercentageExitRules()
+                    : [];
                 if (!Array.isArray(rules) || !rules.length) return [];
 
                 const people = getPeopleRecords();
@@ -14261,7 +14781,9 @@
 
         function getDashboardPercentageRules() {
             try {
-                const rules = JSON.parse(localStorage.getItem('finance-control-percentage-exit-rules-v1') || '[]');
+                const rules = typeof window.getSyncedPercentageExitRules === 'function'
+                    ? window.getSyncedPercentageExitRules()
+                    : [];
                 return Array.isArray(rules) ? rules.filter((rule) =>
                     rule &&
                     rule.active !== false &&
@@ -14310,47 +14832,12 @@
 
                     months.forEach((competence) => {
                         if (ruleStart && competence < ruleStart) return;
-                        const consolidated = consolidarEntradaMensal(personName, competence);
-                        const ruleCycle = rule.cycle === 'QUINZENA' ? 'QUINZENA' : 'INICIO_MES';
-                        const baseAmount = roundCurrency(getDashboardPercentageBaseAmount(consolidated, rule.base || 'liquido', ruleCycle, rule));
-                        const amount = typeof getPercentageRuleAmount === 'function'
-                            ? getPercentageRuleAmount(consolidated, { ...rule, cycle: ruleCycle })
-                            : roundCurrency(baseAmount * (Number(rule.percentage || 0) / 100));
-                        if (amount <= 0) return;
-
-                        records.push({
-                            id: `pct_dashboard_${rule.id || rule.name}_${personName}_${competence}`,
-                            type: 'saida',
-                            person: personName,
-                            macro_category: String(rule.macro || 'RESERVA').trim() || 'RESERVA',
-                            subcategory: String(rule.category || rule.name || 'Regra percentual').trim() || 'Regra percentual',
-                            description: `${String(rule.name || rule.category || 'Regra percentual').trim()} (${Number(rule.percentage || 0).toFixed(2).replace('.', ',')}%)`,
-                            amount,
-                            status: rule.status === 'Pago' ? 'Pago' : 'Em aberto',
-                            payment_method: 'Regra percentual',
-                            occurred_date: '',
-                            due_date: `${competence}-01`,
-                            competence,
-                            paid_at: rule.status === 'Pago' ? `${competence}-01` : '',
-                            installment_no: 0,
-                            total_installments: 0,
-                            parent_id: '',
-                            earning_type: '',
-                            recurrence: 'mensal_percentual',
-                            cycle: ruleCycle,
-                            created_at: rule.createdAt || new Date().toISOString(),
-                            category_id: '',
-                            category_name: String(rule.category || '').trim(),
-                            category_color: '',
-                            category_icon: '',
-                            archived: false,
-                            generated_percentage_rule: true,
-                            percentage_rule_id: rule.id || '',
-                            percentage_rate: Number(rule.percentage || 0),
-                            percentage_base: rule.base || 'liquido',
-                            percentage_base_amount: baseAmount,
-                            virtual_record: true
-                        });
+                        if (typeof window.hasPersistedPercentageExitRecord === 'function' && window.hasPersistedPercentageExitRecord(rule, personName, competence)) return;
+                        if (typeof window.buildPercentageExitRecord === 'function') {
+                            const record = window.buildPercentageExitRecord(rule, personName, competence, { virtual: true });
+                            if (record) records.push(record);
+                            return;
+                        }
                     });
                 });
             });
@@ -14368,7 +14855,10 @@
                 ...getDashboardGeneratedPercentageSaidas(start, end)
             ];
 
-            return baseSaidas.filter((record) => {
+            const dedupedSaidas = typeof window.dedupePercentageExitRecords === 'function'
+                ? window.dedupePercentageExitRecords(baseSaidas)
+                : baseSaidas;
+            return dedupedSaidas.filter((record) => {
                 if (record.type !== 'saida') return false;
                 if (record.archived === true) return false;
                 if (record.status === 'Cancelado') return false;
