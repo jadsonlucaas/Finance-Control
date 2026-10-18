@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "measuredAt": "2026-09-11T00:00:00.000-04:00",
+  "sourceCommit": "095b3fa",
+  "environment": "vite preview local build, Chromium via Playwright, Windows localhost",
+  "gateEnvironment": "preview",
+  "sampleSize": 10,
+  "coldDefinition": "new browser context per sample",
+  "warmDefinition": "same browser context after one warmup navigation",
+  "appBootstrapMedianMs": 124.45,
+  "firstScreenMedianMs": 154.95,
+  "legacyLoaderMedianMs": 120.5,
+  "bridgeInstallMedianMs": 24.7,
+  "authInitMedianMs": 45.3,
+  "lazyRegistrationMedianMs": 0.2,
+  "documentLoadMedianMs": 152.5,
+  "environmentOverheadMedianMs": 27.05,
+  "thresholds": {
+    "warningPercent": 10,
+    "failurePercent": 20,
+    "gateMetrics": [
+      "app_bootstrap_ms",
+      "first_screen_ready_ms"
+    ],
+    "informativeMetrics": [
+      "document_load_ms",
+      "environment_overhead_ms"
+    ]
+  },
+  "wrote": false
+}

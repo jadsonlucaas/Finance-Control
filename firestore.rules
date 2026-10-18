@@ -1,0 +1,735 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userProfileRef(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function userProfile(uid) {
+      return get(userProfileRef(uid));
+    }
+
+    function userProfileExists(uid) {
+      return exists(userProfileRef(uid));
+    }
+
+    function isAdminByClaim() {
+      return isSignedIn()
+        && request.auth.token.keys().hasAny(['admin'])
+        && request.auth.token.admin == true;
+    }
+
+    function isAdminByProfile() {
+      return isSignedIn()
+        && userProfileExists(request.auth.uid)
+        && userProfile(request.auth.uid).data.status == 'active'
+        && userProfile(request.auth.uid).data.role in ['admin', 'owner'];
+    }
+
+    function isActiveUser() {
+      return isSignedIn()
+        && userProfileExists(request.auth.uid)
+        && userProfile(request.auth.uid).data.status == 'active';
+    }
+
+    function isAdmin() {
+      return isAdminByClaim() || isAdminByProfile();
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isActiveSelf(uid) {
+      return isSelf(uid) && isActiveUser();
+    }
+
+    function isAdminAccessingOtherUser(uid) {
+      return isAdmin() && !isSelf(uid);
+    }
+
+    function hasOnlyKeys(allowedKeys) {
+      return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    function isValidAccountRole(role) {
+      return role in ['user', 'admin', 'owner'];
+    }
+
+    function isValidAccountStatus(status) {
+      return status in ['pending', 'active', 'inactive'];
+    }
+
+    function isAllowedAccountStatusTransition(previousStatus, nextStatus) {
+      return previousStatus == nextStatus
+        || (previousStatus == 'pending' && nextStatus in ['active', 'inactive'])
+        || (previousStatus == 'active' && nextStatus == 'inactive')
+        || (previousStatus == 'inactive' && nextStatus == 'active');
+    }
+
+    function hasValidUserProfileShape() {
+      return hasOnlyKeys(['uid', 'email', 'role', 'status', 'created_at', 'updated_at', 'last_login_at'])
+        && request.resource.data.uid is string
+        && request.resource.data.email is string
+        && request.resource.data.role is string
+        && isValidAccountRole(request.resource.data.role)
+        && request.resource.data.status is string
+        && isValidAccountStatus(request.resource.data.status)
+        && request.resource.data.created_at is string
+        && request.resource.data.updated_at is string
+        && (!('last_login_at' in request.resource.data) || request.resource.data.last_login_at is string);
+    }
+
+    function hasValidAdminProfileUpdate() {
+      return request.resource.data.keys().hasOnly(['uid', 'email', 'role', 'status', 'created_at', 'updated_at', 'last_login_at'])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role is string
+        && isValidAccountRole(request.resource.data.role)
+        && request.resource.data.status is string
+        && isValidAccountStatus(request.resource.data.status)
+        && isAllowedAccountStatusTransition(resource.data.status, request.resource.data.status)
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.updated_at is string
+        && (!('last_login_at' in request.resource.data) || request.resource.data.last_login_at is string);
+    }
+
+    function hasValidFinanceType() {
+      return request.resource.data.type in [
+        'saida',
+        'entrada',
+        'pessoa',
+        'categoria',
+        'macro',
+        'controle_horas',
+        'salario_historico',
+        'percentage_rule'
+      ];
+    }
+
+    function hasNoDisallowedFinanceFields() {
+      return !request.resource.data.keys().hasAny([
+        'phone',
+        'phone_number',
+        'telefone',
+        'whatsapp',
+        'whatsapp_phone',
+        'provider_phone',
+        'chatbot',
+        'webhook'
+      ]);
+    }
+
+    function isValidCompetence(value) {
+      return value is string && (value == '' || value.matches('^\\d{4}-\\d{2}$'));
+    }
+
+    function isValidDate(value) {
+      return value is string && (value == '' || value.matches('^\\d{4}-\\d{2}-\\d{2}$'));
+    }
+
+    function isValidClock(value) {
+      return value is string && (value == '' || value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'));
+    }
+
+    function isValidDateOrIso(value) {
+      return value is string && (value == '' || value.matches('^\\d{4}-\\d{2}-\\d{2}$') || value.matches('^\\d{4}-\\d{2}-\\d{2}T.*Z$'));
+    }
+
+    function isNonEmptyString(value) {
+      return value is string && value.size() > 0;
+    }
+
+    function isValidCommonShape() {
+      let d = request.resource.data;
+      return hasValidFinanceType()
+        && hasNoDisallowedFinanceFields()
+        && d.keys().hasAll(['type', 'owner_uid', 'owner_email'])
+        && d.owner_uid is string
+        && d.owner_email is string
+        && (!('schema_version' in d) || (d.schema_version is number && d.schema_version > 0))
+        && (!('created_at' in d) || d.created_at is string)
+        && (!('updated_at' in d) || d.updated_at is string)
+        && (!('archived' in d) || d.archived is bool)
+        && (!('description' in d) || d.description is string)
+        && (!('observation' in d) || d.observation is string)
+        && hasValidSourceMetadata();
+    }
+
+    function isValidCommonShapeForType(kind) {
+      let d = request.resource.data;
+      return d.type == kind
+        && hasNoDisallowedFinanceFields()
+        && d.keys().hasAll(['type', 'owner_uid', 'owner_email'])
+        && d.owner_uid is string
+        && d.owner_email is string
+        && (!('schema_version' in d) || (d.schema_version is number && d.schema_version > 0))
+        && (!('created_at' in d) || d.created_at is string)
+        && (!('updated_at' in d) || d.updated_at is string)
+        && (!('archived' in d) || d.archived is bool)
+        && (!('description' in d) || d.description is string)
+        && (!('observation' in d) || d.observation is string)
+        && hasValidSourceMetadata();
+    }
+
+    function hasValidSourceMetadata() {
+      let d = request.resource.data;
+      return (!('source_channel' in d) || d.source_channel in ['web', 'bank_import', 'spreadsheet_import', 'system', 'migration', 'future_integration'])
+        && (!('source_reference_id' in d) || isNonEmptyString(d.source_reference_id))
+        && (!('created_by_type' in d) || d.created_by_type in ['user', 'admin', 'system', 'integration'])
+        && (!('created_by_id' in d) || isNonEmptyString(d.created_by_id))
+        && (!('idempotency_key' in d) || isNonEmptyString(d.idempotency_key))
+        && (!('correlation_id' in d) || isNonEmptyString(d.correlation_id))
+        && (!('received_at' in d) || d.received_at is string)
+        && (!('processed_at' in d) || d.processed_at is string);
+    }
+
+    function hasValidSaidaShape() {
+      let d = request.resource.data;
+      return d.type == 'saida'
+        && (!('person' in d) || d.person is string)
+        && (!('amount' in d) || (d.amount is number && d.amount >= 0))
+        && (!('status' in d) || d.status in ['Em aberto', 'Pago', 'Cancelado', 'Vencido', ''])
+        && (!('macro_category' in d) || d.macro_category is string)
+        && (!('category_id' in d) || d.category_id is string)
+        && (!('category_name' in d) || d.category_name is string)
+        && (!('subcategory' in d) || d.subcategory is string)
+        && (!('payment_method' in d) || d.payment_method is string)
+        && (!('occurred_date' in d) || isValidDate(d.occurred_date))
+        && (!('due_date' in d) || isValidDate(d.due_date))
+        && (!('competence' in d) || isValidCompetence(d.competence))
+        && (!('paid_at' in d) || isValidDateOrIso(d.paid_at))
+        && (!('installment_no' in d) || (d.installment_no is int && d.installment_no >= 0))
+        && (!('total_installments' in d) || (d.total_installments is int && d.total_installments >= 0))
+        && (!('installment_no' in d && 'total_installments' in d) || d.installment_no <= d.total_installments || d.total_installments == 0)
+        && (!('parent_id' in d) || d.parent_id is string)
+        && (!('total_installments' in d) || d.total_installments <= 1 || ('parent_id' in d && isNonEmptyString(d.parent_id)))
+        && (!('recurrence' in d) || d.recurrence is string)
+        && (!('recurrence_frequency' in d) || d.recurrence_frequency in ['monthly', 'yearly', 'mensal', 'anual', ''])
+        && (!('recurrence_count' in d) || (d.recurrence_count is int && d.recurrence_count >= 0 && d.recurrence_count <= 120))
+        && (!('recurrence_end_date' in d) || isValidDate(d.recurrence_end_date))
+        && (!('recurrence_series_id' in d) || d.recurrence_series_id is string)
+        && (!('recurrence_sequence_no' in d) || (d.recurrence_sequence_no is int && d.recurrence_sequence_no >= 0))
+        && (!('recurrence_total_occurrences' in d) || (d.recurrence_total_occurrences is int && d.recurrence_total_occurrences >= 0 && d.recurrence_total_occurrences <= 120))
+        && (!('recurrence_sequence_no' in d && 'recurrence_total_occurrences' in d) || d.recurrence_sequence_no <= d.recurrence_total_occurrences || d.recurrence_total_occurrences == 0)
+        && (!('generated_percentage_rule' in d) || d.generated_percentage_rule is bool)
+        && (!('percentage_rule_id' in d) || d.percentage_rule_id is string)
+        && (!('percentage_occurrence_key' in d) || isNonEmptyString(d.percentage_occurrence_key))
+        && (!('percentage_rule_version' in d) || (d.percentage_rule_version is int && d.percentage_rule_version > 0))
+        && (!('percentage_materialized_at' in d) || d.percentage_materialized_at is string)
+        && (!('percentage_calculation_version' in d) || (d.percentage_calculation_version is int && d.percentage_calculation_version > 0))
+        && (!('percentage_rate' in d) || (d.percentage_rate is number && d.percentage_rate >= 0 && d.percentage_rate <= 100))
+        && (!('percentage_base' in d) || d.percentage_base is string)
+        && (!('percentage_base_amount' in d) || (d.percentage_base_amount is number && d.percentage_base_amount >= 0))
+        && (!('percentage_base_amount_cents' in d) || (d.percentage_base_amount_cents is int && d.percentage_base_amount_cents >= 0))
+        && (!('percentage_calculated_amount_cents' in d) || (d.percentage_calculated_amount_cents is int && d.percentage_calculated_amount_cents >= 0))
+        && (!('virtual_record' in d) || d.virtual_record is bool)
+        && (!('source_mode' in d) || d.source_mode in ['manual', 'import', 'recurring', 'installment', 'system', ''])
+        && (!('import_source' in d) || d.import_source is string)
+        && (!('import_batch_id' in d) || d.import_batch_id is string)
+        && (!('import_signature' in d) || d.import_signature is string);
+    }
+
+    function hasValidGeneratedPercentageSaidaShape() {
+      let d = request.resource.data;
+      return d.type == 'saida'
+        && d.generated_percentage_rule == true
+        && (!('person' in d) || d.person is string)
+        && (!('amount' in d) || (d.amount is number && d.amount >= 0))
+        && (!('status' in d) || d.status in ['Em aberto', 'Pago', 'Cancelado', 'Vencido', ''])
+        && (!('macro_category' in d) || d.macro_category is string)
+        && (!('category_id' in d) || d.category_id is string)
+        && (!('category_name' in d) || d.category_name is string)
+        && (!('subcategory' in d) || d.subcategory is string)
+        && (!('payment_method' in d) || d.payment_method is string)
+        && (!('occurred_date' in d) || isValidDate(d.occurred_date))
+        && (!('due_date' in d) || isValidDate(d.due_date))
+        && (!('competence' in d) || isValidCompetence(d.competence))
+        && (!('paid_at' in d) || isValidDateOrIso(d.paid_at))
+        && (!('percentage_rule_id' in d) || d.percentage_rule_id is string)
+        && (!('percentage_occurrence_key' in d) || isNonEmptyString(d.percentage_occurrence_key))
+        && (!('percentage_rule_version' in d) || (d.percentage_rule_version is int && d.percentage_rule_version > 0))
+        && (!('percentage_materialized_at' in d) || d.percentage_materialized_at is string)
+        && (!('percentage_materialization_manual_edit' in d) || d.percentage_materialization_manual_edit is bool)
+        && (!('percentage_calculation_version' in d) || (d.percentage_calculation_version is int && d.percentage_calculation_version > 0))
+        && (!('percentage_rate' in d) || (d.percentage_rate is number && d.percentage_rate >= 0 && d.percentage_rate <= 100))
+        && (!('percentage_base' in d) || d.percentage_base is string)
+        && (!('percentage_base_amount' in d) || (d.percentage_base_amount is number && d.percentage_base_amount >= 0))
+        && (!('percentage_base_amount_cents' in d) || (d.percentage_base_amount_cents is int && d.percentage_base_amount_cents >= 0))
+        && (!('percentage_calculated_amount_cents' in d) || (d.percentage_calculated_amount_cents is int && d.percentage_calculated_amount_cents >= 0))
+        && (!('virtual_record' in d) || d.virtual_record is bool);
+    }
+
+    function hasValidEntradaShape() {
+      let d = request.resource.data;
+      return d.type == 'entrada'
+        && (!('person' in d) || d.person is string)
+        && (!('amount' in d) || d.amount is number)
+        && (!('competence' in d) || isValidCompetence(d.competence))
+        && (!('occurred_date' in d) || isValidDate(d.occurred_date))
+        && (!('due_date' in d) || isValidDate(d.due_date))
+        && (!('status' in d) || d.status in ['Pago', 'Pendente', 'Cancelado', ''])
+        && (!('earning_type' in d) || d.earning_type is string)
+        && (!('salary_base' in d) || d.salary_base is number)
+        && (!('proventos' in d) || d.proventos is number)
+        && (!('descontos' in d) || d.descontos is number)
+        && (!('INSS' in d) || d.INSS is number)
+        && (!('IRRF' in d) || d.IRRF is number)
+        && (!('liquido' in d) || d.liquido is number)
+        && (!('inss_parameter_version' in d) || d.inss_parameter_version is string)
+        && (!('irrf_parameter_version' in d) || d.irrf_parameter_version is string)
+        && (!('tax_calculated_at' in d) || d.tax_calculated_at is string)
+        && (!('tax_calculation_schema_version' in d) || (d.tax_calculation_schema_version is int && d.tax_calculation_schema_version > 0));
+    }
+
+    function hasValidPessoaShape() {
+      let d = request.resource.data;
+      return d.type == 'pessoa'
+        && isNonEmptyString(d.person)
+        && (!('salary_base' in d) || (d.salary_base is number && d.salary_base >= 0))
+        && (!('amount' in d) || (d.amount is number && d.amount >= 0))
+        && (!('regime' in d) || d.regime is string)
+        && (!('status' in d) || d.status is string);
+    }
+
+    function hasValidControleHorasShape() {
+      let d = request.resource.data;
+      return d.type == 'controle_horas'
+        && (!('person' in d) || d.person is string)
+        && (!('amount' in d) || (d.amount is number && d.amount >= 0))
+        && (!('competence' in d) || isValidCompetence(d.competence))
+        && (!('occurred_date' in d) || isValidDate(d.occurred_date))
+        && (!('hour_control_type' in d) || d.hour_control_type in ['Hora Extra', 'Banco de Horas', 'Ajuste', 'Folga', ''])
+        && (!('hour_entry_type' in d) || d.hour_entry_type is string)
+        && (!('start_time' in d) || isValidClock(d.start_time))
+        && (!('end_time' in d) || isValidClock(d.end_time))
+        && (!('horaInicial' in d) || d.horaInicial is string)
+        && (!('horaFinal' in d) || d.horaFinal is string)
+        && (!('break_start' in d) || isValidClock(d.break_start))
+        && (!('break_end' in d) || isValidClock(d.break_end))
+        && (!('break_start_time' in d) || isValidClock(d.break_start_time))
+        && (!('break_end_time' in d) || isValidClock(d.break_end_time))
+        && (!('crosses_midnight' in d) || d.crosses_midnight is bool)
+        && (!('ended_date' in d) || isValidDate(d.ended_date))
+        && (!('gross_minutes' in d) || (d.gross_minutes is int && d.gross_minutes >= 0))
+        && (!('break_minutes' in d) || (d.break_minutes is int && d.break_minutes >= 0))
+        && (!('net_minutes' in d) || (d.net_minutes is int && d.net_minutes >= 0))
+        && (!('bank_minutes' in d) || d.bank_minutes is number)
+        && (!('quantidadeHoras' in d) || (d.quantidadeHoras is number && d.quantidadeHoras >= 0));
+    }
+
+    function hasValidSalarioHistoricoShape() {
+      let d = request.resource.data;
+      return d.type == 'salario_historico'
+        && isNonEmptyString(d.person)
+        && (!('person_id' in d) || d.person_id is string)
+        && (!('salary_base' in d) || (d.salary_base is number && d.salary_base > 0))
+        && (!('amount' in d) || (d.amount is number && d.amount > 0))
+        && (!('vigencia_inicio' in d) || isValidCompetence(d.vigencia_inicio))
+        && (!('vigencia_fim' in d) || isValidCompetence(d.vigencia_fim))
+        && (!('vigencia_inicio' in d && 'vigencia_fim' in d) || d.vigencia_fim == '' || d.vigencia_inicio <= d.vigencia_fim)
+        && (!('start_date' in d) || (d.start_date is string))
+        && (!('end_date' in d) || (d.end_date is string));
+    }
+
+    function hasValidPercentageRuleShape() {
+      let d = request.resource.data;
+      return d.type == 'percentage_rule'
+        && (!('person' in d) || d.person is string)
+        && (!('percentage' in d) || (d.percentage is number && d.percentage >= 0 && d.percentage <= 100))
+        && (!('percentual' in d) || (d.percentual is number && d.percentual >= 0 && d.percentual <= 100))
+        && (!('base_type' in d) || d.base_type in ['salario', 'entrada', 'liquido', 'manual', 'base_total', 'base', ''])
+        && (!('cycle' in d) || d.cycle in ['INICIO_MES', 'QUINZENA', 'FIM_MES', 'MENSAL', 'inicio', 'quinzena', 'fim', ''])
+        && (!('status' in d) || d.status in ['active', 'inactive', 'ativo', 'inativo', ''])
+        && (!('startCompetence' in d) || isValidCompetence(d.startCompetence))
+        && (!('endCompetence' in d) || isValidCompetence(d.endCompetence))
+        && (!('startCompetence' in d && 'endCompetence' in d) || d.endCompetence == '' || d.startCompetence <= d.endCompetence);
+    }
+
+    function isReferenceType() {
+      return request.resource.data.type in ['macro', 'categoria'];
+    }
+
+    function hasValidReferenceTextFields() {
+      return (!('macro_category' in request.resource.data) || (
+          request.resource.data.macro_category is string
+          && request.resource.data.macro_category.size() > 0
+        ))
+        && (!('category_name' in request.resource.data) || (
+          request.resource.data.category_name is string
+          && request.resource.data.category_name.size() > 0
+        ))
+        && (!('macro_id' in request.resource.data) || request.resource.data.macro_id is string)
+        && (!('category_id' in request.resource.data) || request.resource.data.category_id is string)
+        && (!('category_color' in request.resource.data) || request.resource.data.category_color is string)
+        && (!('category_icon' in request.resource.data) || request.resource.data.category_icon is string)
+        && (!('schema_version' in request.resource.data) || request.resource.data.schema_version is number);
+    }
+
+    function hasValidReferenceShape() {
+      return isValidCommonShape()
+        && isReferenceType()
+        && request.resource.data.macro_category is string
+        && request.resource.data.macro_category.size() > 0
+        && (!('shared_scope' in request.resource.data) || request.resource.data.shared_scope in ['global', 'personal'])
+        && (request.resource.data.type != 'categoria' || (
+          request.resource.data.category_name is string
+          && request.resource.data.category_name.size() > 0
+        ))
+        && hasValidReferenceTextFields();
+    }
+
+    function hasValidPersonalReferenceShape(uid) {
+      return hasValidReferenceShape()
+        && isReferenceType()
+        && request.resource.data.shared_scope == 'personal'
+        && request.resource.data.owner_uid == uid
+        && request.resource.data.macro_category is string
+        && request.resource.data.macro_category.size() > 0
+        && (request.resource.data.type != 'categoria' || (
+          request.resource.data.category_name is string
+          && request.resource.data.category_name.size() > 0
+        ))
+        && hasValidReferenceTextFields()
+        && request.resource.data.type == resource.data.type;
+    }
+
+    function hasValidNewPersonalReferenceShape(uid) {
+      return hasValidReferenceShape()
+        && isReferenceType()
+        && request.resource.data.shared_scope == 'personal'
+        && request.resource.data.owner_uid == uid
+        && request.resource.data.macro_category is string
+        && request.resource.data.macro_category.size() > 0
+        && (request.resource.data.type != 'categoria' || (
+          request.resource.data.category_name is string
+          && request.resource.data.category_name.size() > 0
+        ))
+        && hasValidReferenceTextFields();
+    }
+
+    function hasValidSharedReferenceShape(kind) {
+      return hasValidReferenceShape()
+        && request.resource.data.type == kind
+        && request.resource.data.shared_scope == 'global'
+        && request.resource.data.macro_category is string
+        && request.resource.data.macro_category.size() > 0
+        && (kind != 'categoria' || (
+          request.resource.data.category_name is string
+          && request.resource.data.category_name.size() > 0
+        ))
+        && request.resource.data.owner_uid is string
+        && request.resource.data.owner_email is string
+        && hasValidReferenceTextFields();
+    }
+
+    function hasValidFinanceShape() {
+      let d = request.resource.data;
+      return (d.type == 'saida' && isValidCommonShapeForType('saida') && hasValidSaidaShape())
+        || (d.type == 'entrada' && isValidCommonShapeForType('entrada') && hasValidEntradaShape())
+        || (d.type == 'pessoa' && isValidCommonShapeForType('pessoa') && hasValidPessoaShape())
+        || (d.type == 'controle_horas' && isValidCommonShapeForType('controle_horas') && hasValidControleHorasShape())
+        || (d.type == 'salario_historico' && isValidCommonShapeForType('salario_historico') && hasValidSalarioHistoricoShape())
+        || (d.type == 'percentage_rule' && isValidCommonShapeForType('percentage_rule') && hasValidPercentageRuleShape());
+    }
+
+    function ownerIs(uid) {
+      return request.resource.data.owner_uid == uid;
+    }
+
+    function ownerIsImmutable(uid) {
+      return resource.data.owner_uid == uid
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.owner_email == resource.data.owner_email
+        && request.resource.data.type == resource.data.type;
+    }
+
+    function isValidLocalStorageKey() {
+      return request.resource.data.key is string
+        && request.resource.data.key.matches('^finance-control-.*')
+        && request.resource.data.value is string
+        && request.resource.data.updated_at is string
+        && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.owner_email is string;
+    }
+
+    function isValidAuditLog() {
+      return !request.resource.data.keys().hasAny([
+          'password',
+          'token',
+          'accessToken',
+          'refreshToken',
+          'credential',
+          'secret',
+          'phone',
+          'telefone',
+          'raw_message',
+          'raw_file',
+          'file_bytes',
+          'authorization',
+          'cookies',
+          'serviceAccount',
+          'privateKey'
+        ])
+        && (
+          (
+            request.resource.data.keys().hasAll([
+              'event_id',
+              'event_type',
+              'event_version',
+              'occurred_at',
+              'actor_uid',
+              'actor_type',
+              'owner_uid',
+              'source_channel',
+              'operation',
+              'entity_type',
+              'correlation_id',
+              'result_status',
+              'schema_version'
+            ])
+            && request.resource.data.event_id is string
+            && request.resource.data.event_type is string
+            && request.resource.data.event_version is int
+            && request.resource.data.event_version > 0
+            && request.resource.data.occurred_at is string
+            && request.resource.data.actor_uid == request.auth.uid
+            && request.resource.data.actor_type in ['user', 'admin', 'system', 'integration']
+            && (!('actor_role' in request.resource.data) || request.resource.data.actor_role is string)
+            && request.resource.data.owner_uid == request.auth.uid
+            && request.resource.data.source_channel in ['web', 'bank_import', 'spreadsheet_import', 'system', 'migration', 'future_integration']
+            && request.resource.data.operation is string
+            && request.resource.data.entity_type is string
+            && (!('entity_id' in request.resource.data) || request.resource.data.entity_id is string)
+            && (!('entity_ids' in request.resource.data) || request.resource.data.entity_ids is list)
+            && isNonEmptyString(request.resource.data.correlation_id)
+            && (!('idempotency_key_hash' in request.resource.data) || request.resource.data.idempotency_key_hash is string)
+            && (!('command_name' in request.resource.data) || request.resource.data.command_name is string)
+            && request.resource.data.result_status in ['success', 'failure', 'replay', 'conflict', 'skipped']
+            && (!('result_code' in request.resource.data) || request.resource.data.result_code is string)
+            && (!('before' in request.resource.data) || request.resource.data.before is map || request.resource.data.before == null)
+            && (!('after' in request.resource.data) || request.resource.data.after is map || request.resource.data.after == null)
+            && (!('metadata' in request.resource.data) || request.resource.data.metadata is map)
+            && request.resource.data.schema_version is int
+            && request.resource.data.schema_version > 0
+            && (!('action' in request.resource.data) || request.resource.data.action is string)
+            && (!('created_at' in request.resource.data) || request.resource.data.created_at is string)
+            && (!('status' in request.resource.data) || request.resource.data.status in ['success', 'failure', 'replay', 'conflict', 'skipped', 'error'])
+            && (!('source' in request.resource.data) || request.resource.data.source is string)
+            && (!('details' in request.resource.data) || request.resource.data.details is map)
+          )
+          || (
+            request.resource.data.action is string
+            && request.resource.data.actor_uid == request.auth.uid
+            && request.resource.data.actor_email is string
+            && request.resource.data.created_at is string
+            && request.resource.data.status in ['success', 'error']
+            && request.resource.data.source is string
+          )
+        );
+    }
+
+    function isValidIdempotencyReceiptStatus(status) {
+      return status in ['processing', 'completed', 'failed'];
+    }
+
+    function hasValidIdempotencyReceiptShape(uid) {
+      return request.resource.data.keys().hasOnly([
+          'owner_uid',
+          'command_name',
+          'source_channel',
+          'idempotency_key',
+          'request_fingerprint',
+          'status',
+          'entity_id',
+          'entity_ids',
+          'result_code',
+          'correlation_id',
+          'created_at',
+          'completed_at',
+          'failed_at',
+          'expires_at',
+          'schema_version',
+          'result_reference'
+        ])
+        && request.resource.data.owner_uid == uid
+        && isNonEmptyString(request.resource.data.command_name)
+        && request.resource.data.source_channel in ['web', 'bank_import', 'spreadsheet_import', 'system', 'migration', 'future_integration']
+        && isNonEmptyString(request.resource.data.idempotency_key)
+        && isNonEmptyString(request.resource.data.request_fingerprint)
+        && isValidIdempotencyReceiptStatus(request.resource.data.status)
+        && (!('entity_id' in request.resource.data) || request.resource.data.entity_id is string)
+        && (!('entity_ids' in request.resource.data) || request.resource.data.entity_ids is list)
+        && (!('result_code' in request.resource.data) || request.resource.data.result_code is string)
+        && (!('correlation_id' in request.resource.data) || request.resource.data.correlation_id is string)
+        && (!('created_at' in request.resource.data) || request.resource.data.created_at is string)
+        && (!('completed_at' in request.resource.data) || request.resource.data.completed_at is string)
+        && (!('failed_at' in request.resource.data) || request.resource.data.failed_at is string)
+        && (!('expires_at' in request.resource.data) || request.resource.data.expires_at is string)
+        && (!('schema_version' in request.resource.data) || (request.resource.data.schema_version is number && request.resource.data.schema_version > 0))
+        && (!('result_reference' in request.resource.data) || request.resource.data.result_reference.keys().hasOnly(['success', 'code', 'entityId', 'entityIds', 'message']));
+    }
+
+    function isImmutableIdempotencyIdentity(uid) {
+      return resource.data.owner_uid == uid
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.command_name == resource.data.command_name
+        && request.resource.data.source_channel == resource.data.source_channel
+        && request.resource.data.idempotency_key == resource.data.idempotency_key
+        && request.resource.data.request_fingerprint == resource.data.request_fingerprint
+        && request.resource.data.created_at == resource.data.created_at;
+    }
+
+    function isAllowedIdempotencyTransition() {
+      return resource.data.status == 'processing'
+        && request.resource.data.status in ['completed', 'failed'];
+    }
+
+    function isValidTaxParameterShape() {
+      return request.resource.data.keys().hasOnly([
+          'id',
+          'tax_type',
+          'version',
+          'valid_from',
+          'valid_to',
+          'status',
+          'source_name',
+          'source_reference',
+          'source_published_at',
+          'notes',
+          'brackets',
+          'deductions',
+          'ceiling_cents',
+          'created_at',
+          'updated_at',
+          'schema_version'
+        ])
+        && request.resource.data.tax_type in ['inss', 'irrf']
+        && request.resource.data.version is string
+        && request.resource.data.version.size() > 0
+        && isValidCompetence(request.resource.data.valid_from)
+        && (!('valid_to' in request.resource.data) || request.resource.data.valid_to == '' || isValidCompetence(request.resource.data.valid_to))
+        && (!('valid_to' in request.resource.data) || request.resource.data.valid_to == '' || request.resource.data.valid_from <= request.resource.data.valid_to)
+        && request.resource.data.status in ['draft', 'active', 'archived']
+        && request.resource.data.brackets is list
+        && request.resource.data.brackets.size() > 0
+        && request.resource.data.brackets.size() <= 20
+        && (!('deductions' in request.resource.data) || request.resource.data.deductions is map)
+        && (!('ceiling_cents' in request.resource.data) || request.resource.data.ceiling_cents == null || (request.resource.data.ceiling_cents is int && request.resource.data.ceiling_cents >= 0))
+        && (!('source_name' in request.resource.data) || request.resource.data.source_name is string)
+        && (!('source_reference' in request.resource.data) || request.resource.data.source_reference is string)
+        && (!('source_published_at' in request.resource.data) || request.resource.data.source_published_at is string)
+        && (!('notes' in request.resource.data) || request.resource.data.notes is string)
+        && (!('schema_version' in request.resource.data) || (request.resource.data.schema_version is int && request.resource.data.schema_version > 0))
+        && (request.resource.data.status != 'active' || (
+          'source_name' in request.resource.data
+          && request.resource.data.source_name is string
+          && request.resource.data.source_name.size() > 0
+        ));
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+
+      // Enterprise mode: admin/owner elevation must be bootstrapped manually
+      // or via trusted server tooling. Client self-creation cannot assign admin.
+      allow create: if isSelf(uid)
+        && hasValidUserProfileShape()
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'user'
+        && request.resource.data.status == 'pending';
+
+      allow update: if isSelf(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.updated_at is string;
+
+      allow update: if isAdmin() && hasValidAdminProfileUpdate();
+      allow delete: if isAdmin();
+
+      match /finance_records/{recordId} {
+        allow read: if isActiveSelf(uid) || isAdminAccessingOtherUser(uid);
+        allow create: if isActiveSelf(uid)
+          && ownerIs(uid)
+          && (
+            (isReferenceType() && hasValidNewPersonalReferenceShape(uid))
+            || (!isReferenceType() && hasValidFinanceShape())
+          );
+        allow update: if isActiveSelf(uid)
+          && ownerIsImmutable(uid)
+          && (
+            (isReferenceType() && hasValidPersonalReferenceShape(uid))
+            || (!isReferenceType() && hasValidFinanceShape())
+          );
+        allow delete: if isActiveSelf(uid) && resource.data.owner_uid == uid;
+      }
+
+      match /local_storage/{key} {
+        allow read: if isActiveSelf(uid);
+        allow create, update: if isActiveSelf(uid) && isValidLocalStorageKey();
+        allow delete: if isActiveSelf(uid) && resource.data.owner_uid == uid;
+      }
+
+      match /audit_logs/{logId} {
+        allow read: if isActiveSelf(uid) || isAdminAccessingOtherUser(uid);
+        allow create: if isActiveSelf(uid) && isValidAuditLog();
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /idempotency_receipts/{receiptId} {
+        allow read: if isActiveSelf(uid);
+        allow create: if isActiveSelf(uid)
+          && hasValidIdempotencyReceiptShape(uid)
+          && request.resource.data.status == 'processing';
+        allow update: if isActiveSelf(uid)
+          && hasValidIdempotencyReceiptShape(uid)
+          && isImmutableIdempotencyIdentity(uid)
+          && isAllowedIdempotencyTransition();
+        allow delete: if false;
+      }
+    }
+
+    match /shared_macros/{docId} {
+      allow read: if isActiveUser() || isAdmin();
+      allow create: if isAdmin()
+        && hasValidSharedReferenceShape('macro');
+      allow update: if isAdmin()
+        && hasValidSharedReferenceShape('macro')
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.owner_email == resource.data.owner_email;
+      allow delete: if isAdmin();
+    }
+
+    match /shared_categories/{docId} {
+      allow read: if isActiveUser() || isAdmin();
+      allow create: if isAdmin()
+        && hasValidSharedReferenceShape('categoria');
+      allow update: if isAdmin()
+        && hasValidSharedReferenceShape('categoria')
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.owner_email == resource.data.owner_email;
+      allow delete: if isAdmin();
+    }
+
+    match /tax_parameters/{parameterId} {
+      allow read: if isActiveUser();
+      allow create, update: if isAdmin()
+        && isActiveUser()
+        && isValidTaxParameterShape();
+      allow delete: if isAdmin()
+        && isActiveUser();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

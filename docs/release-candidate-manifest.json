@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-19T21:14:42.161Z",
+  "purpose": "local-staging-release-candidate-manifest",
+  "constraints": {
+    "deployExecuted": false,
+    "firebaseRealTouched": false,
+    "adminSdkInClient": false,
+    "restoreRealEnabled": false,
+    "whatsappProviderEnabled": false,
+    "financialRulesChanged": false,
+    "firestoreRulesChangedByThisStep": false
+  },
+  "repository": {
+    "branch": "melhoria-arquitetura",
+    "commitShort": "ff33c99",
+    "commit": "ff33c99e25c56cf78da7a12b26e1f73e0e153714",
+    "dirty": true,
+    "statusShort": [
+      "M docs/firebase-environment-safety-map.md",
+      " M docs/global-api-inventory.md",
+      " M docs/project-validation-checkpoint.md",
+      " M docs/regression-test-matrix.md",
+      " M docs/release-deployment-checklist.md",
+      " M docs/release-readiness-checkpoint.md",
+      " M docs/staging-go-no-go.md",
+      " M docs/staging-production-isolation-evidence.md",
+      " M docs/staging-real-validation.md",
+      " M firebase.json",
+      "?? .firebase/",
+      "?? playwright.staging.config.js",
+      "?? tests/playwright/staging-critical.spec.js"
+    ]
+  },
+  "toolchain": {
+    "node": "v24.14.1",
+    "npm": "11.11.0",
+    "vite": "6.4.2",
+    "firebaseTools": "15.24.0",
+    "playwright": "1.59.1"
+  },
+  "firebase": {
+    "defaultProjectInFirebaserc": "finance-control-cce4f",
+    "requiredStagingProject": "finance-control-staging-260919",
+    "stagingProjectNumber": "945561850688",
+    "stagingWebAppId": "1:945561850688:web:8a00895f04d01d5aa860a5",
+    "stagingHostingUrl": "https://finance-control-staging-260919.web.app",
+    "stagingValidationStatus": "not_validated",
+    "dataClassification": "synthetic-only-pending",
+    "emulatorProjectForRehearsal": "demo-finance-control-local-e2e",
+    "rulesFile": {
+      "path": "firestore.rules",
+      "sha256": "bdc1f8d8b5d3ffcf399483bf72a6a6531757bd607351eada1981c2d979bad5f9"
+    },
+    "indexesFile": {
+      "path": "firestore.indexes.json",
+      "sha256": "229167f1a944093de01ce65db86f591ba56b1c6756909d53016ea2e584825de5",
+      "compositeIndexCount": 3
+    }
+  },
+  "packageLock": {
+    "path": "package-lock.json",
+    "sha256": "7c7b0f32419ec69243ccc1679b427560d3d7f84bbb5a16f4305c15e7716031a0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "smoke": "node tests/smoke/smoke.mjs",
+    "test": "vitest run",
+    "rules": "vitest run --config vitest.rules.config.js",
+    "authFlow": "vitest run --config vitest.auth-flow.config.js"
+  },
+  "budgets": {
+    "entryChunkBytes": 430080,
+    "globalsMax": 50,
+    "classicScriptsMax": 23,
+    "evalExecutedScriptsMax": 23
+  },
+  "inventory": {
+    "globalApiCount": 50,
+    "legacyLoader": null
+  },
+  "dist": {
+    "directoryHash": "b63b1c24895b77c6613168338dac3827168daaae9e1809d9879c79d799cd43f2",
+    "files": [
+      {
+        "rel": "dist/assets/app-CfyuvrDu.css",
+        "bytes": 57414,
+        "hash": "5a006588ceabdcc0bf68e7f9a56f72dd8f11ea5e6db33af947bd5e5cea36084d"
+      },
+      {
+        "rel": "dist/assets/app-Knq8h5W-.js",
+        "bytes": 375588,
+        "hash": "7fc9b3d866e24b4b7c633a7336b2b4938f44860f4470cf5d25cd8b784e0015dd"
+      },
+      {
+        "rel": "dist/assets/app-resilience-ZmCxj1IY.js",
+        "bytes": 32645,
+        "hash": "1d7f834014cda7fdb64141824c1dea8e76a677a719193a79511d1fec119d0870"
+      },
+      {
+        "rel": "dist/assets/backupActiveUi-vFXtbeRM.js",
+        "bytes": 29916,
+        "hash": "d818c2f356a86ca4b35a8c114b8f82ae176dc82100bed7d155e79cbee9a39f0f"
+      },
+      {
+        "rel": "dist/assets/dashboardFilters-DTS029nb.js",
+        "bytes": 1637,
+        "hash": "4d74f1aea3648507d23cb8b3f59713058e91b4f70bd855543e8169ab8b5fb862"
+      },
+      {
+        "rel": "dist/assets/dashboardRenderer-DJhjOWbS.js",
+        "bytes": 45744,
+        "hash": "90088474b457fcc7f4af0102a8e4d2804aab0fb53ca6cc8a9f26e5fb1274afbd"
+      },
+      {
+        "rel": "dist/assets/firebaseRepositories-MAi1_Qqb.js",
+        "bytes": 11555,
+        "hash": "4931dde4ee496cc44c805db8a783d04effb376ac3f16f2f0d8ecbd2d8e79cd97"
+      },
+      {
+        "rel": "dist/assets/hourControlActiveUi-CHuuRRCh.js",
+        "bytes": 24627,
+        "hash": "67615b1423cf6bc7d4a87cbff5ecab7bf7e981132699699b26f885c5dd02054d"
+      },
+      {
+        "rel": "dist/assets/icons-uH-bSXDK.js",
+        "bytes": 985,
+        "hash": "160a5d93369eec408447d009d2cd946a1be555044a306fc99dc5f5bb530de16b"
+      },
+      {
+        "rel": "dist/assets/idempotencyRepositories-BR3hazRg.js",
+        "bytes": 6077,
+        "hash": "2d2b05ca0c282ae62eaec31ebfe8bd8c95e2087f71ccbdd48a31b5ab1896dc4e"
+      },
+      {
+        "rel": "dist/assets/importacao-BInVFZhl.js",
+        "bytes": 41272,
+        "hash": "203487f3697dccf009f0f2ffcd1d8157a51cc143dbb95e437eac49c4370642e4"
+      },
+      {
+        "rel": "dist/assets/importActiveUi-DIaoblh2.js",
+        "bytes": 19971,
+        "hash": "94147932ce397a7c2dc586ae49ece91a1348f7a63ec5ac595d6e26bcffc4be41"
+      },
+      {
+        "rel": "dist/assets/index-Ddr3ydob.js",
+        "bytes": 4599,
+        "hash": "d048fcb20eb87f2742060005aa33a86287fbb116211216c7c16de779922ba3e0"
+      },
+      {
+        "rel": "dist/assets/installFirebaseServices-B0-28qAP.js",
+        "bytes": 27585,
+        "hash": "52c99711eec45c1d5f6f3b5e2e5b4eb22cb97c962990c1d86d0f143029b4c500"
+      },
+      {
+        "rel": "dist/assets/installments-TqR6CM88.js",
+        "bytes": 1085,
+        "hash": "83b4eb4aa1a49c5a5046b0e0e1e911d387c187068f99616f8e9352f716f44032"
+      },
+      {
+        "rel": "dist/assets/legacy-ui-C9EPGSE1.js",
+        "bytes": 4406,
+        "hash": "a179073ff56b4621a2ebbb65e35ab798b9b0d835c71b58725b4401e728802b02"
+      },
+      {
+        "rel": "dist/assets/libraryLoader-DSM9qcKg.js",
+        "bytes": 2759,
+        "hash": "c78db5e23cf52d9f060b7f57065c9416a78d56705782be77bae3795f5827bbd7"
+      },
+      {
+        "rel": "dist/assets/libraryLoaderBridge-DbFTL5sf.js",
+        "bytes": 1759,
+        "hash": "d1949267e6025fda0452b83529039c926da1b4ba6c14e17bbe6bac9b6830c575"
+      },
+      {
+        "rel": "dist/assets/loadBackupActiveUi-DuFoNB7P.js",
+        "bytes": 697,
+        "hash": "7e4feed8aa82a1f576bbb44b50b50d9023cb1178ef4ebfc75409c5421fa594f6"
+      },
+      {
+        "rel": "dist/assets/loadHourControlActiveUi-4NyPcqhD.js",
+        "bytes": 720,
+        "hash": "08b7af6528643a00d3236888aae583bfa8e2b5a6749405f1373da420bc51f565"
+      },
+      {
+        "rel": "dist/assets/loadImportActiveUi-CUvNogVW.js",
+        "bytes": 697,
+        "hash": "9cf758e063045b5a34773abf17afd2e95e3171a3f35b704e33f7f729a26cc350"
+      },
+      {
+        "rel": "dist/assets/loadPlannerActiveUi-BFMZPQeW.js",
+        "bytes": 703,
+        "hash": "1ff4c6945d713a024c6426344543f3aaec81087731c868faaa7d3eec5cf3b378"
+      },
+      {
+        "rel": "dist/assets/loadReportExportActiveUi-BJ2kOg99.js",
+        "bytes": 675,
+        "hash": "1bc399ade4f9117cb52ae08010e9af9923b14ab2358b3847abca856fb2b91236"
+      },
+      {
+        "rel": "dist/assets/loadSettingsActiveUi-DKiO_5Am.js",
+        "bytes": 1171,
+        "hash": "d202aab7d74def975f27486d8711c16e72bfc34124b175b09f61717d53340dd7"
+      },
+      {
+        "rel": "dist/assets/loadUserAdminActiveUi-4e4jl5m3.js",
+        "bytes": 715,
+        "hash": "43c24b73d37e0791a856e16f7979e1a8367a42aad63a63dbbe7580737030667d"
+      },
+      {
+        "rel": "dist/assets/monthDetailEvents-IE8c5_5c.js",
+        "bytes": 16091,
+        "hash": "0774c07972270d3ada848bed9bb65d77d22bfd59a2c957d35eb19f60f1902335"
+      },
+      {
+        "rel": "dist/assets/navigationCoordinator-BeTbAmuG.js",
+        "bytes": 704,
+        "hash": "6d0468051eba2611fb91bb404a6da9d97583abf52711467d58951673f89483f2"
+      },
+      {
+        "rel": "dist/assets/navigationTabs-D5mk6YRB.js",
+        "bytes": 676,
+        "hash": "e5e5f942c7b429c1a4803607af8591267c430422ecdf50c0d810af55a7df42cf"
+      },
+      {
+        "rel": "dist/assets/parcelamentosRenderer-D2yYUets.js",
+        "bytes": 21960,
+        "hash": "584a413353f6477c2bb35b5c8b68e79772dbb755067b52f7e8701e00ddede8c9"
+      },
+      {
+        "rel": "dist/assets/part-03-BUD-loOp.js",
+        "bytes": 339048,
+        "hash": "31b7271aaafda30df466cf1a5f4b8d16dc4eb273ac6cf594d163dbfc554c0e7b"
+      },
+      {
+        "rel": "dist/assets/part-04-BpdpJ5FA.js",
+        "bytes": 7087,
+        "hash": "39cd64ff5cc73cee392c878e86d533d3f96724810c4c75d11ec8636adb23ea89"
+      },
+      {
+        "rel": "dist/assets/part-05-DO83P6yh.js",
+        "bytes": 11785,
+        "hash": "962e567b914f2d3614e0bbcf874b4369eb14090ab0330049a95cf1745f2dce02"
+      },
+      {
+        "rel": "dist/assets/part-06-D7yveRmI.js",
+        "bytes": 13113,
+        "hash": "a68e81f8ce6033140aba82498132920edced2b5cb8bac32a7afeb1d757de7904"
+      },
+      {
+        "rel": "dist/assets/part-07-BXvZYuLV.js",
+        "bytes": 17092,
+        "hash": "55138cf3b9f1c4177959662335f8a5a54b44b6086c1e621670cca9546792aefd"
+      },
+      {
+        "rel": "dist/assets/part-08-CO1n5GEs.js",
+        "bytes": 7393,
+        "hash": "acf13eea68c75311de78ae6766e9833c42c7b0dedd553952d85bc0edc5a622fd"
+      },
+      {
+        "rel": "dist/assets/part-09-B3pVmYV3.js",
+        "bytes": 30954,
+        "hash": "6b55edc6a696f887b60d4317f399abf480821df37cd5d750f7be0ea201267f5a"
+      },
+      {
+        "rel": "dist/assets/part-10-DPUMRW38.js",
+        "bytes": 3057,
+        "hash": "ac644d01097d36eb0e29af45a55eb2fcb7032024ccb1ced7db520a056d2abad1"
+      },
+      {
+        "rel": "dist/assets/part-11-3ey006_y.js",
+        "bytes": 7264,
+        "hash": "ae589a77c226d41ed13cc002ea2047fd134acd6833f9ad51ad9a88f806044153"
+      },
+      {
+        "rel": "dist/assets/part-12-BpSvrCPe.js",
+        "bytes": 6077,
+        "hash": "f82b654224dd19c71c8a6f3c948a505b404d91ed0434fa89434401bbc1fac923"
+      },
+      {
+        "rel": "dist/assets/part-13-DL6iMsPm.js",
+        "bytes": 3413,
+        "hash": "876092bd5f7044c122a2eef154f0af6318b0b21e3a122de15a3326892d7827b7"
+      },
+      {
+        "rel": "dist/assets/part-14-CH6d2g_X.js",
+        "bytes": 15595,
+        "hash": "b6d3351ec3cb729553f81058d78ed04b8eb1e9d60f6833da92094e65380a7140"
+      },
+      {
+        "rel": "dist/assets/part-15-DH_eRTWa.js",
+        "bytes": 8825,
+        "hash": "620d80f825d27e339dccaab07b45575452ba74b5c6ab60e1b9c4902ad057e034"
+      },
+      {
+        "rel": "dist/assets/part-16-QyvKnjm7.js",
+        "bytes": 58882,
+        "hash": "d4e42c308feab00324a58fed12252a44bfeb0c8f449a8e513b8c8b59e578b299"
+      },
+      {
+        "rel": "dist/assets/part-17-DdE7_0hb.js",
+        "bytes": 8358,
+        "hash": "34ec0fe62b72811c812ee31aa0a6e364ded0412c7ce35552c8fa96d3635869f0"
+      },
+      {
+        "rel": "dist/assets/part-18-BuTkF9pC.js",
+        "bytes": 4156,
+        "hash": "b8e53ad60bb69fc85ad194e0dce7be20f38c0dd06ac688b5075676b77f9541a5"
+      },
+      {
+        "rel": "dist/assets/part-19-DpspCuBz.js",
+        "bytes": 5835,
+        "hash": "c68f0878f076b58c66376caa2a2256f374d3258a6e470f56a57d05c6593a2473"
+      },
+      {
+        "rel": "dist/assets/part-20-jRmqAG8o.js",
+        "bytes": 36786,
+        "hash": "def88cfbfd8e3d8a7ad9a3c2244bb4ef03042f5f10a1c81ade1571c03b70ee92"
+      },
+      {
+        "rel": "dist/assets/part-26-BUg1si2N.js",
+        "bytes": 24682,
+        "hash": "a32b13819c86caec0cc88301c88253d026854d4436b856073641bf6376a0aadc"
+      },
+      {
+        "rel": "dist/assets/part-27-BVkLe89D.js",
+        "bytes": 16882,
+        "hash": "75a7a02de387cc21fc79fa8a129962c21b76add0c2cf0c71215f0a2298782004"
+      },
+      {
+        "rel": "dist/assets/part-28-BmAxBIJP.js",
+        "bytes": 23490,
+        "hash": "dbd92bf00efbfbb3d19aeedc8266081aae484318a5133ce235cffc1ce7faa6e5"
+      },
+      {
+        "rel": "dist/assets/part-29-CAWyoOO3.js",
+        "bytes": 100629,
+        "hash": "7a29b35257c98dcd485b27a24d8874af4bd1d00fc450d9462ed6f74653e03acc"
+      },
+      {
+        "rel": "dist/assets/pdfAdapter-D96YUIe1.js",
+        "bytes": 2045,
+        "hash": "ee19ab5cb6545c2e3b6df26fe3deaac808f6152473fdffe1794279d0ba565acf"
+      },
+      {
+        "rel": "dist/assets/performanceMonitor-YDicNvlw.js",
+        "bytes": 9315,
+        "hash": "4d28eff27c84f9834b62bb2ccdc809e88accb0723c89dc9be010a5a2ac976dea"
+      },
+      {
+        "rel": "dist/assets/plannerActiveUi-DSYLNmZR.js",
+        "bytes": 23493,
+        "hash": "e03d2f635b79f7b0d5fffb34f7ce35ac2dd3414585556a40538dc24961ab5da5"
+      },
+      {
+        "rel": "dist/assets/referenceData-DN42senV.js",
+        "bytes": 4162,
+        "hash": "a9da790684a84639fe4bf32b860629c52dda78bc035d38eed19876ca8d3c11f2"
+      },
+      {
+        "rel": "dist/assets/reportExportActiveUi-B8NtMSDd.js",
+        "bytes": 13015,
+        "hash": "b6cf7c29d8783490ed4c3126d7c4b9a624f228104c33d9c25b4b3b89c3050fb5"
+      },
+      {
+        "rel": "dist/assets/router-1m1pw_1f.js",
+        "bytes": 634,
+        "hash": "ddcba8753479d76c010406ac3caefc4970b17ba0ea092738b25e154b777acea8"
+      },
+      {
+        "rel": "dist/assets/services-firebase-BQOX3gns.js",
+        "bytes": 167177,
+        "hash": "6adf7995fd18a13bfaeb6d163b82f17dabea12a4f523a1a9e0f97b39247bb147"
+      },
+      {
+        "rel": "dist/assets/services-firestore-BXeVvSYt.js",
+        "bytes": 449417,
+        "hash": "1503254a74cc44c023976665312d2651c815470de58bdadf676c25477be8c427"
+      },
+      {
+        "rel": "dist/assets/settingsActiveUi-CfTvLJhh.js",
+        "bytes": 17606,
+        "hash": "4ac94405d9245e4f3dfa8888abe2266356d181ff082d2916aaabfa9824a945a6"
+      },
+      {
+        "rel": "dist/assets/settingsWebAdapter-CXe8N_6J.js",
+        "bytes": 7014,
+        "hash": "cb81c312427fb5882f2438f9753903eece94f14b060226535925a41ee9207c19"
+      },
+      {
+        "rel": "dist/assets/spreadsheetImportParser-ESS1r-oB.js",
+        "bytes": 9425,
+        "hash": "e9d27b8fd38b69ad341a596e2fb1d5c5e20e160a3a831463c0ac38f86d714b84"
+      },
+      {
+        "rel": "dist/assets/userAdminActiveUi-B5wRYu8I.js",
+        "bytes": 15151,
+        "hash": "0a02705abc44f30062547d24288fef9abd0ac5f4f8740f9ad36c1db9a1be89bc"
+      },
+      {
+        "rel": "dist/assets/vendor-chart-CieodS8Z.js",
+        "bytes": 207442,
+        "hash": "496b74ea3b1197fc049348360703e8dd4700a9d5c56363c0a938c0b21b80f790"
+      },
+      {
+        "rel": "dist/assets/vendor-icons-5rVhydsJ.js",
+        "bytes": 19218,
+        "hash": "50192ce7fc7bbb3788b574b7f4c894ae4f3e4d428a3f8659db6c9ca46c1d5473"
+      },
+      {
+        "rel": "dist/index.html",
+        "bytes": 10837,
+        "hash": "2e74235955a3c20cab7b0f183d996ba1e0e95b376e391bd187a095ee64eee3d0"
+      }
+    ],
+    "entry": {
+      "rel": "dist/assets/app-Knq8h5W-.js",
+      "bytes": 375588,
+      "hash": "7fc9b3d866e24b4b7c633a7336b2b4938f44860f4470cf5d25cd8b784e0015dd"
+    },
+    "firebaseChunk": {
+      "rel": "dist/assets/services-firebase-BQOX3gns.js",
+      "bytes": 167177,
+      "hash": "6adf7995fd18a13bfaeb6d163b82f17dabea12a4f523a1a9e0f97b39247bb147"
+    },
+    "largest": {
+      "rel": "dist/assets/services-firestore-BXeVvSYt.js",
+      "bytes": 449417,
+      "hash": "1503254a74cc44c023976665312d2651c815470de58bdadf676c25477be8c427"
+    }
+  },
+  "testTotalsKnown": {
+    "vitestFiles": 112,
+    "vitestTests": 661,
+    "source": "docs/release-readiness-checkpoint.md"
+  }
+}

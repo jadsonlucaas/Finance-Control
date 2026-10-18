@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "finance-control-cce4f",
+    "staging": "finance-control-staging-260919"
+  }
+}

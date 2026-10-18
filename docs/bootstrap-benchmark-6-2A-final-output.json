@@ -1,0 +1,1774 @@
+﻿
+> finance-control@0.1.0 bootstrap:benchmark
+> node scripts/bootstrap-benchmark.mjs
+
+{
+  "ok": true,
+  "wrote": false,
+  "environment": {
+    "gate": "vite preview local build",
+    "comparison": "vite dev local server",
+    "sampleSize": 10,
+    "coldDefinition": "new browser context per sample",
+    "warmDefinition": "same browser context after one warmup navigation"
+  },
+  "baseline": {
+    "version": 1,
+    "measuredAt": "2026-09-11T00:00:00.000-04:00",
+    "sourceCommit": "095b3fa",
+    "environment": "vite preview local build, Chromium via Playwright, Windows localhost",
+    "gateEnvironment": "preview",
+    "sampleSize": 10,
+    "coldDefinition": "new browser context per sample",
+    "warmDefinition": "same browser context after one warmup navigation",
+    "appBootstrapMedianMs": 124.45,
+    "firstScreenMedianMs": 154.95,
+    "legacyLoaderMedianMs": 120.5,
+    "bridgeInstallMedianMs": 24.7,
+    "authInitMedianMs": 45.3,
+    "lazyRegistrationMedianMs": 0.2,
+    "documentLoadMedianMs": 152.5,
+    "environmentOverheadMedianMs": 27.05,
+    "thresholds": {
+      "warningPercent": 10,
+      "failurePercent": 20,
+      "gateMetrics": [
+        "app_bootstrap_ms",
+        "first_screen_ready_ms"
+      ],
+      "informativeMetrics": [
+        "document_load_ms",
+        "environment_overhead_ms"
+      ]
+    },
+    "wrote": false
+  },
+  "appControlled": [
+    "app_bootstrap_ms",
+    "legacy_loader_ms",
+    "bridge_install_ms",
+    "auth_init_ms",
+    "first_screen_ready_ms",
+    "lazy_registration_ms"
+  ],
+  "environmentOnly": [
+    "document_load_ms",
+    "environment_overhead_ms"
+  ],
+  "preview": {
+    "kind": "preview",
+    "url": "http://127.0.0.1:5177/",
+    "cold": [
+      {
+        "run": 1,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 176.1,
+          "legacy_loader_ms": 165.9,
+          "bridge_install_ms": 68.7,
+          "auth_init_ms": 35.1,
+          "first_screen_ready_ms": 281,
+          "lazy_registration_ms": 0.8,
+          "document_load_ms": 103.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 59,
+          "finance-bridge-install-start": 60.2,
+          "finance-bridges-ready": 128.9,
+          "finance-legacy-loader-start": 68.4,
+          "finance-legacy-loader-end": 234.3,
+          "finance-auth-init-start": 235.3,
+          "finance-auth-init-end": 270.4,
+          "finance-shell-ready": 235.1,
+          "finance-first-screen-ready": 340,
+          "finance-bootstrap-complete": 271.9
+        },
+        "resources": 45,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 2,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 242.8,
+          "legacy_loader_ms": 233.6,
+          "bridge_install_ms": 77.2,
+          "auth_init_ms": 33.5,
+          "first_screen_ready_ms": 255.6,
+          "lazy_registration_ms": 0.6,
+          "document_load_ms": 91.2,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 50.2,
+          "finance-bridge-install-start": 51.3,
+          "finance-bridges-ready": 128.5,
+          "finance-legacy-loader-start": 58.8,
+          "finance-legacy-loader-end": 292.4,
+          "finance-auth-init-start": 293,
+          "finance-auth-init-end": 326.5,
+          "finance-shell-ready": 293,
+          "finance-first-screen-ready": 305.8,
+          "finance-bootstrap-complete": 327.1
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 3,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 237.5,
+          "legacy_loader_ms": 227.9,
+          "bridge_install_ms": 79.9,
+          "auth_init_ms": 33.5,
+          "first_screen_ready_ms": 252.3,
+          "lazy_registration_ms": 0.5,
+          "document_load_ms": 91.2,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 50.8,
+          "finance-bridge-install-start": 53.3,
+          "finance-bridges-ready": 133.2,
+          "finance-legacy-loader-start": 59.9,
+          "finance-legacy-loader-end": 287.8,
+          "finance-auth-init-start": 288.4,
+          "finance-auth-init-end": 321.9,
+          "finance-shell-ready": 288.3,
+          "finance-first-screen-ready": 303.1,
+          "finance-bootstrap-complete": 322.5
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 4,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 241.1,
+          "legacy_loader_ms": 227.8,
+          "bridge_install_ms": 103.8,
+          "auth_init_ms": 73.3,
+          "first_screen_ready_ms": 301.4,
+          "lazy_registration_ms": 1.1,
+          "document_load_ms": 113.2,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 52.5,
+          "finance-bridge-install-start": 53.6,
+          "finance-bridges-ready": 157.4,
+          "finance-legacy-loader-start": 64.7,
+          "finance-legacy-loader-end": 292.5,
+          "finance-auth-init-start": 293.8,
+          "finance-auth-init-end": 367.1,
+          "finance-shell-ready": 293.6,
+          "finance-first-screen-ready": 353.9,
+          "finance-bootstrap-complete": 367.7
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 5,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 257.2,
+          "legacy_loader_ms": 247.8,
+          "bridge_install_ms": 93,
+          "auth_init_ms": 38.3,
+          "first_screen_ready_ms": 270.2,
+          "lazy_registration_ms": 0.4,
+          "document_load_ms": 87.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 47.5,
+          "finance-bridge-install-start": 49,
+          "finance-bridges-ready": 142,
+          "finance-legacy-loader-start": 56.5,
+          "finance-legacy-loader-end": 304.3,
+          "finance-auth-init-start": 304.8,
+          "finance-auth-init-end": 343.1,
+          "finance-shell-ready": 304.7,
+          "finance-first-screen-ready": 317.7,
+          "finance-bootstrap-complete": 343.6
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 6,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 189.3,
+          "legacy_loader_ms": 181.4,
+          "bridge_install_ms": 92.1,
+          "auth_init_ms": 69.7,
+          "first_screen_ready_ms": 249,
+          "lazy_registration_ms": 0.5,
+          "document_load_ms": 92.3,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 43.3,
+          "finance-bridge-install-start": 44.4,
+          "finance-bridges-ready": 136.5,
+          "finance-legacy-loader-start": 50.7,
+          "finance-legacy-loader-end": 232.1,
+          "finance-auth-init-start": 232.7,
+          "finance-auth-init-end": 302.4,
+          "finance-shell-ready": 232.6,
+          "finance-first-screen-ready": 292.3,
+          "finance-bootstrap-complete": 303.8
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 7,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 201.2,
+          "legacy_loader_ms": 191.5,
+          "bridge_install_ms": 94.8,
+          "auth_init_ms": 90.1,
+          "first_screen_ready_ms": 263.2,
+          "lazy_registration_ms": 0.5,
+          "document_load_ms": 127.2,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 70.5,
+          "finance-bridge-install-start": 72.1,
+          "finance-bridges-ready": 166.9,
+          "finance-legacy-loader-start": 79.7,
+          "finance-legacy-loader-end": 271.2,
+          "finance-auth-init-start": 271.8,
+          "finance-auth-init-end": 361.9,
+          "finance-shell-ready": 271.7,
+          "finance-first-screen-ready": 333.7,
+          "finance-bootstrap-complete": 362.5
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 8,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 188.8,
+          "legacy_loader_ms": 179.4,
+          "bridge_install_ms": 75.8,
+          "auth_init_ms": 73.3,
+          "first_screen_ready_ms": 254.3,
+          "lazy_registration_ms": 0.6,
+          "document_load_ms": 84.6,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 44.7,
+          "finance-bridge-install-start": 46.7,
+          "finance-bridges-ready": 122.5,
+          "finance-legacy-loader-start": 53.5,
+          "finance-legacy-loader-end": 232.9,
+          "finance-auth-init-start": 233.6,
+          "finance-auth-init-end": 306.9,
+          "finance-shell-ready": 233.5,
+          "finance-first-screen-ready": 299,
+          "finance-bootstrap-complete": 307.5
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 9,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 234.7,
+          "legacy_loader_ms": 225.4,
+          "bridge_install_ms": 89.2,
+          "auth_init_ms": 32.4,
+          "first_screen_ready_ms": 237.3,
+          "lazy_registration_ms": 1,
+          "document_load_ms": 87.7,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 41.4,
+          "finance-bridge-install-start": 43.5,
+          "finance-bridges-ready": 132.7,
+          "finance-legacy-loader-start": 49.7,
+          "finance-legacy-loader-end": 275.1,
+          "finance-auth-init-start": 276.4,
+          "finance-auth-init-end": 308.8,
+          "finance-shell-ready": 276.1,
+          "finance-first-screen-ready": 278.7,
+          "finance-bootstrap-complete": 310.7
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 10,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 240.7,
+          "legacy_loader_ms": 229.7,
+          "bridge_install_ms": 78.9,
+          "auth_init_ms": 37,
+          "first_screen_ready_ms": 242.6,
+          "lazy_registration_ms": 0.7,
+          "document_load_ms": 93.1,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 49.2,
+          "finance-bridge-install-start": 51.9,
+          "finance-bridges-ready": 130.8,
+          "finance-legacy-loader-start": 59.5,
+          "finance-legacy-loader-end": 289.2,
+          "finance-auth-init-start": 289.9,
+          "finance-auth-init-end": 326.9,
+          "finance-shell-ready": 289.9,
+          "finance-first-screen-ready": 291.8,
+          "finance-bootstrap-complete": 327.5
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      }
+    ],
+    "warm": [
+      {
+        "run": 1,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 116.8,
+          "legacy_loader_ms": 112.4,
+          "bridge_install_ms": 61.9,
+          "auth_init_ms": 28.3,
+          "first_screen_ready_ms": 142.8,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 31.8,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 20.9,
+          "finance-bridge-install-start": 21.1,
+          "finance-bridges-ready": 83,
+          "finance-legacy-loader-start": 25.2,
+          "finance-legacy-loader-end": 137.6,
+          "finance-auth-init-start": 137.7,
+          "finance-auth-init-end": 166,
+          "finance-shell-ready": 137.7,
+          "finance-first-screen-ready": 163.7,
+          "finance-bootstrap-complete": 166.2
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 2,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 108.3,
+          "legacy_loader_ms": 97,
+          "bridge_install_ms": 44.5,
+          "auth_init_ms": 7.4,
+          "first_screen_ready_ms": 137.6,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 46.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 25.1,
+          "finance-bridge-install-start": 26.3,
+          "finance-bridges-ready": 70.8,
+          "finance-legacy-loader-start": 36.3,
+          "finance-legacy-loader-end": 133.3,
+          "finance-auth-init-start": 133.4,
+          "finance-auth-init-end": 140.8,
+          "finance-shell-ready": 133.4,
+          "finance-first-screen-ready": 162.7,
+          "finance-bootstrap-complete": 141.1
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 3,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 116.4,
+          "legacy_loader_ms": 110.6,
+          "bridge_install_ms": 40.5,
+          "auth_init_ms": 12.5,
+          "first_screen_ready_ms": 134.4,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 41.9,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 26,
+          "finance-bridge-install-start": 26.3,
+          "finance-bridges-ready": 66.8,
+          "finance-legacy-loader-start": 31.7,
+          "finance-legacy-loader-end": 142.3,
+          "finance-auth-init-start": 142.5,
+          "finance-auth-init-end": 155,
+          "finance-shell-ready": 142.4,
+          "finance-first-screen-ready": 160.4,
+          "finance-bootstrap-complete": 155.3
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 4,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 105.7,
+          "legacy_loader_ms": 101.9,
+          "bridge_install_ms": 37.3,
+          "auth_init_ms": 7.2,
+          "first_screen_ready_ms": 132.5,
+          "lazy_registration_ms": 0.2,
+          "document_load_ms": 41.3,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 28.8,
+          "finance-bridge-install-start": 29.1,
+          "finance-bridges-ready": 66.4,
+          "finance-legacy-loader-start": 32.4,
+          "finance-legacy-loader-end": 134.3,
+          "finance-auth-init-start": 134.5,
+          "finance-auth-init-end": 141.7,
+          "finance-shell-ready": 134.5,
+          "finance-first-screen-ready": 161.3,
+          "finance-bootstrap-complete": 142
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 5,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 83.5,
+          "legacy_loader_ms": 79,
+          "bridge_install_ms": 30.4,
+          "auth_init_ms": 25.5,
+          "first_screen_ready_ms": 106.3,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 38.1,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 26.9,
+          "finance-bridge-install-start": 27.2,
+          "finance-bridges-ready": 57.6,
+          "finance-legacy-loader-start": 31.3,
+          "finance-legacy-loader-end": 110.3,
+          "finance-auth-init-start": 110.5,
+          "finance-auth-init-end": 136,
+          "finance-shell-ready": 110.4,
+          "finance-first-screen-ready": 133.2,
+          "finance-bootstrap-complete": 136.3
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 6,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 75.1,
+          "legacy_loader_ms": 70.8,
+          "bridge_install_ms": 25.4,
+          "auth_init_ms": 24.6,
+          "first_screen_ready_ms": 97.8,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 27.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 16.8,
+          "finance-bridge-install-start": 17.1,
+          "finance-bridges-ready": 42.5,
+          "finance-legacy-loader-start": 21,
+          "finance-legacy-loader-end": 91.8,
+          "finance-auth-init-start": 92,
+          "finance-auth-init-end": 116.6,
+          "finance-shell-ready": 91.9,
+          "finance-first-screen-ready": 114.6,
+          "finance-bootstrap-complete": 116.9
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 7,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 77.8,
+          "legacy_loader_ms": 73,
+          "bridge_install_ms": 28.5,
+          "auth_init_ms": 6.7,
+          "first_screen_ready_ms": 103.9,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 37,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 25.9,
+          "finance-bridge-install-start": 26.5,
+          "finance-bridges-ready": 55,
+          "finance-legacy-loader-start": 30.6,
+          "finance-legacy-loader-end": 103.6,
+          "finance-auth-init-start": 103.7,
+          "finance-auth-init-end": 110.4,
+          "finance-shell-ready": 103.7,
+          "finance-first-screen-ready": 129.8,
+          "finance-bootstrap-complete": 110.7
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 8,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 76.9,
+          "legacy_loader_ms": 73.4,
+          "bridge_install_ms": 30.8,
+          "auth_init_ms": 22.5,
+          "first_screen_ready_ms": 104.6,
+          "lazy_registration_ms": 0.2,
+          "document_load_ms": 33.5,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 22,
+          "finance-bridge-install-start": 22.2,
+          "finance-bridges-ready": 53,
+          "finance-legacy-loader-start": 25.3,
+          "finance-legacy-loader-end": 98.7,
+          "finance-auth-init-start": 98.9,
+          "finance-auth-init-end": 121.4,
+          "finance-shell-ready": 98.9,
+          "finance-first-screen-ready": 126.6,
+          "finance-bootstrap-complete": 121.8
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 9,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 87.3,
+          "legacy_loader_ms": 84.2,
+          "bridge_install_ms": 29.5,
+          "auth_init_ms": 26.2,
+          "first_screen_ready_ms": 111.2,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 55.9,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 45.9,
+          "finance-bridge-install-start": 46,
+          "finance-bridges-ready": 75.5,
+          "finance-legacy-loader-start": 48.9,
+          "finance-legacy-loader-end": 133.1,
+          "finance-auth-init-start": 133.2,
+          "finance-auth-init-end": 159.4,
+          "finance-shell-ready": 133.2,
+          "finance-first-screen-ready": 157.1,
+          "finance-bootstrap-complete": 159.6
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      },
+      {
+        "run": 10,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 102.7,
+          "legacy_loader_ms": 96.5,
+          "bridge_install_ms": 35.1,
+          "auth_init_ms": 10.2,
+          "first_screen_ready_ms": 120.2,
+          "lazy_registration_ms": 0,
+          "document_load_ms": 35.7,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 22.7,
+          "finance-bridge-install-start": 23.1,
+          "finance-bridges-ready": 58.2,
+          "finance-legacy-loader-start": 28.9,
+          "finance-legacy-loader-end": 125.4,
+          "finance-auth-init-start": 125.5,
+          "finance-auth-init-end": 135.7,
+          "finance-shell-ready": 125.4,
+          "finance-first-screen-ready": 142.9,
+          "finance-bootstrap-complete": 136
+        },
+        "resources": 44,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": true
+        }
+      }
+    ],
+    "summary": {
+      "cold": {
+        "app_bootstrap_ms": {
+          "samples": 10,
+          "median": 236.1,
+          "average": 220.94,
+          "p75": 241.1,
+          "p95": 257.2,
+          "min": 176.1,
+          "max": 257.2,
+          "standardDeviation": 27.363,
+          "coefficientOfVariation": 0.124
+        },
+        "legacy_loader_ms": {
+          "samples": 10,
+          "median": 226.6,
+          "average": 211.04,
+          "p75": 229.7,
+          "p95": 247.8,
+          "min": 165.9,
+          "max": 247.8,
+          "standardDeviation": 26.979,
+          "coefficientOfVariation": 0.128
+        },
+        "bridge_install_ms": {
+          "samples": 10,
+          "median": 84.55,
+          "average": 85.34,
+          "p75": 93,
+          "p95": 103.8,
+          "min": 68.7,
+          "max": 103.8,
+          "standardDeviation": 10.27,
+          "coefficientOfVariation": 0.12
+        },
+        "auth_init_ms": {
+          "samples": 10,
+          "median": 37.65,
+          "average": 51.62,
+          "p75": 73.3,
+          "p95": 90.1,
+          "min": 32.4,
+          "max": 90.1,
+          "standardDeviation": 21.066,
+          "coefficientOfVariation": 0.408
+        },
+        "first_screen_ready_ms": {
+          "samples": 10,
+          "median": 254.95,
+          "average": 260.69,
+          "p75": 270.2,
+          "p95": 301.4,
+          "min": 237.3,
+          "max": 301.4,
+          "standardDeviation": 18.206,
+          "coefficientOfVariation": 0.07
+        },
+        "lazy_registration_ms": {
+          "samples": 10,
+          "median": 0.6,
+          "average": 0.67,
+          "p75": 0.8,
+          "p95": 1.1,
+          "min": 0.4,
+          "max": 1.1,
+          "standardDeviation": 0.219,
+          "coefficientOfVariation": 0.327
+        },
+        "document_load_ms": {
+          "samples": 10,
+          "median": 91.75,
+          "average": 97.13,
+          "p75": 103.4,
+          "p95": 127.2,
+          "min": 84.6,
+          "max": 127.2,
+          "standardDeviation": 12.854,
+          "coefficientOfVariation": 0.132
+        },
+        "environment_overhead_ms": {
+          "samples": 10,
+          "median": 0,
+          "average": 0,
+          "p75": 0,
+          "p95": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "coefficientOfVariation": 0
+        }
+      },
+      "warm": {
+        "app_bootstrap_ms": {
+          "samples": 10,
+          "median": 95,
+          "average": 95.05,
+          "p75": 108.3,
+          "p95": 116.8,
+          "min": 75.1,
+          "max": 116.8,
+          "standardDeviation": 15.795,
+          "coefficientOfVariation": 0.166
+        },
+        "legacy_loader_ms": {
+          "samples": 10,
+          "median": 90.35,
+          "average": 89.88,
+          "p75": 101.9,
+          "p95": 112.4,
+          "min": 70.8,
+          "max": 112.4,
+          "standardDeviation": 14.989,
+          "coefficientOfVariation": 0.167
+        },
+        "bridge_install_ms": {
+          "samples": 10,
+          "median": 32.95,
+          "average": 36.39,
+          "p75": 40.5,
+          "p95": 61.9,
+          "min": 25.4,
+          "max": 61.9,
+          "standardDeviation": 10.166,
+          "coefficientOfVariation": 0.279
+        },
+        "auth_init_ms": {
+          "samples": 10,
+          "median": 17.5,
+          "average": 17.11,
+          "p75": 25.5,
+          "p95": 28.3,
+          "min": 6.7,
+          "max": 28.3,
+          "standardDeviation": 8.563,
+          "coefficientOfVariation": 0.5
+        },
+        "first_screen_ready_ms": {
+          "samples": 10,
+          "median": 115.7,
+          "average": 119.13,
+          "p75": 134.4,
+          "p95": 142.8,
+          "min": 97.8,
+          "max": 142.8,
+          "standardDeviation": 15.621,
+          "coefficientOfVariation": 0.131
+        },
+        "lazy_registration_ms": {
+          "samples": 10,
+          "median": 0.1,
+          "average": 0.11,
+          "p75": 0.1,
+          "p95": 0.2,
+          "min": 0,
+          "max": 0.2,
+          "standardDeviation": 0.054,
+          "coefficientOfVariation": 0.49
+        },
+        "document_load_ms": {
+          "samples": 10,
+          "median": 37.55,
+          "average": 38.9,
+          "p75": 41.9,
+          "p95": 55.9,
+          "min": 27.4,
+          "max": 55.9,
+          "standardDeviation": 7.657,
+          "coefficientOfVariation": 0.197
+        },
+        "environment_overhead_ms": {
+          "samples": 10,
+          "median": 0,
+          "average": 0,
+          "p75": 0,
+          "p95": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "coefficientOfVariation": 0
+        }
+      }
+    }
+  },
+  "dev": {
+    "kind": "dev",
+    "url": "http://127.0.0.1:5178/",
+    "cold": [
+      {
+        "run": 1,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 317.8,
+          "legacy_loader_ms": 307.7,
+          "bridge_install_ms": 70.4,
+          "auth_init_ms": 127.3,
+          "first_screen_ready_ms": 339.9,
+          "lazy_registration_ms": 1.1,
+          "document_load_ms": 1300.3,
+          "environment_overhead_ms": 982.5
+        },
+        "marks": {
+          "finance-app-entry-start": 1260.7,
+          "finance-bridge-install-start": 1262.9,
+          "finance-bridges-ready": 1333.3,
+          "finance-legacy-loader-start": 1269.7,
+          "finance-legacy-loader-end": 1577.4,
+          "finance-auth-init-start": 1578.9,
+          "finance-auth-init-end": 1706.2,
+          "finance-shell-ready": 1578.5,
+          "finance-first-screen-ready": 1600.6,
+          "finance-bootstrap-complete": 1706.8
+        },
+        "resources": 182,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 2,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 331.2,
+          "legacy_loader_ms": 321.3,
+          "bridge_install_ms": 78.4,
+          "auth_init_ms": 85.3,
+          "first_screen_ready_ms": 383.1,
+          "lazy_registration_ms": 0.4,
+          "document_load_ms": 313.6,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 274.8,
+          "finance-bridge-install-start": 278.3,
+          "finance-bridges-ready": 356.7,
+          "finance-legacy-loader-start": 284.3,
+          "finance-legacy-loader-end": 605.6,
+          "finance-auth-init-start": 606.1,
+          "finance-auth-init-end": 691.4,
+          "finance-shell-ready": 606,
+          "finance-first-screen-ready": 657.9,
+          "finance-bootstrap-complete": 692.4
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 3,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 343.4,
+          "legacy_loader_ms": 334.1,
+          "bridge_install_ms": 75.6,
+          "auth_init_ms": 87,
+          "first_screen_ready_ms": 389.7,
+          "lazy_registration_ms": 0.4,
+          "document_load_ms": 306.1,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 259.5,
+          "finance-bridge-install-start": 261.7,
+          "finance-bridges-ready": 337.3,
+          "finance-legacy-loader-start": 268.4,
+          "finance-legacy-loader-end": 602.5,
+          "finance-auth-init-start": 603.1,
+          "finance-auth-init-end": 690.1,
+          "finance-shell-ready": 602.9,
+          "finance-first-screen-ready": 649.2,
+          "finance-bootstrap-complete": 690.9
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 4,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 326.3,
+          "legacy_loader_ms": 316.9,
+          "bridge_install_ms": 79.9,
+          "auth_init_ms": 78.3,
+          "first_screen_ready_ms": 385.5,
+          "lazy_registration_ms": 0.4,
+          "document_load_ms": 305.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 266.5,
+          "finance-bridge-install-start": 267.9,
+          "finance-bridges-ready": 347.8,
+          "finance-legacy-loader-start": 275.5,
+          "finance-legacy-loader-end": 592.4,
+          "finance-auth-init-start": 592.9,
+          "finance-auth-init-end": 671.2,
+          "finance-shell-ready": 592.8,
+          "finance-first-screen-ready": 652,
+          "finance-bootstrap-complete": 671.8
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 5,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 339.2,
+          "legacy_loader_ms": 328.1,
+          "bridge_install_ms": 89.9,
+          "auth_init_ms": 84.9,
+          "first_screen_ready_ms": 384.9,
+          "lazy_registration_ms": 0.3,
+          "document_load_ms": 290.6,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 242.1,
+          "finance-bridge-install-start": 243.9,
+          "finance-bridges-ready": 333.8,
+          "finance-legacy-loader-start": 252.9,
+          "finance-legacy-loader-end": 581,
+          "finance-auth-init-start": 581.5,
+          "finance-auth-init-end": 666.4,
+          "finance-shell-ready": 581.3,
+          "finance-first-screen-ready": 627,
+          "finance-bootstrap-complete": 668.1
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 6,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 340.2,
+          "legacy_loader_ms": 331.7,
+          "bridge_install_ms": 94.1,
+          "auth_init_ms": 87.8,
+          "first_screen_ready_ms": 393.3,
+          "lazy_registration_ms": 0.5,
+          "document_load_ms": 267.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 225,
+          "finance-bridge-install-start": 226.2,
+          "finance-bridges-ready": 320.3,
+          "finance-legacy-loader-start": 233,
+          "finance-legacy-loader-end": 564.7,
+          "finance-auth-init-start": 565.2,
+          "finance-auth-init-end": 653,
+          "finance-shell-ready": 565.2,
+          "finance-first-screen-ready": 618.3,
+          "finance-bootstrap-complete": 653.6
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 7,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 325.9,
+          "legacy_loader_ms": 316.3,
+          "bridge_install_ms": 83,
+          "auth_init_ms": 91.7,
+          "first_screen_ready_ms": 376.2,
+          "lazy_registration_ms": 0.7,
+          "document_load_ms": 289,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 239.3,
+          "finance-bridge-install-start": 240.4,
+          "finance-bridges-ready": 323.4,
+          "finance-legacy-loader-start": 248.2,
+          "finance-legacy-loader-end": 564.5,
+          "finance-auth-init-start": 565.3,
+          "finance-auth-init-end": 657,
+          "finance-shell-ready": 565.2,
+          "finance-first-screen-ready": 615.5,
+          "finance-bootstrap-complete": 657.7
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 8,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 316.8,
+          "legacy_loader_ms": 306,
+          "bridge_install_ms": 84,
+          "auth_init_ms": 101.7,
+          "first_screen_ready_ms": 370.8,
+          "lazy_registration_ms": 0.6,
+          "document_load_ms": 275.4,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 230.4,
+          "finance-bridge-install-start": 233.2,
+          "finance-bridges-ready": 317.2,
+          "finance-legacy-loader-start": 240.6,
+          "finance-legacy-loader-end": 546.6,
+          "finance-auth-init-start": 547.2,
+          "finance-auth-init-end": 648.9,
+          "finance-shell-ready": 547.2,
+          "finance-first-screen-ready": 601.2,
+          "finance-bootstrap-complete": 649.4
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 9,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 338.4,
+          "legacy_loader_ms": 326.6,
+          "bridge_install_ms": 84.5,
+          "auth_init_ms": 101,
+          "first_screen_ready_ms": 398.7,
+          "lazy_registration_ms": 0.7,
+          "document_load_ms": 306.1,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 267.7,
+          "finance-bridge-install-start": 270.4,
+          "finance-bridges-ready": 354.9,
+          "finance-legacy-loader-start": 278.8,
+          "finance-legacy-loader-end": 605.4,
+          "finance-auth-init-start": 606.1,
+          "finance-auth-init-end": 707.1,
+          "finance-shell-ready": 606.1,
+          "finance-first-screen-ready": 666.4,
+          "finance-bootstrap-complete": 707.6
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 10,
+        "mode": "cold",
+        "metrics": {
+          "app_bootstrap_ms": 356.6,
+          "legacy_loader_ms": 346.3,
+          "bridge_install_ms": 71.2,
+          "auth_init_ms": 46.7,
+          "first_screen_ready_ms": 359.6,
+          "lazy_registration_ms": 0.5,
+          "document_load_ms": 305.1,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 265,
+          "finance-bridge-install-start": 267.5,
+          "finance-bridges-ready": 338.7,
+          "finance-legacy-loader-start": 274.8,
+          "finance-legacy-loader-end": 621.1,
+          "finance-auth-init-start": 621.6,
+          "finance-auth-init-end": 668.3,
+          "finance-shell-ready": 621.6,
+          "finance-first-screen-ready": 624.6,
+          "finance-bootstrap-complete": 669
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      }
+    ],
+    "warm": [
+      {
+        "run": 1,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 181.1,
+          "legacy_loader_ms": 177.6,
+          "bridge_install_ms": 88.3,
+          "auth_init_ms": 35.1,
+          "first_screen_ready_ms": 205.2,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 131.6,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 115.8,
+          "finance-bridge-install-start": 116.1,
+          "finance-bridges-ready": 204.4,
+          "finance-legacy-loader-start": 119.2,
+          "finance-legacy-loader-end": 296.8,
+          "finance-auth-init-start": 296.9,
+          "finance-auth-init-end": 332,
+          "finance-shell-ready": 296.9,
+          "finance-first-screen-ready": 321,
+          "finance-bootstrap-complete": 332.2
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 2,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 105.5,
+          "legacy_loader_ms": 100.5,
+          "bridge_install_ms": 33.3,
+          "auth_init_ms": 44,
+          "first_screen_ready_ms": 131,
+          "lazy_registration_ms": 0.3,
+          "document_load_ms": 146.4,
+          "environment_overhead_ms": 40.9
+        },
+        "marks": {
+          "finance-app-entry-start": 132.2,
+          "finance-bridge-install-start": 132.4,
+          "finance-bridges-ready": 165.7,
+          "finance-legacy-loader-start": 136.9,
+          "finance-legacy-loader-end": 237.4,
+          "finance-auth-init-start": 237.7,
+          "finance-auth-init-end": 281.7,
+          "finance-shell-ready": 237.7,
+          "finance-first-screen-ready": 263.2,
+          "finance-bootstrap-complete": 281.9
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 3,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 109.3,
+          "legacy_loader_ms": 106,
+          "bridge_install_ms": 40.5,
+          "auth_init_ms": 36.2,
+          "first_screen_ready_ms": 134.3,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 128.2,
+          "environment_overhead_ms": 18.9
+        },
+        "marks": {
+          "finance-app-entry-start": 111.3,
+          "finance-bridge-install-start": 111.5,
+          "finance-bridges-ready": 152,
+          "finance-legacy-loader-start": 114.5,
+          "finance-legacy-loader-end": 220.5,
+          "finance-auth-init-start": 220.6,
+          "finance-auth-init-end": 256.8,
+          "finance-shell-ready": 220.6,
+          "finance-first-screen-ready": 245.6,
+          "finance-bootstrap-complete": 257.2
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 4,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 149.8,
+          "legacy_loader_ms": 145.5,
+          "bridge_install_ms": 51.6,
+          "auth_init_ms": 21.3,
+          "first_screen_ready_ms": 176,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 131.2,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 115.2,
+          "finance-bridge-install-start": 115.4,
+          "finance-bridges-ready": 167,
+          "finance-legacy-loader-start": 119.4,
+          "finance-legacy-loader-end": 264.9,
+          "finance-auth-init-start": 265.1,
+          "finance-auth-init-end": 286.4,
+          "finance-shell-ready": 265,
+          "finance-first-screen-ready": 291.2,
+          "finance-bootstrap-complete": 286.5
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 5,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 104.8,
+          "legacy_loader_ms": 101.4,
+          "bridge_install_ms": 39,
+          "auth_init_ms": 49.8,
+          "first_screen_ready_ms": 131.8,
+          "lazy_registration_ms": 0.2,
+          "document_load_ms": 132.1,
+          "environment_overhead_ms": 27.3
+        },
+        "marks": {
+          "finance-app-entry-start": 116.9,
+          "finance-bridge-install-start": 117.1,
+          "finance-bridges-ready": 156.1,
+          "finance-legacy-loader-start": 120.1,
+          "finance-legacy-loader-end": 221.5,
+          "finance-auth-init-start": 221.7,
+          "finance-auth-init-end": 271.5,
+          "finance-shell-ready": 221.7,
+          "finance-first-screen-ready": 248.7,
+          "finance-bootstrap-complete": 271.7
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 6,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 111.8,
+          "legacy_loader_ms": 108.5,
+          "bridge_install_ms": 36.9,
+          "auth_init_ms": 39.1,
+          "first_screen_ready_ms": 138.8,
+          "lazy_registration_ms": 0.2,
+          "document_load_ms": 131.1,
+          "environment_overhead_ms": 19.3
+        },
+        "marks": {
+          "finance-app-entry-start": 117.1,
+          "finance-bridge-install-start": 117.4,
+          "finance-bridges-ready": 154.3,
+          "finance-legacy-loader-start": 120.2,
+          "finance-legacy-loader-end": 228.7,
+          "finance-auth-init-start": 228.9,
+          "finance-auth-init-end": 268,
+          "finance-shell-ready": 228.9,
+          "finance-first-screen-ready": 255.9,
+          "finance-bootstrap-complete": 268.1
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 7,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 101.9,
+          "legacy_loader_ms": 98.5,
+          "bridge_install_ms": 38.5,
+          "auth_init_ms": 28.8,
+          "first_screen_ready_ms": 132.5,
+          "lazy_registration_ms": 0.2,
+          "document_load_ms": 125.8,
+          "environment_overhead_ms": 23.9
+        },
+        "marks": {
+          "finance-app-entry-start": 111.3,
+          "finance-bridge-install-start": 111.5,
+          "finance-bridges-ready": 150,
+          "finance-legacy-loader-start": 114.5,
+          "finance-legacy-loader-end": 213,
+          "finance-auth-init-start": 213.3,
+          "finance-auth-init-end": 242.1,
+          "finance-shell-ready": 213.2,
+          "finance-first-screen-ready": 243.8,
+          "finance-bootstrap-complete": 242.6
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 8,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 101.2,
+          "legacy_loader_ms": 97.2,
+          "bridge_install_ms": 32.6,
+          "auth_init_ms": 60.4,
+          "first_screen_ready_ms": 149.8,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 120,
+          "environment_overhead_ms": 18.8
+        },
+        "marks": {
+          "finance-app-entry-start": 105.7,
+          "finance-bridge-install-start": 105.9,
+          "finance-bridges-ready": 138.5,
+          "finance-legacy-loader-start": 109.6,
+          "finance-legacy-loader-end": 206.8,
+          "finance-auth-init-start": 206.9,
+          "finance-auth-init-end": 267.3,
+          "finance-shell-ready": 206.9,
+          "finance-first-screen-ready": 255.5,
+          "finance-bootstrap-complete": 268.7
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 9,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 200.8,
+          "legacy_loader_ms": 194.4,
+          "bridge_install_ms": 62.1,
+          "auth_init_ms": 29.3,
+          "first_screen_ready_ms": 220.3,
+          "lazy_registration_ms": 0.1,
+          "document_load_ms": 172.2,
+          "environment_overhead_ms": 0
+        },
+        "marks": {
+          "finance-app-entry-start": 148.3,
+          "finance-bridge-install-start": 148.6,
+          "finance-bridges-ready": 210.7,
+          "finance-legacy-loader-start": 154.6,
+          "finance-legacy-loader-end": 349,
+          "finance-auth-init-start": 349.1,
+          "finance-auth-init-end": 378.4,
+          "finance-shell-ready": 349.1,
+          "finance-first-screen-ready": 368.6,
+          "finance-bootstrap-complete": 379.4
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      },
+      {
+        "run": 10,
+        "mode": "warm",
+        "metrics": {
+          "app_bootstrap_ms": 94.4,
+          "legacy_loader_ms": 91.1,
+          "bridge_install_ms": 34.5,
+          "auth_init_ms": 33.3,
+          "first_screen_ready_ms": 117.5,
+          "lazy_registration_ms": 0,
+          "document_load_ms": 142.9,
+          "environment_overhead_ms": 48.5
+        },
+        "marks": {
+          "finance-app-entry-start": 127.6,
+          "finance-bridge-install-start": 127.9,
+          "finance-bridges-ready": 162.4,
+          "finance-legacy-loader-start": 130.9,
+          "finance-legacy-loader-end": 222,
+          "finance-auth-init-start": 222.1,
+          "finance-auth-init-end": 255.4,
+          "finance-shell-ready": 222,
+          "finance-first-screen-ready": 245.1,
+          "finance-bootstrap-complete": 256
+        },
+        "resources": 181,
+        "libraryLoaderSetupCount": 0,
+        "lazyLibrariesTouched": {
+          "xlsx": false,
+          "pdf": false,
+          "firebase": false
+        }
+      }
+    ],
+    "summary": {
+      "cold": {
+        "app_bootstrap_ms": {
+          "samples": 10,
+          "median": 334.8,
+          "average": 333.58,
+          "p75": 340.2,
+          "p95": 356.6,
+          "min": 316.8,
+          "max": 356.6,
+          "standardDeviation": 11.718,
+          "coefficientOfVariation": 0.035
+        },
+        "legacy_loader_ms": {
+          "samples": 10,
+          "median": 323.95,
+          "average": 323.5,
+          "p75": 331.7,
+          "p95": 346.3,
+          "min": 306,
+          "max": 346.3,
+          "standardDeviation": 11.774,
+          "coefficientOfVariation": 0.036
+        },
+        "bridge_install_ms": {
+          "samples": 10,
+          "median": 81.45,
+          "average": 81.1,
+          "p75": 84.5,
+          "p95": 94.1,
+          "min": 70.4,
+          "max": 94.1,
+          "standardDeviation": 7.221,
+          "coefficientOfVariation": 0.089
+        },
+        "auth_init_ms": {
+          "samples": 10,
+          "median": 87.4,
+          "average": 89.17,
+          "p75": 101,
+          "p95": 127.3,
+          "min": 46.7,
+          "max": 127.3,
+          "standardDeviation": 19.284,
+          "coefficientOfVariation": 0.216
+        },
+        "first_screen_ready_ms": {
+          "samples": 10,
+          "median": 384,
+          "average": 378.17,
+          "p75": 389.7,
+          "p95": 398.7,
+          "min": 339.9,
+          "max": 398.7,
+          "standardDeviation": 16.656,
+          "coefficientOfVariation": 0.044
+        },
+        "lazy_registration_ms": {
+          "samples": 10,
+          "median": 0.5,
+          "average": 0.56,
+          "p75": 0.7,
+          "p95": 1.1,
+          "min": 0.3,
+          "max": 1.1,
+          "standardDeviation": 0.22,
+          "coefficientOfVariation": 0.393
+        },
+        "document_load_ms": {
+          "samples": 10,
+          "median": 305.25,
+          "average": 395.9,
+          "p75": 306.1,
+          "p95": 1300.3,
+          "min": 267.4,
+          "max": 1300.3,
+          "standardDeviation": 301.799,
+          "coefficientOfVariation": 0.762
+        },
+        "environment_overhead_ms": {
+          "samples": 10,
+          "median": 0,
+          "average": 98.25,
+          "p75": 0,
+          "p95": 982.5,
+          "min": 0,
+          "max": 982.5,
+          "standardDeviation": 294.75,
+          "coefficientOfVariation": 3
+        }
+      },
+      "warm": {
+        "app_bootstrap_ms": {
+          "samples": 10,
+          "median": 107.4,
+          "average": 126.06,
+          "p75": 149.8,
+          "p95": 200.8,
+          "min": 94.4,
+          "max": 200.8,
+          "standardDeviation": 35.696,
+          "coefficientOfVariation": 0.283
+        },
+        "legacy_loader_ms": {
+          "samples": 10,
+          "median": 103.7,
+          "average": 122.07,
+          "p75": 145.5,
+          "p95": 194.4,
+          "min": 91.1,
+          "max": 194.4,
+          "standardDeviation": 35.117,
+          "coefficientOfVariation": 0.288
+        },
+        "bridge_install_ms": {
+          "samples": 10,
+          "median": 38.75,
+          "average": 45.73,
+          "p75": 51.6,
+          "p95": 88.3,
+          "min": 32.6,
+          "max": 88.3,
+          "standardDeviation": 16.645,
+          "coefficientOfVariation": 0.364
+        },
+        "auth_init_ms": {
+          "samples": 10,
+          "median": 35.65,
+          "average": 37.73,
+          "p75": 44,
+          "p95": 60.4,
+          "min": 21.3,
+          "max": 60.4,
+          "standardDeviation": 10.726,
+          "coefficientOfVariation": 0.284
+        },
+        "first_screen_ready_ms": {
+          "samples": 10,
+          "median": 136.55,
+          "average": 153.72,
+          "p75": 176,
+          "p95": 220.3,
+          "min": 117.5,
+          "max": 220.3,
+          "standardDeviation": 33.096,
+          "coefficientOfVariation": 0.215
+        },
+        "lazy_registration_ms": {
+          "samples": 10,
+          "median": 0.1,
+          "average": 0.14,
+          "p75": 0.2,
+          "p95": 0.3,
+          "min": 0,
+          "max": 0.3,
+          "standardDeviation": 0.08,
+          "coefficientOfVariation": 0.571
+        },
+        "document_load_ms": {
+          "samples": 10,
+          "median": 131.4,
+          "average": 136.15,
+          "p75": 142.9,
+          "p95": 172.2,
+          "min": 120,
+          "max": 172.2,
+          "standardDeviation": 14.03,
+          "coefficientOfVariation": 0.103
+        },
+        "environment_overhead_ms": {
+          "samples": 10,
+          "median": 19.1,
+          "average": 19.76,
+          "p75": 27.3,
+          "p95": 48.5,
+          "min": 0,
+          "max": 48.5,
+          "standardDeviation": 15.875,
+          "coefficientOfVariation": 0.803
+        }
+      }
+    }
+  },
+  "regressionAgainstBaseline": {
+    "ok": true,
+    "status": "ok",
+    "warningThreshold": "+10%",
+    "failureThreshold": "+20%",
+    "gateMetrics": [
+      "app_bootstrap_ms",
+      "first_screen_ready_ms"
+    ],
+    "informativeMetrics": [
+      "document_load_ms",
+      "environment_overhead_ms"
+    ],
+    "warnings": [],
+    "violations": []
+  }
+}
