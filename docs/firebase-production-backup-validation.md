@@ -18,4 +18,8 @@ Critérios adicionais manuais/automatizados:
 - restore somente em staging/projeto temporário/Supabase sandbox;
 - validação funcional de registros, parcelas, recorrências, horas, settings, auditoria e referências.
 
-Estado atual: backup e restore ainda não executados; validação **BLOCKED** por billing/bucket ou credencial server-side aprovada.
+Estado atual em 31/10/2026: **BACKUP BLOCKED** por `RESOURCE_EXHAUSTED` durante
+o inventário application-level. Cobertura Firestore, export Auth, criptografia,
+cópia secundária, restore isolado e parity não foram declarados nem prosseguidos.
+A tentativa bloqueada não produziu dump. P5 permanece bloqueado até
+`BACKUP VERIFIED` e `RESTORE VERIFIED`.

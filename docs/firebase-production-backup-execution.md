@@ -2,9 +2,25 @@
 
 Data: 31/10/2026
 
+## Tentativa application-level sem billing
+
+O caminho sem billing usa Firebase Admin SDK somente em Node, com a ADC oficial
+do Firebase CLI fora do repositório. O projeto fica fixado em
+`finance-control-cce4f`, exige confirmação explícita de leitura e não contém
+operações de escrita.
+
+A primeira tentativa de inventário recursivo foi interrompida antes de concluir
+a passagem 1 quando o Firestore retornou `RESOURCE_EXHAUSTED`. Nenhum dump foi
+emitido e nenhum dado de produção foi alterado. Como cobertura e reconciliação
+temporal em duas passagens não foram concluídas, o resultado é **BACKUP BLOCKED**.
+
+O exportador foi limitado à profundidade documentada pelo repositório (coleções
+raiz e subcoleções diretas), com concorrência controlada. A retomada requer uma
+janela de quota disponível e duas passagens completas consecutivas idênticas.
+
 ## Resultado
 
-**MANUAL BILLING ACTION REQUIRED**
+**NO BILLING ACTION WILL BE USED**
 
 **BACKUP BLOCKED BEFORE FIRST CLOUD MUTATION**
 
