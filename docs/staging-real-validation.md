@@ -127,3 +127,46 @@ O isolamento do ambiente local foi validado, conforme `environment-isolation-dia
 Hosting staging foi publicado em `https://finance-control-staging-260919.web.app`, versão final `c62110cc749afe88`. O browser confirmou `finance-control-staging-260919` e a suíte crítica terminou 7/7, sem request para produção. Foram validados login A/B, A→B→A, active/pending/inactive com reload, CRUD e isolamento, parcelamento/pagamento, recorrência, horas, mobile básico e backup `1.0.0` com checksum, upload, preview e dry-run `wrote=false`; `ORPHAN_REFERENCE` não ocorreu e restore real continuou bloqueado.
 
 Decisão: **STAGING NOT VALIDATED**. Permanecem sem revalidação real nesta execução: XLSX/reimportação/arquivo renomeado, auditoria `HOUR_ENTRY_CREATED/UPDATED`, settings/references A/B, mobile dos fluxos XLSX/backup/horas e ensaio de rollback frontend.
+
+# Homologação final P3 — 30/10/2026
+
+## Decisão
+
+Status staging: **STAGING VALIDATED**.
+
+Status produção: **NOT READY FOR PRODUCTION DEPLOY**. Produção permaneceu fora de escopo e `finance-control-cce4f` continuou em denylist absoluta.
+
+## Isolamento e target
+
+- Target único: `finance-control-staging-260919`.
+- Guard `node scripts/assert-staging-target.mjs finance-control-staging-260919` aprovado antes de cada grupo de operações cloud e antes de cada mutação de Hosting.
+- `STAGING_FIREBASE_PROJECT_ID` conferido contra `TARGET_PROJECT_ID`.
+- URL de staging recusaria qualquer referência a `finance-control-cce4f`.
+- Monitores Playwright não observaram request para produção em nenhuma rodada válida.
+- Credenciais permaneceram em arquivo local ignorado e não foram copiadas nem versionadas.
+
+## Suíte crítica real
+
+O harness `tests/playwright/staging-critical.spec.js` foi ampliado de 7 para 9 cenários e executado três vezes, com um worker e `--retries=0`.
+
+| Rodada | Resultado | Retry |
+| --- | --- | --- |
+| 1 | 9/9 | não |
+| 2 | 9/9 | não |
+| 3 | 9/9 | não |
+
+Total final: 27/27 cenários críticos aprovados.
+
+Foram validados pela UI real: login A/B, pending, inactive, A → B → A, CRUD com reload, isolamento, parcelamento e pagamento, recorrência, XLSX, reload e reimportação do mesmo arquivo renomeado sem duplicidade, criação/edição de horas, auditoria `HOUR_ENTRY_CREATED` e `HOUR_ENTRY_UPDATED`, backup, upload, preview, restore dry-run com `wrote=false`, settings/references pessoais A → B → A e viewport mobile 390x844 nos fluxos de login, XLSX, horas e backup.
+
+## Backup e parent_id
+
+O backup produzido pela UI foi validado nas três rodadas com versão `1.0.0`, checksum e owner válidos. `ORPHAN_REFERENCE` não ocorreu.
+
+`parent_id` de parcelas identifica a série de parcelamento; não é foreign key para outro registro do snapshot. Portanto, sua ausência como documento-pai não deve gerar `ORPHAN_REFERENCE`. Restore real permaneceu desabilitado.
+
+## Rollback frontend
+
+O canal `live` do Hosting staging foi temporariamente revertido de `c62110cc749afe88` para `105a54e4f75f1fa0`. O smoke de target e isolamento passou. Em bloco `finally`, o canal foi restaurado para `c62110cc749afe88` e o mesmo smoke passou novamente. As duas operações foram registradas pelo Firebase Hosting como releases do tipo `ROLLBACK`.
+
+Nenhuma Rules, index, configuração Auth ou dado Firestore foi alterado pelo ensaio de rollback.
