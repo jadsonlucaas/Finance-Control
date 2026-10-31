@@ -286,3 +286,22 @@ Local E2E está isolado no projeto demo, com Auth/Firestore Emulator e bloqueio 
 # Checkpoint 7.3I
 
 Hosting staging final `c62110cc749afe88`; staging-critical 7/7; Vitest 673/673; regressão Playwright 47/47; bundle e bootstrap verdes. Release segue bloqueada pelos fluxos staging ainda sem evidência real listados em `staging-real-validation.md`.
+
+# Checkpoint P3 — 30/10/2026
+
+Status staging: **STAGING VALIDATED**.
+
+Status produção: **NOT READY FOR PRODUCTION DEPLOY**; produção permaneceu fora de escopo e não foi acessada.
+
+- Issue de release/staging: #9.
+- Branch: `release/staging-final-validation`.
+- Target único: `finance-control-staging-260919`.
+- Guard anti-produção aprovado antes das operações cloud.
+- Harness staging-critical ampliado de 7 para 9 cenários.
+- Três rodadas finais completas: 9/9, 9/9 e 9/9, todas com `--retries=0`.
+- Login A/B, pending, inactive, A → B → A, CRUD/reload, parcelamento/pagamento, recorrência, XLSX idempotente, horas/auditoria, backup/dry-run, settings/references e mobile 390x844 aprovados.
+- Backup sem `ORPHAN_REFERENCE`; `parent_id` de parcela confirmado como identificador de série, não foreign key.
+- Restore dry-run retornou `wrote=false`; restore real permaneceu bloqueado.
+- Zero requests observados para `finance-control-cce4f`.
+- Rollback Hosting ensaiado para `105a54e4f75f1fa0`; versão `c62110cc749afe88` restaurada e revalidada.
+- Nenhuma Rules, index, configuração Auth ou operação em produção foi executada.

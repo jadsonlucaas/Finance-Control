@@ -35,3 +35,17 @@ Comprovar que a equipe sabe parar uma publicacao ruim em staging, preservar evid
 # Estado após 7.3I
 
 O rollback não foi ensaiado nesta execução. Não havia evidência suficiente para executar troca e restauração de versão sem ampliar o risco operacional; permanece pendência explícita e nenhum dado foi alterado para rollback.
+
+# Ensaio real P3 — 30/10/2026
+
+Target: `finance-control-staging-260919`.
+
+1. Guard anti-produção aprovado.
+2. Versão corrente registrada: `c62110cc749afe88`.
+3. Release anterior selecionada: `105a54e4f75f1fa0`.
+4. Canal `live` revertido para a versão anterior.
+5. Smoke real confirmou project ID staging e ausência de requests para produção.
+6. Em bloco `finally`, canal `live` restaurado para `c62110cc749afe88`.
+7. Smoke pós-restauração aprovado.
+
+Resultado: **ROLLBACK FRONTEND REHEARSED**. Firestore, Rules, indexes e Auth não foram alterados. Restore real de dados não foi executado.
