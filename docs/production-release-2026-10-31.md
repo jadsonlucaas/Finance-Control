@@ -1,7 +1,7 @@
 # Primeiro go-live de produção — tentativa de 31/10/2026
 
-Issue: #19  
-Branch: `release/production-first-go-live`  
+Issue: #19
+Branch: `release/production-first-go-live`
 Candidato: `ff240e66caa691391ed728add40be67f7a890597`
 
 ## Resultado
