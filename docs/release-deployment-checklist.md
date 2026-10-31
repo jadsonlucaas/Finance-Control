@@ -93,3 +93,23 @@ Producao `finance-control-cce4f` permanece denylist absoluta.
 - [ ] XLSX, auditoria, settings/references e mobile ampliado em staging
 - [ ] Rollback frontend staging
 - [ ] Liberação para produção
+
+## P3 — staging final
+
+- [x] Guard executado antes de operações cloud
+- [x] Target único `finance-control-staging-260919`
+- [x] Produção `finance-control-cce4f` em denylist
+- [x] Staging critical ampliado: 9/9 por rodada
+- [x] Três rodadas completas sem retry: 27/27
+- [x] Login A/B, pending, inactive e A → B → A
+- [x] CRUD/reload, parcelamento/pagamento e recorrência
+- [x] XLSX e reimportação renomeada sem duplicidade
+- [x] Horas e auditoria create/update
+- [x] Backup/upload/preview e restore dry-run `wrote=false`
+- [x] `parent_id` de parcela não tratado como foreign key
+- [x] Settings/references A/B
+- [x] Mobile 390x844 em login, XLSX, horas e backup
+- [x] Zero requests observados para produção
+- [x] Rollback frontend staging ensaiado e versão atual restaurada
+- [x] **STAGING VALIDATED**
+- [ ] Produção permanece fora de escopo e não autorizada

@@ -3,6 +3,7 @@ import { createAuditService, installAuditGlobals } from './audit.js';
 import { createDataSdkService } from './dataSdk.js';
 import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
+import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
 
 export function installFirebaseServices({ target = window, config } = {}) {
   const { auth, db, runtime } = createFirebaseService(config);
@@ -28,11 +29,21 @@ export function installFirebaseServices({ target = window, config } = {}) {
   target.firebaseBatchDeleteRecords = dataServices.batchDeleteRecords;
 
   persistAuthSession(auth).catch((error) => {
-    console.error('Erro ao persistir sessão', error);
+    captureError(error, { operation: 'auth.persist_session' });
+    console.error('Erro ao persistir sessão', error?.code || error?.name || 'AUTH_SESSION_ERROR');
   });
 
   subscribeAuthState(auth, (user) => {
-    if (!user) dataServices.cleanupOnSignOut();
+    if (!user) {
+      clearUserContext();
+      dataServices.cleanupOnSignOut();
+    } else {
+      setUserContext(user);
+    }
+    captureMessage(user ? 'auth.state.authenticated' : 'auth.state.signed_out', {
+      operation: 'auth.state_change',
+      authenticated: Boolean(user)
+    });
 
     target.dispatchEvent(new CustomEvent('authStateChanged', {
       detail: user ? { uid: user.uid, email: user.email || '' } : null

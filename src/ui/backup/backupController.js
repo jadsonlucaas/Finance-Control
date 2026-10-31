@@ -15,6 +15,7 @@ import {
 import { normalizeApplicationError } from '../../application/resilience/errorNormalization.js';
 import { buildBackupPreviewReadModel } from '../../application/readModels/backupPreviewReadModel.js';
 import { buildRestorePreviewReadModel } from '../../application/readModels/restorePreviewReadModel.js';
+import { captureMessage, startTrace } from '../../services/observability/index.js';
 
 function clone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -97,6 +98,7 @@ export function createBackupController({
       return { success: false, error: backupState.error };
     }
     presenter.setBusy(true);
+    const backupTrace = startTrace('backup.preview', { operation: 'backup.preview' });
     backupState = toLoadingState(backupState);
     publish();
     try {
@@ -112,8 +114,12 @@ export function createBackupController({
       backupPreview = buildBackupPreviewReadModel({ backupEnvelope, validation });
       backupState = toSuccessState(backupPreview, now);
       publish();
+      backupTrace.finish('ok', {
+        record_count: backupPreview?.counts?.records || backupEnvelope?.records?.length || 0
+      });
       return { success: true, backup: backupEnvelope, preview: backupPreview };
     } catch (error) {
+      backupTrace.finish('error', { stage: 'snapshot_or_validation' });
       const normalized = normalizeApplicationError(error, { operation: 'backup_preview' });
       errorReporter?.report?.({ error: normalized, operation: 'backup_preview', context });
       backupState = toErrorState(normalized, backupState);
@@ -126,7 +132,9 @@ export function createBackupController({
 
   function downloadBackup() {
     ensureOwner();
+    const downloadTrace = startTrace('backup.download', { operation: 'backup.download' });
     if (!backupEnvelope) {
+      downloadTrace.finish('error', { error_code: 'BACKUP_NOT_READY' });
       const error = normalizeApplicationError(new Error('BACKUP_NOT_READY'), { operation: 'backup_download' });
       backupState = toErrorState(error, backupState);
       publish();
@@ -134,6 +142,7 @@ export function createBackupController({
     }
     const result = downloadAdapter?.downloadJson?.(backupEnvelope, { now: now(), version: backupEnvelope.backup_version });
     if (!result?.ok) {
+      downloadTrace.finish('error', { error_code: result?.code || 'DOWNLOAD_FAILED' });
       const error = normalizeApplicationError(new Error(result?.code || 'DOWNLOAD_FAILED'), { operation: 'backup_download' });
       backupState = toErrorState(error, backupState);
       publish();
@@ -141,6 +150,7 @@ export function createBackupController({
     }
     backupState = toSuccessState(backupPreview, now);
     publish();
+    downloadTrace.finish('ok');
     return { success: true, data: result };
   }
 
@@ -159,6 +169,7 @@ export function createBackupController({
 
   async function validateRestoreFile(file) {
     const context = ensureOwner();
+    const restoreTrace = startTrace('backup.restore_validate', { operation: 'backup.restore_validate' });
     presenter.setBusy(true);
     restoreState = toLoadingState(restoreState);
     publish();
@@ -176,8 +187,13 @@ export function createBackupController({
         ? toSuccessState(restorePreview, now)
         : toErrorState(normalizeApplicationError(new Error(validation.errors[0]?.code || 'BACKUP_INVALID'), { operation: 'restore_validate' }), restoreState);
       publish();
+      restoreTrace.finish(validation.isValid ? 'ok' : 'error', {
+        valid: Boolean(validation.isValid),
+        error_count: validation.errors?.length || 0
+      });
       return { success: validation.isValid, validation, snapshot: restoreSnapshot, preview: restorePreview };
     } catch (error) {
+      restoreTrace.finish('error', { stage: 'file_or_snapshot_validation' });
       const normalized = normalizeApplicationError(error, { operation: 'restore_validate' });
       errorReporter?.report?.({ error: normalized, operation: 'restore_validate', context });
       restoreState = toErrorState(normalized, restoreState);
@@ -196,12 +212,16 @@ export function createBackupController({
       return { success: false, error: restoreState.error };
     }
     presenter.setBusy(true);
+    const dryRunTrace = startTrace('backup.restore_dry_run', { operation: 'backup.restore_dry_run' });
     restoreState = toLoadingState(restoreState);
     publish();
     try {
       if (file || !restoreSnapshot) {
         const validated = await validateRestoreFile(file);
-        if (!validated.success) return validated;
+        if (!validated.success) {
+          dryRunTrace.finish('error', { wrote: false, stage: 'validation' });
+          return validated;
+        }
       }
       const result = await PrepareFinanceRestore({
         snapshot: restoreSnapshot,
@@ -217,8 +237,10 @@ export function createBackupController({
       });
       restoreState = toSuccessState(restorePreview, now);
       publish();
+      dryRunTrace.finish('ok', { wrote: false });
       return { success: true, dryRun: result.data, preview: restorePreview, wrote: false };
     } catch (error) {
+      dryRunTrace.finish('error', { wrote: false });
       const normalized = normalizeApplicationError(error, { operation: 'restore_dry_run' });
       errorReporter?.report?.({ error: normalized, operation: 'restore_dry_run', context });
       restoreState = toErrorState(normalized, restoreState);
@@ -230,6 +252,10 @@ export function createBackupController({
   }
 
   function restoreRealUnavailable() {
+    captureMessage('backup.restore_real_unavailable', {
+      operation: 'backup.restore_real',
+      severity: 'warning'
+    });
     const error = normalizeApplicationError(new Error('RESTORE_REAL_UNAVAILABLE'), { operation: 'restore_real' });
     restoreState = toErrorState(error, restoreState);
     publish();

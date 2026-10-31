@@ -55,3 +55,19 @@ O isolamento local está validado, porém staging continua **NO-GO / NOT VALIDAT
 # Decisão 7.3I
 
 **NO-GO / STAGING NOT VALIDATED** apesar do staging-critical 7/7. Bloqueadores: XLSX real, auditoria real, settings/references real, cobertura mobile ampliada e rollback frontend ainda não revalidados. Produção permanece **NOT READY FOR PRODUCTION DEPLOY**.
+
+# Decisão P3 — 30/10/2026
+
+**GO / STAGING VALIDATED.**
+
+- Suíte crítica ampliada: 9/9 em três rodadas consecutivas, total 27/27, sem retry.
+- Isolamento: zero requests observados para `finance-control-cce4f`.
+- Auth: active A/B, pending e inactive aprovados com reload e logout canônico.
+- Dados: A → B → A, CRUD/reload, parcelamento/pagamento, recorrência e settings/references aprovados.
+- XLSX: importação, persistência, reload e reimportação renomeada sem duplicidade aprovadas.
+- Horas/auditoria: criação, edição, `HOUR_ENTRY_CREATED` e `HOUR_ENTRY_UPDATED` aprovados.
+- Backup: upload, preview, validação sem falso `ORPHAN_REFERENCE` e dry-run `wrote=false` aprovados.
+- Mobile: 390x844 aprovado para login, XLSX, horas e backup sem overflow crítico.
+- Rollback frontend: versão anterior servida e versão atual restaurada, ambas com smoke aprovado.
+
+Produção continua **NO-GO / NOT READY FOR PRODUCTION DEPLOY** até existir autorização e checklist próprio. Esta decisão não autoriza deploy em produção.

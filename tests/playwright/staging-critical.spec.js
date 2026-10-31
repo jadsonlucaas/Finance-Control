@@ -9,6 +9,122 @@ const accounts = {
 
 const runId = Date.now();
 const expenseDescription = `staging-ui-${runId}-saida`;
+const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const XLSX_HEADERS = ['Data', 'Classe', 'Categoria_macro', 'Categoria', 'Descricao', 'Parcela', 'Valor Orcado', 'STATUS', 'Pagamento', 'Quem paga', 'Data competencia', 'Identificador'];
+
+function xmlEscape(value) {
+  return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+}
+
+function columnName(index) {
+  let name = '';
+  let current = index + 1;
+  while (current > 0) {
+    const modulo = (current - 1) % 26;
+    name = String.fromCharCode(65 + modulo) + name;
+    current = Math.floor((current - modulo) / 26);
+  }
+  return name;
+}
+
+function worksheetXml(rows) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.map((row, rowIndex) => `<row r="${rowIndex + 1}">${row.map((value, columnIndex) => {
+    const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
+    return `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
+  }).join('')}</row>`).join('')}</sheetData></worksheet>`;
+}
+
+function crc32(buffer) {
+  let table = crc32.table;
+  if (!table) {
+    table = new Uint32Array(256);
+    for (let index = 0; index < 256; index += 1) {
+      let value = index;
+      for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+      table[index] = value >>> 0;
+    }
+    crc32.table = table;
+  }
+  let crc = 0xffffffff;
+  for (const byte of buffer) crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function uint16(value) {
+  const buffer = Buffer.alloc(2);
+  buffer.writeUInt16LE(value);
+  return buffer;
+}
+
+function uint32(value) {
+  const buffer = Buffer.alloc(4);
+  buffer.writeUInt32LE(value >>> 0);
+  return buffer;
+}
+
+function zipStore(files) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  files.forEach(({ name, content }) => {
+    const nameBuffer = Buffer.from(name, 'utf8');
+    const contentBuffer = Buffer.from(content, 'utf8');
+    const checksum = crc32(contentBuffer);
+    const local = Buffer.concat([
+      uint32(0x04034b50), uint16(20), uint16(0), uint16(0), uint16(0), uint16(0),
+      uint32(checksum), uint32(contentBuffer.length), uint32(contentBuffer.length),
+      uint16(nameBuffer.length), uint16(0), nameBuffer, contentBuffer
+    ]);
+    localParts.push(local);
+    centralParts.push(Buffer.concat([
+      uint32(0x02014b50), uint16(20), uint16(20), uint16(0), uint16(0), uint16(0), uint16(0),
+      uint32(checksum), uint32(contentBuffer.length), uint32(contentBuffer.length),
+      uint16(nameBuffer.length), uint16(0), uint16(0), uint16(0), uint16(0), uint32(0), uint32(offset), nameBuffer
+    ]));
+    offset += local.length;
+  });
+  const centralDirectory = Buffer.concat(centralParts);
+  const end = Buffer.concat([uint32(0x06054b50), uint16(0), uint16(0), uint16(files.length), uint16(files.length), uint32(centralDirectory.length), uint32(offset), uint16(0)]);
+  return Buffer.concat([...localParts, centralDirectory, end]);
+}
+
+function stagingXlsxBuffer(description, externalId) {
+  const rows = [
+    XLSX_HEADERS,
+    ['2026-10-17', 'Inicio do mes', 'STAGING FIXO', 'Moradia Staging', description, '', '19,90', 'Pago', 'Pix Sintetico', 'Pessoa Sintetica A', '2026-10', externalId]
+  ];
+  return zipStore([
+    { name: '[Content_Types].xml', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>' },
+    { name: '_rels/.rels', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+    { name: 'xl/workbook.xml', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Saidas" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>' },
+    { name: 'xl/worksheets/sheet1.xml', content: worksheetXml(rows) }
+  ]);
+}
+
+async function openTab(page, tab) {
+  const sidebar = page.locator('#sidebar');
+  const isMobile = (page.viewportSize()?.width || 1280) < 1024;
+  if (isMobile) {
+    const hidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
+    if (hidden) await page.locator('#btn-mobile-menu').click();
+    await page.locator(`[data-tab="${tab}"]`).click();
+  } else {
+    await page.evaluate((targetTab) => window.switchTab(targetTab), tab);
+  }
+  await expect(page.locator(`#view-${tab}`)).toBeVisible();
+  if (isMobile) await expect(page.locator('#sidebar-overlay')).toBeHidden();
+}
+
+async function readAuditEventTypes(page, uid, projectId) {
+  const token = await page.evaluate(() => window.authSdk.getCurrentUser().getIdToken());
+  const response = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/audit_logs?pageSize=300`, {
+    headers: { authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error(`STAGING_AUDIT_READ_FAILED:${response.status}`);
+  const payload = await response.json();
+  return (payload.documents || []).map((document) => document.fields?.event_type?.stringValue).filter(Boolean);
+}
 
 function requireAccounts() {
   for (const [label, account] of Object.entries(accounts)) {
@@ -215,13 +331,25 @@ test('account lifecycle uses canonical ready states across active, pending and i
   await assertIsolation();
 });
 
-test('mobile staging exposes login without critical horizontal overflow', async ({ page }, testInfo) => {
+test('mobile staging covers login, XLSX, hours and backup without critical horizontal overflow', async ({ page }, testInfo) => {
+  requireAccounts();
   await page.setViewportSize({ width: 390, height: 844 });
   const assertIsolation = monitorIsolation(page, testInfo.project.use.expectedProjectId, testInfo.project.use.productionProjectId);
   await page.goto('/', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__financeFirestoreDb?.app?.options?.projectId);
   await expect(page.locator('#auth-submit')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(4);
+  await signIn(page, accounts.A);
+  await openTab(page, 'importacao');
+  await expect(page.locator('#modern-import-file')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'mobile overflow on importacao').toBeLessThanOrEqual(4);
+  await openTab(page, 'controle-horas');
+  await expect(page.locator('#btn-new-hour-control')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'mobile overflow on controle-horas').toBeLessThanOrEqual(4);
+  await openTab(page, 'configuracoes');
+  await page.waitForFunction(() => window.financeApp?.backupActiveUi?.installed === true);
+  await expect(page.locator('#btn-backup-preview')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'mobile overflow on configuracoes').toBeLessThanOrEqual(4);
   await assertIsolation();
 });
 
@@ -294,6 +422,16 @@ test('staging UI exercises hours and backup restore dry-run', async ({ page }, t
   await page.locator('#hour-note').fill(hourNote);
   await page.locator('#btn-save-hour-control').click();
   await page.waitForFunction((note) => (window.allRecords || []).some((record) => record.type === 'controle_horas' && record.observation === note), hourNote);
+  const hourId = await page.evaluate((note) => (window.allRecords || []).find((record) => record.type === 'controle_horas' && record.observation === note)?.id, hourNote);
+  await page.locator(`[data-open-hour-detail="Pessoa Sintetica A|2026-10"]`).click();
+  await page.locator(`[data-edit-hour-control-record="${hourId}"]`).click();
+  await page.locator('#hour-end').fill('18:00');
+  await page.locator('#hour-note').fill(`${hourNote}-editado`);
+  await page.locator('#btn-save-hour-control').click();
+  await page.waitForFunction(({ id, note }) => (window.allRecords || []).some((record) => record.id === id && record.observation === note && record.net_minutes === 540), { id: hourId, note: `${hourNote}-editado` });
+  await expect.poll(async () => readAuditEventTypes(page, accounts.A.uid, testInfo.project.use.expectedProjectId), { timeout: 15_000 }).toEqual(expect.arrayContaining(['HOUR_ENTRY_CREATED', 'HOUR_ENTRY_UPDATED']));
+  await page.locator('#btn-close-hour-detail-modal').click();
+  await expect(page.locator('#hour-detail-modal')).toBeHidden();
 
   await page.evaluate(() => window.switchTab('configuracoes'));
   await page.waitForFunction(() => window.financeApp?.backupActiveUi?.installed === true);
@@ -316,10 +454,79 @@ test('staging UI exercises hours and backup restore dry-run', async ({ page }, t
     counts: restoreValidation.counts
   }));
   expect(restoreValidation.isValid, JSON.stringify(restoreValidation.errors || [])).toBe(true);
+  expect((restoreValidation.errors || []).some((error) => error.code === 'ORPHAN_REFERENCE')).toBe(false);
   await page.locator('#btn-backup-restore-dry-run').click();
   await page.waitForFunction(() => window.financeApp?.backupActiveUi?.controller?.getState?.().restorePreview?.metadata?.restoreId);
   const dryRun = await page.evaluate(() => window.financeApp.backupActiveUi.controller.getState().restorePreview.summary);
   expect(dryRun).toMatchObject({ wrote: false });
   await expect(page.locator('#btn-backup-restore-real')).toBeDisabled();
+  await assertIsolation();
+});
+
+test('staging XLSX import persists and renamed reimport stays idempotent', async ({ page }, testInfo) => {
+  requireAccounts();
+  const assertIsolation = monitorIsolation(page, testInfo.project.use.expectedProjectId, testInfo.project.use.productionProjectId);
+  const description = `staging-ui-${runId}-xlsx`;
+  const externalId = `staging-xlsx-${runId}`;
+  const workbook = stagingXlsxBuffer(description, externalId);
+  await page.goto('/', { waitUntil: 'load' });
+  await signIn(page, accounts.A);
+  await openTab(page, 'importacao');
+  await page.waitForFunction(() => window.financeApp?.importActiveUi?.installed === true);
+
+  const prepare = async (name) => {
+    await page.locator('#modern-import-kind').selectOption('expenses');
+    await page.locator('#modern-import-file').setInputFiles({ name, mimeType: MIME_XLSX, buffer: workbook });
+    await page.locator('#modern-import-preview').click();
+    await page.waitForFunction(() => window.financeApp?.importActiveUi?.controller?.getState?.().previewModel);
+    return page.evaluate(() => window.financeApp.importActiveUi.controller.getState().previewModel);
+  };
+
+  const firstPreview = await prepare('staging-synthetic-import.xlsx');
+  expect(firstPreview.summary).toMatchObject({ totalRows: 1, readyRows: 1, duplicateRows: 0, invalidRows: 0 });
+  await page.locator('#modern-import-commit').click();
+  await page.waitForFunction((expected) => (window.allRecords || []).filter((record) => record.description === expected).length === 1, description);
+  const importedId = await page.evaluate((expected) => (window.allRecords || []).find((record) => record.description === expected)?.id, description);
+  await page.reload({ waitUntil: 'load' });
+  await waitForSessionReady(page, accounts.A, 'active');
+  await page.waitForFunction(({ expected, id }) => (window.allRecords || []).some((record) => record.id === id && record.description === expected), { expected: description, id: importedId });
+  await openTab(page, 'importacao');
+
+  const duplicatePreview = await prepare('staging-synthetic-import-renamed.xlsx');
+  expect(duplicatePreview.summary.readyRows).toBe(0);
+  expect(duplicatePreview.summary.duplicateRows).toBe(1);
+  expect(duplicatePreview.metadata.batchId).toBe(firstPreview.metadata.batchId);
+  await expect(page.locator('#modern-import-commit')).toBeDisabled();
+  expect(await page.evaluate((expected) => (window.allRecords || []).filter((record) => record.description === expected).length, description)).toBe(1);
+  await assertIsolation();
+});
+
+test('staging settings and personal references remain isolated across A -> B -> A', async ({ page }, testInfo) => {
+  requireAccounts();
+  const assertIsolation = monitorIsolation(page, testInfo.project.use.expectedProjectId, testInfo.project.use.productionProjectId);
+  await page.goto('/', { waitUntil: 'load' });
+  await signIn(page, accounts.A);
+  await openTab(page, 'configuracoes');
+  await page.waitForFunction(() => window.financeApp?.settingsActiveUi?.installed === true);
+  await expect(page.locator('#pessoas-list')).toContainText('Pessoa Sintetica A');
+  await expect(page.locator('#macro-list')).toContainText('STAGING FIXO');
+  await expect(page.locator('#categories-list')).toContainText('Moradia Staging');
+  const person = page.locator('[data-settings-person-id="reference-person-staging"]');
+  const receivingType = person.locator('[data-settings-action="update-person-receiving-type"]');
+  if (!await receivingType.isVisible()) await page.getByRole('button', { name: /Exibir informações de Pessoas/i }).click();
+  await receivingType.selectOption('quinzenal');
+  await page.waitForFunction(() => (window.allRecords || []).some((record) => record.id === 'reference-person-staging' && record.receiving_type === 'quinzenal'));
+  await signOutUi(page);
+
+  await signIn(page, accounts.B);
+  await openTab(page, 'configuracoes');
+  await expect(page.locator('#pessoas-list')).not.toContainText('Pessoa Sintetica A');
+  await expect(page.locator('#macro-list')).not.toContainText('STAGING FIXO');
+  await expect(page.locator('#categories-list')).not.toContainText('Moradia Staging');
+  await signOutUi(page);
+
+  await signIn(page, accounts.A);
+  await openTab(page, 'configuracoes');
+  await expect(page.locator('[data-settings-person-id="reference-person-staging"] [data-settings-action="update-person-receiving-type"]')).toHaveValue('quinzenal');
   await assertIsolation();
 });
