@@ -9,6 +9,7 @@
     "audit:dry-run": "node scripts/audit-dry-run.mjs",
     "backup:dry-run": "node scripts/backup-dry-run.mjs",
     "backup:benchmark": "node scripts/backup-benchmark.mjs",
+    "backup:production:verify": "node scripts/verify-production-backup.mjs",
     "backup-ui-modernization:check": "node scripts/backup-ui-modernization-check.mjs",
     "bootstrap:check": "node scripts/bootstrap-check.mjs",
     "bootstrap:benchmark": "node scripts/bootstrap-benchmark.mjs",
