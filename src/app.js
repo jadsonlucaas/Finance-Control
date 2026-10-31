@@ -35,6 +35,12 @@ import { createWorkSessionEngine } from './domain/hours.js';
 import { createFirebaseDataProvider } from './services/data/providers/firebaseDataProvider.js';
 import { installFinanceRecordMutationGlobals } from './services/financeRecordMutations.js';
 import { installLocalVisualLibraries } from './services/localVisualLibraries.js';
+import {
+  captureError,
+  getObservabilityState,
+  initializeObservability,
+  startTrace
+} from './services/observability/index.js';
 import { appState, installAppStateGlobals } from './state/appState.js';
 import { installFinanceRecordIndexGlobals } from './state/financeRecordIndex.js';
 import { installActionButtonGlobals } from './ui/components/actionButton.js';
@@ -61,11 +67,13 @@ function scheduleFirstScreenReadyMark(target = globalThis) {
 }
 
 markBootstrap('finance-app-entry-start');
+initializeObservability();
 
 // Application composition entry point for the modular migration.
 // The current production app still runs from index.html. Keep bootstrap free of
 // automatic side effects until the inline handlers are migrated safely.
 export function bootstrapApp() {
+  const bootstrapTrace = startTrace('app.bootstrap', { operation: 'app.bootstrap' });
   markBootstrap('finance-bridge-install-start');
   installInitialTemplates(document);
   installLocalVisualLibraries(globalThis);
@@ -108,10 +116,12 @@ export function bootstrapApp() {
       return installFirebaseServicesWhenReady(globalThis)
         .then((services) => {
           markBootstrap('finance-bootstrap-complete');
+          bootstrapTrace.finish('ok', { observability_provider: getObservabilityState().provider });
           return services;
         });
     })
     .catch((error) => {
+      bootstrapTrace.finish('error', { stage: 'legacy_or_firebase' });
       const normalized = normalizeLazyLoadError(error, { operation: 'bootstrap_legacy' });
       globalThis.financeApp?.resilience?.errorReporter?.report?.({ error: normalized, operation: 'bootstrap_legacy' });
       console.error('Falha ao inicializar legado', normalized.code);
@@ -524,6 +534,7 @@ export async function installFirebaseServicesWhenReady(target = globalThis) {
   if (target.__financeFirebaseServicesInstalled) return target.__financeFirebaseServicesPromise;
 
   target.__financeFirebaseServicesInstalled = true;
+  const firebaseTrace = startTrace('firebase.initialize', { operation: 'firebase.initialize' });
   markBootstrap('finance-auth-init-start', target);
   target.__financeFirebaseServicesPromise = (target.__financeFirebaseServicesModulePromise || import('./services/installFirebaseServices.js'))
     .then(({ installFirebaseServices }) => {
@@ -535,10 +546,15 @@ export async function installFirebaseServicesWhenReady(target = globalThis) {
       target.dataSdk = FinanceRepository.createLegacySdkProxy(target);
       target.financeRepository = FinanceRepository;
       markBootstrap('finance-auth-init-end', target);
+      firebaseTrace.finish('ok', {
+        environment: target.__financeFirebaseRuntime?.environment || 'unknown',
+        use_emulators: Boolean(target.__financeFirebaseRuntime?.useEmulators)
+      });
       return services;
     })
     .catch((error) => {
       target.__financeFirebaseServicesInstalled = false;
+      firebaseTrace.finish('error', { stage: 'install_services' });
       markBootstrap('finance-auth-init-end', target);
       const normalized = normalizeLazyLoadError(error, { operation: 'install_firebase_services' });
       target.financeApp?.resilience?.errorReporter?.report?.({ error: normalized, operation: 'install_firebase_services' });
@@ -558,7 +574,17 @@ export { installLocalVisualLibraries };
 if (typeof window !== 'undefined') {
   const taxEngine = createTaxEngine(legacyTaxParameterRepository);
   const workSessionEngine = createWorkSessionEngine();
-  const resilienceErrorReporter = new InMemoryErrorReporter();
+  const resilienceErrorReporter = new InMemoryErrorReporter({
+    onReport(event) {
+      captureError(new Error(event.error?.message || event.code || 'APPLICATION_ERROR'), {
+        operation: event.operation || 'application',
+        correlation_id: event.correlationId || '',
+        error_code: event.code || '',
+        category: event.category || '',
+        severity: event.severity || ''
+      });
+    }
+  });
   const resilienceViewPilots = createResilienceViewPilots();
   const applicationDependencies = createApplicationDependencies({
     mode: 'web',
@@ -579,6 +605,11 @@ if (typeof window !== 'undefined') {
     legacyTaxParameterRepository,
     resilience: {
       errorReporter: resilienceErrorReporter,
+      observability: {
+        captureError,
+        getState: getObservabilityState,
+        startTrace
+      },
       connectivity: applicationDependencies.services.connectivity,
       viewStates: resilienceViewPilots,
       executeWithResilience,

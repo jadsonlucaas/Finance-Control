@@ -16,6 +16,7 @@ import {
 } from '../../application/resilience/asyncViewState.js';
 import { normalizeApplicationError, normalizeLazyLoadError } from '../../application/resilience/errorNormalization.js';
 import { buildImportPreviewReadModel } from '../../application/readModels/importPreviewReadModel.js';
+import { startTrace } from '../../services/observability/index.js';
 
 function noop() {}
 
@@ -118,6 +119,10 @@ export function createImportController({
     }
 
     preparing = true;
+    const importTrace = startTrace('import.xlsx.prepare', {
+      operation: 'import.xlsx.prepare',
+      import_kind: kind || 'expenses'
+    });
     presenter.setBusy(true);
     viewState = toLoadingState(viewState);
     publish();
@@ -171,8 +176,14 @@ export function createImportController({
       }, { now });
       viewState = toSuccessState(previewModel, now);
       publish();
+      importTrace.finish('ok', {
+        ready_count: previewModel?.ready?.length || 0,
+        invalid_count: previewModel?.invalid?.length || 0,
+        duplicate_count: previewModel?.duplicates?.length || 0
+      });
       return { success: true, preview: previewModel, prepared: prepared.data };
     } catch (error) {
+      importTrace.finish('error', { stage: 'parse_or_prepare' });
       const normalized = normalizePrepareError(error);
       errorReporter?.report?.({ error: normalized, operation: normalized.operation || 'prepare_import', context });
       viewState = toErrorState(normalized, viewState);
@@ -226,6 +237,10 @@ export function createImportController({
     }
 
     committing = true;
+    const commitTrace = startTrace('import.commit', {
+      operation: 'import.commit',
+      ready_count: previewModel.ready.length
+    });
     presenter.setBusy(true);
     viewState = toLoadingState(viewState);
     publish();
@@ -233,6 +248,7 @@ export function createImportController({
     try {
       const reconciled = await reconcile();
       if (reconciled.success && reconciled.code === APPLICATION_RESULT_CODES.IDEMPOTENT_REPLAY) {
+        commitTrace.finish('ok', { idempotent_replay: true });
         onAfterCommit(reconciled);
         return reconciled;
       }
@@ -247,8 +263,10 @@ export function createImportController({
       presenter.renderCommitResult({ replay: result.idempotentReplay, result });
       viewState = toSuccessState(previewModel, now);
       onAfterCommit(result);
+      commitTrace.finish('ok', { idempotent_replay: Boolean(result.idempotentReplay) });
       return result;
     } catch (error) {
+      commitTrace.finish('error', { mutation_outcome: 'uncertain' });
       const normalized = normalizeApplicationError(error, { operation: 'commit_import' });
       errorReporter?.report?.({ error: normalized, operation: 'commit_import', context: preparedEnvelope.context });
       viewState = toErrorState(normalized, viewState);
