@@ -1,170 +1,123 @@
 # Preflight de produção para o primeiro go-live
 
 Executado em: 31/10/2026
-
 Issue: #17 — `release: preparar ambiente de produção para primeiro go-live`.
 
 ## Decisão
 
-Status: **NO-GO / PRODUCTION NOT READY**.
+Status: **PRODUCTION PREFLIGHT GO — P5 autorizado apenas como processo controlado**.
 
-Este preflight foi somente leitura. Nenhum deploy, criação de release, alteração de Auth, escrita Firestore, publicação de Rules/Indexes ou mutação de Hosting foi executado.
+Este documento não autoriza deploy por si só. Nenhum deploy, release Hosting, escrita Firestore, alteração de Auth, publicação de Rules/Indexes ou restore foi executado neste preflight.
+
+## Matriz de gates
+
+| Gate | Estado | Evidência/ação |
+| --- | --- | --- |
+| CI na `main` | PASS | PR #14 mesclado; workflow `CI / Quality gates` ativo. |
+| Observabilidade | PASS | PR #15 mesclado; Sentry lazy, noop sem DSN, sanitização e base OpenTelemetry. |
+| Staging | PASS | PR #16 mesclado; `STAGING VALIDATED`, 27/27 críticos, retries=0 e zero requests para produção. |
+| Target | PASS | projectId único `finance-control-cce4f`; Hosting/Web App vinculados confirmados. |
+| Auth | PASS | Email/Password habilitado e password required. |
+| Firestore | PASS | `(default)`, Native, `southamerica-east1`, concorrência pessimista. |
+| Rules candidatas | PASS | arquivo local idêntico ao ruleset homologado em staging. |
+| Rules em produção | PENDING P5 | produção ainda usa ruleset antigo; aplicar somente em etapa explícita e validada. |
+| Indexes candidatos | PASS | três indexes versionados e confirmados. |
+| Indexes em produção | PENDING P5 | zero composites; criar e aguardar `READY` antes de fluxo dependente. |
+| Build production | PASS | guard aprovado, build aprovado, projectId production e emulators=false. |
+| Sentry production | PENDING P5 | injetar DSN/release/sample rate pelo ambiente seguro e validar evento sintético. |
+| Backup pré-release | PENDING P5 | executar e validar antes da primeira mutação. |
+| Rollback | PASS | runbook e gatilhos definidos em `docs/production-rollback.md`. |
+| Smoke | PASS | runbook bloqueante definido em `docs/production-smoke.md`; execução é pós-deploy. |
 
 ## Identidade do ambiente
 
-| Item | Evidência | Estado |
-| --- | --- | --- |
-| Firebase projectId | `finance-control-cce4f` | confirmado |
-| Project number | `1050867234579` | confirmado |
-| Web App pretendido | `Finance Control`, app ID `1:1050867234579:web:c0e9456b8e45d3e5fc4ce6` | confirmado |
-| Hosting site | `finance-control-cce4f` | confirmado |
-| URL padrão | `https://finance-control-cce4f.web.app` | confirmado |
-| Vínculo Hosting → Web App | app ID `1:1050867234579:web:c0e9456b8e45d3e5fc4ce6` | confirmado |
-| Domínio customizado | nenhum cadastrado | pendente de decisão; não bloquear se a URL padrão for o domínio aprovado |
-| Canal live | existe, sem releases listadas | confirmado; primeiro go-live ainda não ocorreu |
+- Firebase projectId: `finance-control-cce4f`.
+- Project number: `1050867234579`.
+- Web App: `Finance Control`, app ID `1:1050867234579:web:c0e9456b8e45d3e5fc4ce6`.
+- Hosting site: `finance-control-cce4f`.
+- Domínio inicial aprovado: `https://finance-control-cce4f.web.app`.
+- Custom domain: NOT APPLICABLE no primeiro go-live.
+- Canal live: existe e ainda não possuía release no preflight inicial.
 
-Existem dois Web Apps ativos no projeto. O go-live deve usar somente o app vinculado ao Hosting (`Finance Control`). O app adicional `finance-control-web` não deve ser selecionado por engano.
+O Web App adicional `finance-control-web` não é target do go-live.
 
-## Auth
+## Rules: diff explícito
 
-- Email/Password: habilitado.
-- Password required: habilitado.
-- Domínios autorizados atuais: `localhost`, `finance-control-cce4f.firebaseapp.com` e `finance-control-cce4f.web.app`.
-- Outros providers: não confirmados neste preflight e não devem ser habilitados implicitamente.
-- Domínio customizado futuro exige inclusão explícita em Authorized Domains antes do smoke.
+| Origem | Ruleset | Linhas | SHA-256 normalizado |
+| --- | --- | ---: | --- |
+| Produção | `62167b62-f34f-45cc-8f99-fad42ab803af` | 193 | `11152512D76F80ADAB0333A79CFE249275063C4C769C844F33A557004FB9D8F1` |
+| Staging | `b5fc5ac6-677d-4df6-af9b-740e7a307c88` | 735 | `B29FB6E667156C535AB54ADF3D2A58B12E08A87956EAB0E9EACA05D8E9EE7EDE` |
+| Candidata local | `firestore.rules` | 735 | `B29FB6E667156C535AB54ADF3D2A58B12E08A87956EAB0E9EACA05D8E9EE7EDE` |
 
-Estado: **aprovado para a URL padrão**, condicionado a usuário sintético de smoke e owner operacional definidos.
+Staging e candidata são exatamente iguais após normalização. Produção difere: comparação por linha encontrou 595 linhas candidatas ausentes e 53 linhas exclusivas do ruleset antigo. O candidato acrescenta validações de status/role, transições administrativas, ownership, formatos financeiros, referências pessoais/compartilhadas, idempotency receipts e parâmetros tributários. Detalhes operacionais: `docs/production-firestore-diff.md`.
 
-## Firestore
+Não publicar Rules junto ao Hosting implicitamente. Em P5, a aplicação das Rules deve ser uma etapa separada, com target explícito, hash conferido e smoke de autorização antes do Hosting.
 
-| Item | Estado remoto |
-| --- | --- |
-| Database | `(default)`, `FIRESTORE_NATIVE` |
-| Região | `southamerica-east1` |
-| Concurrency | `PESSIMISTIC` |
-| Delete protection | desabilitada |
-| Rules release | `projects/finance-control-cce4f/releases/cloud.firestore` |
-| Ruleset atual | `62167b62-f34f-45cc-8f99-fad42ab803af` |
-| Índices compostos aplicados | 0 |
+## Indexes
 
-### Rules pretendidas
+Produção possui zero indexes compostos. O candidato `firestore.indexes.json` contém:
 
-- Arquivo: `firestore.rules`.
-- SHA-256 do arquivo no repositório: `BDC1F8D8B5D3FFCF399483BF72A6A6531757BD607351EADA1981C2D979BAD5F9`.
-- Rules remotas: 194 linhas.
-- Rules pretendidas: 736 linhas.
-- Comparação normalizada: diferente.
+1. `users(status ASC, email ASC)`;
+2. `users(role ASC, email ASC)`;
+3. `users(status ASC, role ASC, email ASC)`.
 
-Estado: **BLOCKER**. O ruleset remoto não corresponde às Rules pretendidas. A diferença deve ser revisada e aprovada antes de qualquer publicação futura; este preflight não autoriza deploy de Rules.
+Em P5/predeploy, usar target explícito e publicar somente indexes. Aguardar os três estados `READY`; não promover frontend que dependa de index em criação.
 
-### Indexes pretendidos
+## Guard e build de produção
 
-`firestore.indexes.json` define três índices de `users`:
+O gate obrigatório é:
 
-1. `status ASC, email ASC`;
-2. `role ASC, email ASC`;
-3. `status ASC, role ASC, email ASC`.
+```text
+npm run production:target-check -- finance-control-cce4f
+```
 
-SHA-256: `229167F1A944093DE01CE65DB86F591BA56B1C6756909D53016EA2E584825DE5`.
+O script `scripts/assert-production-target.mjs` exige target exato, ambiente `production`, configuração Firebase completa, projectId coerente e emulator flag exatamente `false`. Rejeita aliases, staging, projetos demo e configuração cruzada. Seu retorno contém `authorizesDeploy: false` porque o guard nunca substitui aprovação humana.
 
-Produção possui zero índices compostos aplicados. Estado: **BLOCKER**.
+Build validado com a configuração pública do Web App correto:
 
-## Variáveis de build de produção
+- projectId efetivo: `finance-control-cce4f`;
+- emulator flag: `false`;
+- endpoints localhost/emulator: 0;
+- projeto demo em texto literal: 0;
+- chunk Sentry lazy: presente;
+- padrões de segredo server-side: 0.
 
-As variáveis devem vir do ambiente seguro da pipeline; nenhum `.env*.local` pode ser versionado.
-
-| Variável | Contrato |
-| --- | --- |
-| `VITE_FINANCE_ENV` | exatamente `production` |
-| `VITE_FINANCE_USE_FIREBASE_EMULATORS` | exatamente `false` |
-| `VITE_FIREBASE_PROJECT_ID` | exatamente `finance-control-cce4f` |
-| `VITE_FIREBASE_AUTH_DOMAIN` | `finance-control-cce4f.firebaseapp.com` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | `finance-control-cce4f.firebasestorage.app` |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `1050867234579` |
-| `VITE_FIREBASE_APP_ID` | `1:1050867234579:web:c0e9456b8e45d3e5fc4ce6` |
-| `VITE_FIREBASE_API_KEY` | configuração web pública obtida do Web App correto; não registrar em documentação/logs |
-| `VITE_FIREBASE_MEASUREMENT_ID` | opcional, somente se aprovado |
-| `VITE_SENTRY_DSN` | DSN client-side do projeto Sentry de produção; pendente |
-| `VITE_APP_RELEASE` | SHA/tag imutável da release; pendente |
-| `VITE_SENTRY_TRACES_SAMPLE_RATE` | valor aprovado para produção; pendente |
-
-É proibido definir no build de produção: URLs/ports de emulator, `demo-*`, `finance-control-staging-260919` ou credenciais de usuário.
-
-## Fail-closed
-
-O runtime atual exige `VITE_FINANCE_ENV`, configuração Firebase completa, projectId igual ao contrato do ambiente e flag de emulator coerente. Configuração ausente, parcial ou cruzada lança erro e impede conexão silenciosa.
-
-Lacuna operacional: `.firebaserc` usa produção como `default`. Não existe guard dedicado de deploy de produção. Todo comando futuro deve usar `--project finance-control-cce4f` explícito e uma etapa de aprovação humana; depender do default é proibido. Estado: **BLOCKER de processo** até o gate ser automatizado na pipeline aprovada.
+A string `finance-control-staging-260919` aparece uma vez no mapa fail-closed `FIREBASE_ENVIRONMENTS`; ela é denylist/contrato de ambiente, não fallback nem configuração selecionada. O runtime selecionado é exclusivamente production e falha em configuração ausente ou cruzada.
 
 ## Sentry production
 
-O PR #15 de observabilidade está aberto e não mesclado em `main`. A base atual não contém `@sentry/browser`, DSN de produção, release tagging nem projeto Sentry de produção confirmado.
+A aplicação aceita, fora do Git:
 
-Estado: **BLOCKER**. Antes do go-live:
+- `VITE_SENTRY_DSN`: DSN client-side do projeto production;
+- `VITE_APP_RELEASE`: SHA/tag imutável;
+- `VITE_SENTRY_TRACES_SAMPLE_RATE`: valor aprovado;
+- environment derivado de `VITE_FINANCE_ENV=production`.
 
-- mesclar/revalidar a camada de observabilidade;
-- criar/confirmar projeto Sentry exclusivo de produção;
-- configurar DSN somente na pipeline;
-- manter `sendDefaultPii=false` e sanitização de dados financeiros/PII;
-- confirmar captura de erro sintético e release no smoke, sem payload sensível.
+Sem DSN, Sentry permanece noop. P5 deve falhar antes do deploy se a observabilidade mínima não estiver configurada e deve validar evento sintético sanitizado após a release.
 
-## Inspeção do bundle local
+## Backup, owners e janela
 
-Build executado localmente com a configuração pública do Web App de produção:
+- Release/backup owner: `jadsonlucaas` (repository owner), a confirmar na Issue de P5.
+- Rollback/incident owner primário: `jadsonlucaas`; um segundo executor deve ser registrado na Issue de P5.
+- Janela: 60 minutos, sendo até 30 minutos para release/smoke e pelo menos 30 minutos de observação.
+- Retenção mínima do backup pré-release: 30 dias.
+- Backup: export abrangente do Firestore antes da primeira mutação; registrar destino protegido, horário, manifest/hash e validação de leitura.
+- Configurações Auth, Rules, indexes e versão Hosting devem ser inventariadas separadamente, pois não fazem parte do export de dados.
+- Restore real permanece proibido durante preflight e smoke.
 
-- build: aprovado;
-- padrões de private key, service account, GitHub token, client secret ou chave de provider: 0;
-- dependência Sentry na base: ausente;
-- ocorrências do ID de staging no bundle: 1;
-- evidências de projeto/endpoint local-emulator no bundle: 1.
+Se owner, segundo executor, janela calendarizada, destino protegido ou validação do backup não estiverem registrados antes da mutação: parar P5.
 
-Estado: **BLOCKER**. O bundle só pode ser promovido quando a varredura retornar zero para staging e emulator/local. Firebase Web API key e Sentry DSN são identificadores client-side, mas não substituem a regra de não incluir credenciais ou segredos server-side.
+## Sequência bloqueante de P5
 
-## Validação local do candidato
+1. CI verde no SHA candidato e worktree limpo.
+2. Registrar SHA, owners, janela, versão Hosting atual e autorização explícita.
+3. Injetar envs production/Sentry pelo ambiente seguro.
+4. Executar o guard e build; repetir scan de segredos/isolamento.
+5. Criar e validar backup pré-release.
+6. Se necessário, aplicar indexes isoladamente e aguardar `READY`.
+7. Se necessário, aplicar Rules homologadas isoladamente e executar smoke de autorização.
+8. Fazer deploy somente de Hosting com `--project finance-control-cce4f` explícito.
+9. Executar imediatamente `docs/production-smoke.md`.
+10. Acionar `docs/production-rollback.md` ao primeiro critério de rollback.
 
-Executada em 31/10/2026, sem deploy:
-
-- `npm test`: 115 arquivos e 673 testes aprovados;
-- `npm run bundle:budget`: aprovado, entry `375588` bytes, Firebase `167177` bytes, maior chunk `449417` bytes e 50 globals;
-- `npm run bootstrap:check`: aprovado, 22 scripts clássicos, 22 scripts executados por eval e `wrote=false`;
-- `npm run smoke`: aprovado com 25 checks locais.
-
-Esses resultados validam o candidato local, mas não eliminam os blockers de ambiente, configuração e promoção descritos neste documento.
-
-## Backup pré-release
-
-Nenhum backup de produção foi criado nesta etapa. O backup client-side é owner-scoped e restore real permanece bloqueado; ele não substitui um backup abrangente do Firestore.
-
-Estado: **BLOCKER**. Antes do go-live, definir e executar por processo confiável:
-
-- mecanismo de snapshot/export abrangente;
-- destino, criptografia, retenção e acesso;
-- hash/manifest e horário do backup;
-- teste de leitura/validação sem restaurar em produção;
-- owner e aprovador;
-- plano para configurações Auth, Rules, indexes e Hosting, que não são cobertos pelo snapshot de dados.
-
-## Rollback, smoke e ownership
-
-- Runbook de rollback: `docs/production-rollback.md`.
-- Smoke pós-release: `docs/production-smoke.md`.
-- Release owner: **não definido — BLOCKER**.
-- Incident/rollback owner: **não definido — BLOCKER**.
-- Janela de release e canal de comunicação: **não definidos — BLOCKER**.
-- PR #16 com a evidência final de staging segue aberto e não mesclado em `main`: **BLOCKER de promoção**.
-
-## Gates obrigatórios para mudar para GO
-
-- [ ] PR #16 e dependências aprovados/mesclados na release candidate.
-- [ ] Rules pretendidas revisadas e plano de aplicação/rollback aprovado.
-- [ ] Três índices compostos aplicados e `READY` antes da aplicação depender deles.
-- [ ] Sentry production configurado e sanitização revalidada.
-- [ ] Bundle sem staging ID, demo project ou endpoints de emulator.
-- [ ] Scan de segredos do artefato aprovado.
-- [ ] Backup pré-release abrangente gerado e verificado.
-- [ ] Release owner, rollback owner, janela e comunicação definidos.
-- [ ] Candidato exato identificado por commit/tag e artefato imutável.
-- [ ] Smoke e critérios de rollback assinados.
-- [ ] Aprovação explícita separada para deploy.
-
-Até todos os itens acima estarem concluídos: **NO DEPLOY**.
+Qualquer divergência do target, SHA, hashes, owners ou configuração muda a decisão para **NO-GO**.

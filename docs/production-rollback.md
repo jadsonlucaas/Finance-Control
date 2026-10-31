@@ -1,8 +1,10 @@
 # Rollback de produção
 
-Status: planejado, não executado.
+Status: **PASS — runbook pronto; execução NOT APPLICABLE até existir release**.
 
 Este runbook não autoriza deploy ou rollback. Qualquer execução exige release owner, incident owner, aprovação explícita e target `finance-control-cce4f` conferido por duas pessoas.
+
+Owners planejados: `jadsonlucaas` como release/incident owner primário e um segundo executor obrigatório, a registrar na Issue de P5. Janela padrão: 60 minutos, com no mínimo 30 minutos de observação após o smoke.
 
 ## Princípios
 
@@ -50,7 +52,7 @@ Sem rollback candidate previamente testada: **NO-GO**.
 
 1. Congelar novas ações operacionais e registrar horário/commit/release ID.
 2. Confirmar duas vezes o site `finance-control-cce4f`; nunca usar alias implícito.
-3. Selecionar a versão anterior aprovada no histórico do Hosting.
+3. Selecionar a versão anterior aprovada no histórico do Hosting; no primeiro go-live, usar a holding/rollback candidate registrada na Issue de P5.
 4. Criar release de rollback apontando para essa versão.
 5. Confirmar que o canal `live` aponta para o version ID esperado.
 6. Executar o smoke mínimo de `docs/production-smoke.md`.

@@ -1,8 +1,10 @@
 # Smoke de produção pós-go-live
 
-Status: planejado, não executado.
+Status: **PASS — runbook pronto; execução PENDING P5/P6**.
 
 Este smoke só pode ser executado após autorização explícita de deploy e com usuário/dados sintéticos exclusivos de produção. Não reutilizar credenciais, usuários ou massa de staging.
+
+Owner primário planejado: `jadsonlucaas`. O executor e um segundo observador devem ser registrados na Issue de P5 antes da janela.
 
 ## Pré-condições
 
