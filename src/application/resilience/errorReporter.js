@@ -16,6 +16,7 @@ export class InMemoryErrorReporter {
   constructor(options = {}) {
     this.limit = options.limit || 50;
     this.now = options.now || (() => new Date().toISOString());
+    this.onReport = typeof options.onReport === 'function' ? options.onReport : null;
     this.events = [];
   }
 
@@ -33,6 +34,11 @@ export class InMemoryErrorReporter {
     };
     this.events.push(event);
     if (this.events.length > this.limit) this.events.splice(0, this.events.length - this.limit);
+    try {
+      this.onReport?.(event);
+    } catch {
+      // Observability must never change the application error path.
+    }
     return event;
   }
 
