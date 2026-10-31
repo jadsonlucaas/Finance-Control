@@ -1,6 +1,6 @@
 # Inventario de API Global
 
-Gerado em: 2026-10-17T17:15:53.490Z
+Gerado em: 2026-10-31T00:53:53.456Z
 
 Este documento congela as funcoes globais e handlers inline conhecidos antes da migracao para modulos. A regra de seguranca e: qualquer item usado por HTML, template string ou outro script legado deve continuar disponivel ate que o uso seja migrado para imports explicitos.
 

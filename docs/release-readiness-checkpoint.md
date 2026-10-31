@@ -286,3 +286,53 @@ Local E2E está isolado no projeto demo, com Auth/Firestore Emulator e bloqueio 
 # Checkpoint 7.3I
 
 Hosting staging final `c62110cc749afe88`; staging-critical 7/7; Vitest 673/673; regressão Playwright 47/47; bundle e bootstrap verdes. Release segue bloqueada pelos fluxos staging ainda sem evidência real listados em `staging-real-validation.md`.
+
+## Baseline P0 - 30/10/2026
+
+Issue: `#12` (`P0: registrar baseline de release e staging`).
+
+Branch: `chore/p0-baseline-20261030`, criada a partir de `origin/main` no commit `2dd9a77`.
+
+Escopo desta execução: coleta e documentação da baseline. Nenhuma refatoração ampla, alteração funcional, deploy ou operação em Firebase real foi realizada. Os testes integrados usaram exclusivamente Auth/Firestore Emulator com o project ID demo `demo-finance-control-local-e2e`.
+
+### Resultado dos gates
+
+| Comando | Resultado |
+| --- | --- |
+| `npm.cmd ci` | aprovado, exit 0; 870 pacotes adicionados e 871 auditados |
+| `npm.cmd test` | aprovado, exit 0; 115 arquivos e 673/673 testes passaram |
+| `npm.cmd run build` | aprovado, exit 0; 1.946 módulos transformados |
+| `npm.cmd run smoke` | aprovado, exit 0; status `ok`, 25 checks funcionais |
+| `npm.cmd run inventory:globals` | aprovado, exit 0; inventário regenerado com 50 entradas globais/API |
+| `npm.cmd run bundle:budget` | aprovado, exit 0; nenhuma violação |
+| `npm.cmd run bootstrap:check` | aprovado, exit 0; nenhuma violação e `wrote=false` |
+| `npm.cmd run perf:audit` | aprovado, exit 0; 2/2 testes Playwright passaram |
+| `npx.cmd firebase emulators:exec --project demo-finance-control-local-e2e --only firestore "npm.cmd run test:rules"` | aprovado, exit 0; 128 testes catalogados em 6 arquivos |
+| `npx.cmd firebase emulators:exec --project demo-finance-control-local-e2e --only auth,firestore "npm.cmd run test:auth-flow"` | aprovado, exit 0; 1 arquivo e 20/20 testes passaram |
+| `npx.cmd firebase emulators:exec --project demo-finance-control-local-e2e --only auth,firestore "npm.cmd run test:e2e-local -- --reporter=line"` | aprovado, exit 0; 16/16 testes passaram em 3,4 min |
+
+### Métricas congeladas
+
+- Entry chunk: `dist/assets/app-BYocMCyh.js`, 375.588 bytes de um orçamento de 430.080 bytes (87,33%).
+- Maior chunk: `dist/assets/services-firestore-BXeVvSYt.js`, 449.417 bytes de um orçamento de 573.440 bytes.
+- Chunk Firebase services: `dist/assets/services-firebase-BQOX3gns.js`, 167.177 bytes de um orçamento de 573.440 bytes.
+- Globals/API: 50 de um máximo de 50.
+- Scripts clássicos: 22 de um máximo de 23.
+- Scripts executados pelo loader legado: 22 de um máximo de 23.
+- Bibliotecas lazy confirmadas: `xlsx`, `pdf` e `firebase`; bootstrap mantém `chart` e `lucide`.
+- O teste conhecido `tests/architecture/global-api-collisions.test.js` passou sem alteração de timeout, retry ou código.
+- O E2E local confirmou fail-closed nos emuladores e zero requests ao Firebase cloud.
+
+### Bloqueadores e avisos
+
+- `npm ci` reportou 54 vulnerabilidades em dependências: 27 moderadas, 22 altas e 5 críticas. A correção não pertence ao escopo documental desta baseline e exige triagem própria antes de produção.
+- `caniuse-lite` está seis meses desatualizado.
+- A Firebase CLI emitiu o aviso de depreciação Node `DEP0169`; os `PERMISSION_DENIED` observados são esperados nos cenários negativos de Rules/Auth/E2E.
+- Staging permanece **STAGING NOT VALIDATED** conforme `docs/staging-real-validation.md`: faltam revalidações reais de XLSX/reimportação/arquivo renomeado, auditoria `HOUR_ENTRY_CREATED/UPDATED`, settings/references A/B, mobile ampliado dos fluxos XLSX/backup/horas e ensaio de rollback frontend.
+- Produção permanece **NOT READY FOR PRODUCTION DEPLOY**. Esta execução não acessou staging nem produção.
+
+### Decisão P0
+
+Baseline local: **GREEN**, com todos os gates solicitados aprovados.
+
+Release para staging/produção: **NO-GO**, pelos bloqueadores documentais e de segurança acima. Dados, segurança, desempenho, observabilidade e acessibilidade foram considerados; como não houve mudança funcional ou visual, não há impacto novo nessas superfícies além das evidências e pendências registradas.
