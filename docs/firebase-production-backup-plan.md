@@ -23,6 +23,8 @@ Storage de objetos não está em uso verificável: nenhum bucket GCS foi listado
 
 Preferência: Firestore Managed Export para GCS, mais export Auth separado e formato portátil JSONL. O projeto está sem billing e sem bucket, logo o managed export está **BLOCKED** até autorização explícita.
 
+Em 31/10/2026 a autorização foi recebida, porém a conta autenticada não possuía nenhuma billing account aberta/acessível. Estado operacional: **MANUAL BILLING ACTION REQUIRED**. Consulte `docs/firebase-production-backup-execution.md`.
+
 Recurso pago necessário: Cloud Storage bucket e operação managed export do Firestore. Região recomendada: `southamerica-east1`, alinhada ao banco. Custos dependem do volume armazenado, operações e retenção; validar a tabela vigente do Google Cloud antes de autorizar. Impacto: criação de billing/bucket e leitura/export de produção; não altera documentos. Rollback: cancelar export, remover artefatos conforme retenção e, se aprovado pelo owner, desvincular billing após confirmar ausência de dependências.
 
 Comandos pretendidos, somente após autorização:
