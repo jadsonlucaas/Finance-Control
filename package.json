@@ -32,6 +32,7 @@
     "hour-control-modernization:check": "node scripts/hour-control-modernization-check.mjs",
     "hour-control:benchmark": "node scripts/hour-control-benchmark.mjs",
     "performance:baseline": "node scripts/performance-baseline.mjs",
+    "production:target-check": "node scripts/assert-production-target.mjs",
     "perf:audit": "playwright test --config=playwright.performance.config.js",
     "percentage-rules:dry-run": "node scripts/percentage-rules-dry-run.mjs",
     "planner-modernization:check": "node scripts/planner-modernization-check.mjs",
