@@ -22,7 +22,7 @@ Se qualquer etapa falhar, logs e artefatos disponíveis (`coverage`, `dist`, `pl
 
 Na proteção da branch `main`, configurar `Quality gates` como required status check e exigir que a branch esteja atualizada antes do merge. Push direto para `main` deve permanecer bloqueado; mudanças entram por Pull Request vinculado a uma Issue com `Closes #N` ou `Fixes #N`.
 
-O Codecov faz parte do job obrigatório e autentica o upload com OIDC, sem armazenar `CODECOV_TOKEN`. A permissão `id-token: write` serve somente para emitir essa identidade temporária; o conteúdo do repositório permanece com acesso apenas de leitura.
+A geração do LCOV é obrigatória. O upload no Codecov autentica com OIDC, sem armazenar `CODECOV_TOKEN`, e permanece não bloqueante enquanto o repositório não estiver ativado no Codecov; depois da ativação e de uma execução verde, `fail_ci_if_error` pode ser promovido para `true`. A permissão `id-token: write` serve somente para emitir essa identidade temporária; o conteúdo do repositório permanece com acesso apenas de leitura.
 
 ## Adoção gradual de qualidade
 
