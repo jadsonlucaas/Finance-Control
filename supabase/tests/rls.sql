@@ -1,0 +1,13 @@
+begin;
+select plan(9);
+select has_table('public', 'finance_records', 'finance records exists');
+select has_table('public', 'identity_mappings', 'identity mapping exists');
+select is((select relrowsecurity from pg_class where oid='public.finance_records'::regclass), true, 'finance RLS enabled');
+select policies_are('public', 'finance_records', array['finance_own_delete','finance_own_insert','finance_own_select','finance_own_update'], 'finance policies complete');
+select policies_are('public', 'audit_logs', array['audit_own_insert','audit_own_select'], 'audit is append-only');
+select is((select count(*)::integer from pg_constraint where conrelid='public.finance_records'::regclass and contype='f' and pg_get_constraintdef(oid) like '%parent_id%'), 0, 'parent_id is not a foreign key');
+select has_index('public', 'finance_records', 'finance_records_owner_competence_idx', 'competence index exists');
+select has_index('public', 'profiles', 'profiles_admin_filters_idx', 'admin filter index exists');
+select is((select count(*)::integer from information_schema.role_table_grants where grantee='anon' and table_schema='public'), 0, 'anon has no grants');
+select * from finish();
+rollback;
