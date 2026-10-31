@@ -1,6 +1,6 @@
 # Inventario de API Global
 
-Gerado em: 2026-10-17T17:15:53.490Z
+Gerado em: 2026-10-31T12:23:20.950Z
 
 Este documento congela as funcoes globais e handlers inline conhecidos antes da migracao para modulos. A regra de seguranca e: qualquer item usado por HTML, template string ou outro script legado deve continuar disponivel ate que o uso seja migrado para imports explicitos.
 
@@ -49,7 +49,7 @@ A coluna "Situacao preliminar de migracao" nao autoriza migracao por si so. Qual
 | `deletePercentageExitRule` | src/legacy/inline/part-29.js:1155 (window assignment) | Sem handler inline direto encontrado. | evento / operacao | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `editPercentageExitRule` | src/legacy/inline/part-29.js:1092 (window assignment) | Sem handler inline direto encontrado. | evento / operacao | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `ensureDashboardRangeControls` | src/legacy/inline/part-29.js:1424 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
-| `financeApp` | src/app.js:571 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
+| `financeApp` | src/app.js:597 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `fmt` | src/ui/dashboard/dashboardCards.js:77 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `fmtCompactCurrency` | src/ui/dashboard/dashboardCharts.js:197 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `formatCompetence` | src/ui/dashboard/dashboardCards.js:72 (window assignment) | Sem handler inline direto encontrado. | calculo / dados | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
