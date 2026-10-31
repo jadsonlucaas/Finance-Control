@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Create CI log directory
+        run: mkdir -p ci-logs
+
+      - name: Install dependencies
+        run: npm ci 2>&1 | tee ci-logs/npm-ci.log
+
+      - name: Install Chromium for smoke tests
+        run: |
+          npx playwright install --with-deps chromium 2>&1 | tee ci-logs/playwright-install.log
+          echo "PLAYWRIGHT_CHROME_EXECUTABLE=$(node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())")" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: npm test 2>&1 | tee ci-logs/npm-test.log
+
+      - name: Generate coverage
+        run: npm run test:coverage -- --coverage.reporter=text --coverage.reporter=html --coverage.reporter=lcov 2>&1 | tee ci-logs/coverage.log
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+          use_oidc: true
+          verbose: true
+
+      - name: Build application
+        run: npm run build 2>&1 | tee ci-logs/build.log
+
+      - name: Run smoke tests
+        run: npm run smoke 2>&1 | tee ci-logs/smoke.log
+
+      - name: Inventory global APIs
+        run: npm run inventory:globals 2>&1 | tee ci-logs/inventory-globals.log
+
+      - name: Enforce bundle budget
+        run: npm run bundle:budget 2>&1 | tee ci-logs/bundle-budget.log
+
+      - name: Check bootstrap budget
+        run: npm run bootstrap:check 2>&1 | tee ci-logs/bootstrap-check.log
+
+      - name: Upload failure diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            ci-logs/
+            coverage/
+            dist/
+            playwright-report/
+            test-results/
