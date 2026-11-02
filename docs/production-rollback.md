@@ -1,5 +1,7 @@
 # Rollback de produção
 
+> Em deploy Hosting-only, o rollback pode usar artefato reproduzível do commit anterior conhecido, conforme `production-release-hosting-only.md`, sempre com `--only hosting` e projeto explícito.
+
 Status: **PASS — runbook pronto; execução NOT APPLICABLE até existir release**.
 
 Este runbook não autoriza deploy ou rollback. Qualquer execução exige release owner, incident owner, aprovação explícita e target `finance-control-cce4f` conferido por duas pessoas.
