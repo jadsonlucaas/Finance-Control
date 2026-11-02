@@ -1,5 +1,7 @@
 # Preflight de produção para o primeiro go-live
 
+> Para releases estritamente estáticas, consulte também `production-release-hosting-only.md`. Esse overlay reclassifica apenas Sentry, backup e segundo executor para Hosting-only; não relaxa gates de segurança, target, CI, build ou rollback.
+
 Executado em: 31/10/2026
 Issue: #17 — `release: preparar ambiente de produção para primeiro go-live`.
 
