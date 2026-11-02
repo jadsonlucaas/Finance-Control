@@ -2,6 +2,9 @@
         let currentUser = null;
         let currentUserProfile = null;
         let currentAuthClaims = {};
+        let authenticationState = 'signed_out';
+        let profileState = 'idle';
+        let accessState = 'blocked';
         let managedUsers = [];
         let managedUserLoading = {};
 
@@ -18,6 +21,10 @@
                 uid: currentUser?.uid || currentUserProfile?.uid || '',
                 role: currentUserProfile?.role || 'user',
                 accountStatus: currentUserProfile?.status || 'pending',
+                authenticated: authenticationState === 'authenticated',
+                authenticationState,
+                profileState,
+                accessState,
                 isAdmin: isCurrentUserAdmin()
             };
         }
@@ -55,24 +62,32 @@
             if (!notice || !title || !message) return;
 
             const lifecycle = accountLifecycle();
-            const normalized = lifecycle.normalizeAccountStatus
+            const isProfileError = status === 'error';
+            const normalized = isProfileError ? 'error' : (lifecycle.normalizeAccountStatus
                 ? lifecycle.normalizeAccountStatus(status)
-                : status;
+                : status);
 
             if (!normalized || normalized === 'active') {
                 notice.classList.add('hidden');
                 return;
             }
 
-            const label = lifecycle.getAccountStatusLabel
+            const label = isProfileError
+                ? 'Não foi possível validar seu acesso'
+                : lifecycle.getAccountStatusLabel
                 ? lifecycle.getAccountStatusLabel(normalized)
                 : 'Conta em validação';
             title.textContent = label;
-            message.textContent = lifecycle.getAccountAccessMessage
+            message.textContent = isProfileError
+                ? 'Use “Verificar novamente” para repetir apenas a validação do perfil.'
+                : lifecycle.getAccountAccessMessage
                 ? lifecycle.getAccountAccessMessage(normalized, email)
                 : 'Sua conta ainda não está liberada para acessar os dados financeiros.';
             notice.classList.remove('hidden');
-            if (refreshButton) refreshButton.classList.toggle('hidden', normalized === 'error');
+            if (refreshButton) {
+                refreshButton.classList.remove('hidden');
+                refreshButton.textContent = isProfileError ? 'Verificar novamente' : 'Verificar status';
+            }
         }
 
         function ensureHeaderSessionControls() {
@@ -300,25 +315,12 @@
 
         async function refreshAccountStatus() {
             if (!currentUser || !window.userAdminSdk) return;
-            try {
-                setAccountStatusLoading(true);
-                currentUserProfile = await window.userAdminSdk.getProfile(currentUser.uid);
-                if (currentUserProfile?.status === 'active') {
-                    await applyAuthState(currentUser);
-                    return;
-                }
-                setAccessNotice(currentUserProfile?.status || 'pending', currentUser.email);
-            } catch (error) {
-                console.error(error);
-                setAccessNotice('error', currentUser.email);
-                setAuthError('Não foi possível verificar o status da conta.');
-            } finally {
-                setAccountStatusLoading(false);
-                lucide.createIcons();
-            }
+            setAccountStatusLoading(true);
+            await applyAuthState(currentUser, { retry: true });
+            setAccountStatusLoading(false);
         }
 
-        async function applyAuthState(authPayload) {
+        async function applyAuthState(authPayload, { retry = false } = {}) {
             const app = document.getElementById('app');
             const authScreen = document.getElementById('auth-screen');
             ensureHeaderSessionControls();
@@ -328,6 +330,9 @@
                 currentUser = null;
                 currentUserProfile = null;
                 currentAuthClaims = {};
+                authenticationState = 'signed_out';
+                profileState = 'idle';
+                accessState = 'blocked';
                 syncFinanceAuthContext();
                 managedUsers = [];
                 managedUserLoading = {};
@@ -341,30 +346,40 @@
             }
 
             currentUser = authPayload;
+            authenticationState = 'authenticated';
+            profileState = 'loading';
+            accessState = 'blocked';
+            syncFinanceAuthContext();
             setAuthLoading(true);
             setAccessNotice('', '');
             app.classList.add('hidden');
-            authScreen.classList.add('hidden');
+            authScreen.classList.remove('hidden');
 
             try {
-                currentAuthClaims = await window.authSdk.getClaims?.(true) || {};
-                currentUserProfile = await window.userAdminSdk.ensureProfile(authPayload);
+                const loaded = await window.authSdk.loadProfileAccess(authPayload, { retry });
+                currentAuthClaims = loaded.claims;
+                currentUserProfile = loaded.profile;
+                profileState = 'ready';
                 syncFinanceAuthContext();
                 const lifecycle = accountLifecycle();
-                const accessState = lifecycle.getUserAccessState
+                const accessDecision = lifecycle.getUserAccessState
                     ? lifecycle.getUserAccessState(currentUserProfile, currentAuthClaims)
                     : { canAccessFinancialData: currentUserProfile?.status === 'active', status: currentUserProfile?.status };
 
-                if (!accessState.canAccessFinancialData) {
+                if (!accessDecision.canAccessFinancialData) {
+                    accessState = accessDecision.status || 'pending';
+                    syncFinanceAuthContext();
                     clearFinancialUiState();
                     window.financeApp?.plannerStorage?.resetPlannerView?.();
                     app.classList.add('hidden');
                     authScreen.classList.remove('hidden');
-                    setAccessNotice(accessState.status || 'pending', authPayload.email);
+                    setAccessNotice(accessDecision.status || 'pending', authPayload.email);
                     setAuthError('');
                     return;
                 }
 
+                accessState = 'active';
+                syncFinanceAuthContext();
                 authScreen.classList.add('hidden');
                 app.classList.remove('hidden');
                 applyRoleVisibility();
@@ -379,14 +394,16 @@
                 }
                 if (currentTab === 'configuracoes') renderConfiguracoes();
             } catch (error) {
-                console.error(error);
                 clearFinancialUiState();
+                profileState = 'error';
+                accessState = 'error';
                 syncFinanceAuthContext();
                 window.financeApp?.plannerStorage?.resetPlannerView?.();
                 app.classList.add('hidden');
                 authScreen.classList.remove('hidden');
                 setAccessNotice('error', authPayload.email);
-                setAuthError('Não foi possível carregar o perfil do usuário.');
+                setAuthError(window.authSdk.getProfileAccessErrorMessage?.(error)
+                    || 'Seu login foi realizado, mas não foi possível carregar seu perfil.');
             } finally {
                 setAuthLoading(false);
                 lucide.createIcons();

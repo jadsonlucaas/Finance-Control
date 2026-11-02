@@ -3,6 +3,8 @@ import { createAuditService, installAuditGlobals } from './audit.js';
 import { createDataSdkService } from './dataSdk.js';
 import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
+import { createProfileAccessService } from './profileAccess.js';
+import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
 
 export function installFirebaseServices({ target = window, config } = {}) {
@@ -22,8 +24,17 @@ export function installFirebaseServices({ target = window, config } = {}) {
   });
   target.__financeRawDataSdk = dataServices.dataSdk;
   target.dataSdk = dataServices.dataSdk;
-  target.authSdk = createAuthService(auth, auditService);
+  const authService = createAuthService(auth, auditService);
   target.userAdminSdk = createUserAdminService(db, auditService);
+  const profileAccessService = createProfileAccessService({
+    authService,
+    userAdminService: target.userAdminSdk
+  });
+  target.authSdk = {
+    ...authService,
+    loadProfileAccess: profileAccessService.load,
+    getProfileAccessErrorMessage
+  };
   installAuditGlobals(target, auditService);
   target.cloudLocalStorageSync = dataServices.cloudLocalStorageSync;
   target.firebaseBatchDeleteRecords = dataServices.batchDeleteRecords;

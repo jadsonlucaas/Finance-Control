@@ -25,6 +25,7 @@ import {
   encodePageCursor,
   MAX_PAGE_LIMIT
 } from '../application/repositories/pagination.js';
+import { captureError } from './observability/index.js';
 
 function mapUserDoc(item) {
   const data = item.data();
@@ -53,6 +54,18 @@ function normalizeUserAdminQuery(input = {}) {
 }
 
 export function createUserAdminService(db, auditService = null) {
+  function touchLoginMetadataBestEffort(userRef, user, profile) {
+    const updates = { last_login_at: new Date().toISOString() };
+    if ((user.email || '') !== (profile.email || '')) updates.email = user.email || '';
+    setDoc(userRef, updates, { merge: true }).catch((error) => {
+      captureError(error, {
+        operation: 'profile.touch_login_metadata',
+        authenticated: true,
+        error_code: error?.code || 'PROFILE_METADATA_WRITE_FAILED'
+      });
+    });
+  }
+
   async function ensureProfile(user) {
     const userRef = doc(db, 'users', user.uid);
     const snapshot = await getDoc(userRef);
@@ -75,13 +88,11 @@ export function createUserAdminService(db, auditService = null) {
     };
     profile.role = normalizeAccountRole(profile.role, ACCOUNT_ROLE.USER);
     profile.status = normalizeAccountStatus(profile.status, ACCOUNT_STATUS.ACTIVE);
-    const updates = {
-      email: user.email || profile.email || '',
-      updated_at: now,
-      last_login_at: now
+    touchLoginMetadataBestEffort(userRef, user, profile);
+    return {
+      ...profile,
+      email: user.email || profile.email || ''
     };
-    setDoc(userRef, updates, { merge: true }).catch((error) => console.error('Erro ao atualizar perfil', error));
-    return { ...profile, ...updates };
   }
 
   async function getProfile(uid) {
