@@ -34,6 +34,7 @@ export function evaluateHostingPreflight({ env, deployment, repository, build })
   if (build.publicDirectory !== 'dist') errors.push('FIREBASE_HOSTING_PUBLIC_DIR_MUST_BE_DIST');
   for (const finding of build.forbiddenFindings || []) errors.push(`BUNDLE_FORBIDDEN:${finding}`);
   if ((build.productionProjectOccurrences || 0) === 0) errors.push('PRODUCTION_PROJECT_NOT_FOUND_IN_BUNDLE');
+  if ((build.productionRuntimeMarkers || 0) === 0) errors.push('PRODUCTION_RUNTIME_MARKERS_NOT_FOUND_IN_BUNDLE');
   if ((build.stagingEndpointOccurrences || 0) > 0) errors.push('STAGING_ENDPOINT_FOUND_IN_BUNDLE');
   if ((build.stagingContractOccurrences || 0) > 0) warnings.push('STAGING_ID_PRESENT_ONLY_AS_DENYLIST_CONTRACT');
   warnings.push('BACKUP_NOT_REQUIRED_FOR_STATIC_HOSTING;REMAINS_HARD_BLOCKER_FOR_DATA_AUTH_RULES_INDEXES');
@@ -47,7 +48,8 @@ function scanBuild(directory) {
   let productionProjectOccurrences = 0;
   let stagingEndpointOccurrences = 0;
   let stagingContractOccurrences = 0;
-  const patterns = [['PRIVATE_KEY', /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/i], ['SERVICE_ROLE', /service[_-]?role/i], ['SUPABASE_ENDPOINT', /https?:\/\/[^\s"']+\.supabase\.co/i], ['LOCALHOST_OR_EMULATOR', /(?:localhost|127\.0\.0\.1)(?::(?:8080|9099|9199|5001))?/i]];
+  let productionRuntimeMarkers = 0;
+  const patterns = [['PRIVATE_KEY', /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/i], ['SERVICE_ROLE', /service[_-]?role/i], ['SUPABASE_ENDPOINT', /https?:\/\/[^\s"']+\.supabase\.co/i]];
   const visit = (current) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const full = join(current, entry.name);
@@ -56,13 +58,18 @@ function scanBuild(directory) {
         const content = readFileSync(full, 'utf8');
         productionProjectOccurrences += content.split(PROD).length - 1;
         stagingContractOccurrences += content.split(STAGING).length - 1;
+        if (/VITE_FINANCE_ENV["']?:["']production["']/.test(content)
+          && /VITE_FINANCE_USE_FIREBASE_EMULATORS["']?:["']false["']/.test(content)
+          && /VITE_DATA_BACKEND["']?:["']firebase["']/.test(content)
+          && /VITE_DATA_DUAL_WRITE["']?:["']false["']/.test(content)
+          && /VITE_DATA_SHADOW_READ["']?:["']false["']/.test(content)) productionRuntimeMarkers += 1;
         stagingEndpointOccurrences += (content.match(new RegExp(`${STAGING}(?:\\.firebaseapp\\.com|\\.web\\.app)`, 'gi')) || []).length;
         for (const [label, pattern] of patterns) if (pattern.test(content)) forbiddenFindings.push(`${label}:${relative(directory, full)}`);
       }
     }
   };
   visit(directory);
-  return { forbiddenFindings, productionProjectOccurrences, stagingEndpointOccurrences, stagingContractOccurrences };
+  return { forbiddenFindings, productionProjectOccurrences, productionRuntimeMarkers, stagingEndpointOccurrences, stagingContractOccurrences };
 }
 
 export function runCli(args = process.argv.slice(2), env = process.env) {
