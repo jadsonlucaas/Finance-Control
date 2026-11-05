@@ -1,0 +1,18 @@
+{
+  "name": "finance-control-whatsapp-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "API server-side do assistente financeiro via WhatsApp (chamada pelo n8n).",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "WHATSAPP_API_STORE=memory node src/server.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
