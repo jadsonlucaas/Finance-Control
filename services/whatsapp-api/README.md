@@ -75,6 +75,14 @@ Formato: `{ "erro": { "codigo": "...", "mensagem": "..." } }`.
 | 410 | Confirmação expirada |
 | 422 | Contrato de dados violado |
 
+## Deploy no Portainer (Docker Swarm com secrets)
+
+Toda variável aceita a forma `NOME_FILE`, que aponta para um arquivo. É assim que o Swarm entrega os secrets, em `/run/secrets/...`. A credencial do Firebase usa `GOOGLE_APPLICATION_CREDENTIALS` apontando para o secret.
+
+1. A cada merge na `main` que mexa no serviço, o workflow `whatsapp-api image` publica a imagem `ghcr.io/jadsonlucaas/finance-control-whatsapp-api:latest`. Se o pacote no GHCR for privado, cadastre o registry `ghcr.io` em **Portainer > Registries**, com um token que tenha `read:packages`.
+2. Crie os 3 secrets listados em `stack.example.yml`.
+3. Crie a stack em **Stacks > Add stack**, colando o `stack.example.yml` com o nome da rede do n8n.
+
 ## Deploy (Docker, mesma rede do n8n)
 
 ```bash

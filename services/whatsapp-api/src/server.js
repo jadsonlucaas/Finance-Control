@@ -1,10 +1,11 @@
 import http from 'node:http';
 import { createApp, MAX_BODY_BYTES } from './app.js';
 import { createPhoneResolver, parsePhoneLinks } from './phoneLinks.js';
+import { readSetting } from './settings.js';
 
 function required(name) {
-  const value = process.env[name];
-  if (!value || !value.trim()) {
+  const value = readSetting(name);
+  if (!value) {
     console.error(JSON.stringify({ level: 'fatal', event: 'missing_env', name }));
     process.exit(1);
   }
@@ -19,7 +20,7 @@ async function createStore() {
   }
   const { initializeApp, cert, applicationDefault } = await import('firebase-admin/app');
   const { getFirestore } = await import('firebase-admin/firestore');
-  const credentialJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const credentialJson = readSetting('FIREBASE_SERVICE_ACCOUNT_JSON');
   initializeApp({
     credential: credentialJson ? cert(JSON.parse(credentialJson)) : applicationDefault(),
     projectId: process.env.FIREBASE_PROJECT_ID || undefined
