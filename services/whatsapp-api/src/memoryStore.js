@@ -38,6 +38,16 @@ export function createMemoryStore(seed = {}) {
     async getPendingAction(uid, id) {
       return clone(bucket(uid).pending.get(id)) || null;
     },
+    async cancelPendingActions(uid, nowIso) {
+      bucket(uid).pending.forEach((item, id) => {
+        if (item.status === 'pending') bucket(uid).pending.set(id, { ...item, status: 'cancelled', cancelled_at: nowIso });
+      });
+    },
+    async getLatestPendingAction(uid) {
+      const list = [...bucket(uid).pending.values()].filter((item) => item.status === 'pending');
+      list.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      return clone(list[0]) || null;
+    },
     async updatePendingAction(uid, id, patch) {
       const current = bucket(uid).pending.get(id);
       if (current) bucket(uid).pending.set(id, { ...current, ...clone(patch) });

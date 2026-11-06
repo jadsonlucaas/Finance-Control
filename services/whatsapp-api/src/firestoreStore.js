@@ -33,6 +33,17 @@ export function createFirestoreStore(db) {
       const snapshot = await pending(uid).doc(id).get();
       return snapshot.exists ? snapshot.data() : null;
     },
+    async cancelPendingActions(uid, nowIso) {
+      const snapshot = await pending(uid).where('status', '==', 'pending').get();
+      await Promise.all(snapshot.docs.map((doc) => doc.ref.set({ status: 'cancelled', cancelled_at: nowIso }, { merge: true })));
+    },
+    async getLatestPendingAction(uid) {
+      // Filtro simples por status (sem indice composto); poucas acoes pendentes por usuario.
+      const snapshot = await pending(uid).where('status', '==', 'pending').get();
+      const list = snapshot.docs.map((doc) => doc.data());
+      list.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      return list[0] || null;
+    },
     async updatePendingAction(uid, id, patch) {
       await pending(uid).doc(id).set(patch, { merge: true });
     },

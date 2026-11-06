@@ -235,6 +235,9 @@ export function createActionService({ store, now = () => new Date(), newId = () 
 
     pending.resumo = resumo;
     pending.request_fingerprint = fingerprint({ acao, record: pending.record, record_id: pending.record_id, patch: pending.patch });
+    // Uma acao pendente por vez: a nova substitui as anteriores, entao o "sim" do usuario
+    // so pode confirmar o ultimo resumo que ele viu.
+    await store.cancelPendingActions(uid, nowIso);
     await store.savePendingAction(uid, pending.id, pending);
     return {
       status: 'aguardando_confirmacao',
@@ -248,7 +251,14 @@ export function createActionService({ store, now = () => new Date(), newId = () 
 
   async function loadPending(uid, body) {
     const id = String(body.confirmation_id || '').trim();
-    if (!id || id.length > 128 || id.includes('/')) throw badRequest('CONFIRMATION_ID_REQUIRED', 'Informe confirmation_id.');
+    // Sem id (ou "ultima"): usa a acao pendente mais recente do proprio usuario.
+    // Permite ao agente confirmar sem guardar o id entre mensagens.
+    if (!id || id === 'ultima') {
+      const latest = await store.getLatestPendingAction(uid);
+      if (!latest || latest.owner_uid !== uid) throw new ApiError(404, 'PENDING_ACTION_NOT_FOUND', 'Nenhuma acao aguardando confirmacao.');
+      return latest;
+    }
+    if (id.length > 128 || id.includes('/')) throw badRequest('CONFIRMATION_ID_REQUIRED', 'Informe confirmation_id valido.');
     const pending = await store.getPendingAction(uid, id);
     if (!pending || pending.owner_uid !== uid) throw new ApiError(404, 'PENDING_ACTION_NOT_FOUND', 'Confirmacao nao encontrada.');
     return pending;

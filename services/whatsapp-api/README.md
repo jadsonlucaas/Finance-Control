@@ -56,7 +56,7 @@ Regras de cálculo:
 | `editar` | `lancamento_id`*, `alteracoes`* com `descricao`, `valor`, `categoria`, `macro_categoria`, `vencimento`, `data`, `competencia`, `status`, `forma_pagamento` ou `pessoa` |
 | `excluir` | `lancamento_id`* (o lançamento é arquivado) |
 
-A resposta traz `confirmation_id` e o `resumo` que deve ser mostrado ao usuário. Depois disso:
+A resposta traz `confirmation_id` e o `resumo` que deve ser mostrado ao usuário. Só existe uma ação pendente por vez: preparar uma nova cancela a anterior. Em `confirmar` e `cancelar`, o `confirmation_id` é opcional; sem ele (ou com `"ultima"`), a ação usada é a pendente mais recente do usuário, o que permite ao agente confirmar sem guardar o id entre mensagens. Depois disso:
 
 - `POST /internal/whatsapp/acoes/confirmar` com `{ telefone, accountId, confirmation_id }` executa a ação. Se a ação já foi executada, a resposta é `ja_executado`.
 - `POST /internal/whatsapp/acoes/cancelar` com `{ telefone, accountId, confirmation_id }` cancela a ação.

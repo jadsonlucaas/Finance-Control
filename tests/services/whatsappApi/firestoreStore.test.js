@@ -32,8 +32,9 @@ function fakeDb() {
         calls.push(['query', path, field, op]);
         const prefix = `${path}/`;
         const matches = [...docs.entries()].filter(([key, value]) =>
-          key.startsWith(prefix) && !key.slice(prefix.length).includes('/') && values.includes(value[field]));
-        return { docs: matches.map(([key, value]) => ({ id: key.slice(prefix.length), data: () => ({ ...value }) })) };
+          key.startsWith(prefix) && !key.slice(prefix.length).includes('/') &&
+          (op === 'in' ? values.includes(value[field]) : value[field] === values));
+        return { docs: matches.map(([key, value]) => ({ id: key.slice(prefix.length), ref: docRef(key), data: () => ({ ...value }) })) };
       }
     }),
     async add(data) {
@@ -69,5 +70,16 @@ describe('whatsapp-api: adaptador Firestore', () => {
     const second = await store.reserveReceipt('a', 'whatsapp_1', { status: 'processing' });
     expect(second.created).toBe(false);
     expect(second.existing.status).toBe('processing');
+  });
+
+  it('cancela pendencias anteriores e encontra a mais recente', async () => {
+    const { db, docs } = fakeDb();
+    const store = createFirestoreStore(db);
+    await store.savePendingAction('a', 'p1', { id: 'p1', status: 'pending', created_at: '2026-11-05T10:00:00.000Z' });
+    await store.savePendingAction('a', 'p2', { id: 'p2', status: 'pending', created_at: '2026-11-05T11:00:00.000Z' });
+    expect((await store.getLatestPendingAction('a')).id).toBe('p2');
+    await store.cancelPendingActions('a', '2026-11-05T12:00:00.000Z');
+    expect(docs.get('users/a/whatsapp_pending_actions/p1').status).toBe('cancelled');
+    expect(await store.getLatestPendingAction('a')).toBeNull();
   });
 });
