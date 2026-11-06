@@ -9,7 +9,7 @@ Issue: #28
 | Item | Como funciona |
 | --- | --- |
 | Autenticação | O header `x-api-key` (ou `Authorization: Bearer`) deve bater com `WHATSAPP_API_KEY`. A comparação é feita em tempo constante. |
-| Usuário | Vem só do telefone, por meio de `WHATSAPP_PHONE_LINKS`. A IA nunca escolhe o uid. Quando o vínculo informa `chatwootAccountId`, o `accountId` da chamada precisa bater. |
+| Usuário | Vem só do telefone verificado do remetente, resolvido pelo vínculo ativo em `whatsapp_links/{telefone}` (criado pelo próprio usuário, ver abaixo). A IA nunca escolhe o uid. O `accountId` do Chatwoot precisa bater com o do vínculo, e a conta precisa estar ativa. `WHATSAPP_PHONE_LINKS` (manual) é opcional e fica só como reserva durante a migração; o vínculo gravado tem prioridade. |
 | Isolamento | Toda leitura e escrita fica em `users/{uid}/...`. Um lançamento de outro usuário retorna 404. |
 | Escrita | É feita em duas etapas: `preparar` devolve um resumo e `confirmar` executa. A confirmação expira em 10 minutos. |
 | Idempotência | Usa `idempotency_receipts/whatsapp_{confirmation_id}`, criado de forma atômica. Confirmar duas vezes não duplica o lançamento. |
@@ -18,6 +18,21 @@ Issue: #28
 | Auditoria | Grava em `audit_logs` com `actor_type: integration` e `source_channel: future_integration`. |
 | Logs | Registram só a rota, o status, o código, a duração e o hash do telefone. Não registram valores, o corpo da requisição nem o telefone. |
 | Contrato | Todo registro novo ou alterado passa por `validateFinanceRecord` (`src/domain/records`). Os registros não guardam telefone. |
+
+## Vínculo seguro conta ↔ WhatsApp (issue #40)
+
+1. Em **Configurações → WhatsApp**, o usuário autenticado e ativo clica em "Gerar código". O app sorteia 8 caracteres (alfabeto sem 0/O/1/I/L) e grava só o SHA-256 em `whatsapp_link_codes/{hash}`, com `owner_uid`, `status: pending` e validade de 10 minutos (as regras limitam a 15).
+2. O usuário envia o código pelo WhatsApp. O n8n reconhece o formato e chama `vinculo/confirmar` direto, sem a IA, com o telefone do remetente do webhook assinado do Chatwoot.
+3. A API confere o código (existe, pendente, não expirado), a conta (ativa) e grava `whatsapp_links/{telefone}` numa transação, marcando o código como usado. Um telefone ativo em outra conta é recusado (409). Vincular um telefone novo revoga o anterior da mesma conta.
+4. Depois de 5 códigos inválidos em 1 hora, o telefone fica bloqueado para novas tentativas (429) até a janela passar (`whatsapp_link_attempts/{hash do telefone}`, só servidor).
+5. O usuário vê o número mascarado e desvincula no mesmo card. A revogação só troca `status`, `revoked_at` e `revoked_by` (regras) e vale na próxima mensagem, inclusive para confirmações pendentes.
+
+| Rota | Campos | Retorno |
+| --- | --- | --- |
+| `/internal/whatsapp/vinculo/confirmar` | `telefone`, `accountId`, `codigo` | `{ vinculado: true, ja_vinculado }` ou erro `LINK_CODE_INVALID` (400), `ACCOUNT_NOT_ACTIVE` (403), `PHONE_LINKED_OTHER_ACCOUNT` (409), `LINK_TOO_MANY_ATTEMPTS` (429) |
+| `/internal/whatsapp/vinculo/status` | `telefone`, `accountId` | `{ vinculado: true }` ou `{ vinculado: false, motivo }` (para o n8n responder a telefone desconhecido sem chamar a IA) |
+
+O código e o telefone nunca vão para os logs (só o hash do telefone). Auditoria: `whatsapp.link_created` em `users/{uid}/audit_logs`.
 
 ## Rotas
 
@@ -100,7 +115,7 @@ docker run -d --name financecontrol_whatsapp_api_dev --network <rede-do-n8n> \
 
 1. Copie `.env.example` para `.env`, que não é versionado.
 2. Gere `WHATSAPP_API_KEY` com `openssl rand -hex 32`. Use uma chave **nova**, sem reaproveitar a da API readonly.
-3. Preencha `WHATSAPP_PHONE_LINKS` com o telefone de teste e o uid do Firebase.
+3. (Opcional) `WHATSAPP_PHONE_LINKS`: vínculos manuais de reserva. Novos usuários se vinculam pelo app.
 4. Forneça a service account com `FIREBASE_SERVICE_ACCOUNT_JSON` ou com um arquivo montado em `GOOGLE_APPLICATION_CREDENTIALS`.
 
 Teste rápido:
@@ -116,7 +131,8 @@ Para desenvolvimento local sem Firebase, rode `WHATSAPP_API_STORE=memory npm run
 
 ## Rollback
 
-- A API não altera nada do app web nem das regras do Firestore. Para desligar, basta parar o container. As ferramentas do n8n passam a falhar, e o agente cai na resposta padrão de erro.
+- O vínculo pelo app depende das regras de `whatsapp_link_codes` e `whatsapp_links` em `firestore.rules`. Revertê-las desliga só a geração de códigos e a revogação pelo app; os vínculos já gravados continuam sendo lidos pela API.
+- Fora isso, a API não altera nada do app web. Para desligar, basta parar o container. As ferramentas do n8n passam a falhar, e o agente cai na resposta padrão de erro.
 - A API readonly atual continua intacta. `/despesas` tem o mesmo contrato, então é possível trocar de volta só mudando a URL no n8n.
 - Lançamentos criados pela API podem ser encontrados por `source_channel == "future_integration"` e `created_by_id == "whatsapp-api"`. Exclusões são arquivamentos, reversíveis no app.
 

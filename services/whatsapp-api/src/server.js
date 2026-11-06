@@ -55,9 +55,10 @@ function send(res, status, body) {
 
 async function main() {
   const apiKey = required('WHATSAPP_API_KEY');
-  const links = parsePhoneLinks(required('WHATSAPP_PHONE_LINKS'));
+  // Reserva legada (opcional): vinculos manuais enquanto os usuarios migram para o vinculo pelo app.
+  const links = parsePhoneLinks(readSetting('WHATSAPP_PHONE_LINKS'));
   const store = await createStore();
-  const app = createApp({ store, resolver: createPhoneResolver(links), apiKey });
+  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey });
   const port = Number(process.env.PORT || 3000);
 
   const server = http.createServer(async (req, res) => {
@@ -77,7 +78,7 @@ async function main() {
   });
 
   server.listen(port, () => {
-    console.info(JSON.stringify({ level: 'info', event: 'listening', port, linked_phones: links.size }));
+    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size }));
   });
 
   const shutdown = () => server.close(() => process.exit(0));

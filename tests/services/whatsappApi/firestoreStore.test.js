@@ -22,9 +22,24 @@ function fakeDb() {
       calls.push(['set', path]);
       docs.set(path, { ...(docs.get(path) || {}), ...data });
     },
+    async delete() {
+      calls.push(['delete', path]);
+      docs.delete(path);
+    },
     collection: (name) => collectionRef(`${path}/${name}`)
   });
   let auto = 0;
+  const matches = (value, [field, op, expected]) => (op === 'in' ? expected.includes(value[field]) : value[field] === expected);
+  const makeQuery = (path, filters) => ({
+    where: (field, op, values) => makeQuery(path, [...filters, [field, op, values]]),
+    async get() {
+      calls.push(['query', path, ...filters.flat()]);
+      const prefix = `${path}/`;
+      const found = [...docs.entries()].filter(([key, value]) =>
+        key.startsWith(prefix) && !key.slice(prefix.length).includes('/') && filters.every((filter) => matches(value, filter)));
+      return { docs: found.map(([key, value]) => ({ id: key.slice(prefix.length), ref: docRef(key), data: () => ({ ...value }) })) };
+    }
+  });
   const listDocs = (path) => {
     const prefix = `${path}/`;
     return [...docs.entries()].filter(([key]) => key.startsWith(prefix) && !key.slice(prefix.length).includes('/'));
@@ -35,26 +50,56 @@ function fakeDb() {
       calls.push(['list', path]);
       return { docs: listDocs(path).map(([key, value]) => ({ id: key.slice(path.length + 1), ref: docRef(key), data: () => ({ ...value }) })) };
     },
-    where: (field, op, values) => ({
-      async get() {
-        calls.push(['query', path, field, op]);
-        const prefix = `${path}/`;
-        const matches = [...docs.entries()].filter(([key, value]) =>
-          key.startsWith(prefix) && !key.slice(prefix.length).includes('/') &&
-          (op === 'in' ? values.includes(value[field]) : value[field] === values));
-        return { docs: matches.map(([key, value]) => ({ id: key.slice(prefix.length), ref: docRef(key), data: () => ({ ...value }) })) };
-      }
-    }),
+    where: (field, op, values) => makeQuery(path, [[field, op, values]]),
     async add(data) {
       const ref = docRef(`${path}/auto${++auto}`);
       await ref.create(data);
       return ref;
     }
   });
-  return { db: { collection: collectionRef }, docs, calls };
+  // Transacao simplificada: le e grava na hora (suficiente para testar a logica do adaptador).
+  const runTransaction = async (fn) => fn({
+    get: (target) => target.get(),
+    update: (ref, data) => ref.update(data),
+    set: (ref, data) => ref.set(data)
+  });
+  return { db: { collection: collectionRef, runTransaction }, docs, calls };
 }
 
 describe('whatsapp-api: adaptador Firestore', () => {
+  it('grava o vinculo, consome o codigo e revoga o telefone anterior da mesma conta', async () => {
+    const { db, docs } = fakeDb();
+    const store = createFirestoreStore(db);
+    const future = '2026-11-06T20:00:00.000Z';
+    docs.set('whatsapp_link_codes/h1', { owner_uid: 'a', status: 'pending', expires_at: { toMillis: () => Date.parse(future) } });
+    docs.set('whatsapp_links/+111111111', { uid: 'a', status: 'active', telefone: '+111111111' });
+    const base = { uid: 'a', chatwootAccountId: '3', nowIso: '2026-11-06T19:00:00.000Z', nowMs: Date.parse('2026-11-06T19:00:00.000Z') };
+
+    expect(await store.completeLink({ ...base, codeId: 'h1', phone: '+222222222' })).toBe('linked');
+    expect(docs.get('whatsapp_link_codes/h1').status).toBe('used');
+    expect(docs.get('whatsapp_links/+111111111')).toMatchObject({ status: 'revoked', revoked_by: 'relink' });
+    expect(docs.get('whatsapp_links/+222222222')).toMatchObject({ uid: 'a', status: 'active', chatwoot_account_id: '3' });
+    expect(await store.getActiveLinkByPhone('+222222222')).toMatchObject({ uid: 'a' });
+    expect(await store.getActiveLinkByPhone('+111111111')).toBeNull();
+
+    expect(await store.completeLink({ ...base, codeId: 'h1', phone: '+222222222' })).toBe('code_invalid');
+    docs.set('whatsapp_link_codes/h2', { owner_uid: 'b', status: 'pending', expires_at: future });
+    expect(await store.completeLink({ ...base, uid: 'b', codeId: 'h2', phone: '+222222222' })).toBe('phone_taken');
+    expect(docs.get('whatsapp_link_codes/h2').status).toBe('pending');
+    docs.set('whatsapp_link_codes/h3', { owner_uid: 'b', status: 'pending', expires_at: '2026-11-06T18:00:00.000Z' });
+    expect(await store.completeLink({ ...base, uid: 'b', codeId: 'h3', phone: '+333333333' })).toBe('code_invalid');
+  });
+
+  it('guarda e limpa as tentativas invalidas por telefone', async () => {
+    const { db, docs } = fakeDb();
+    const store = createFirestoreStore(db);
+    await store.saveLinkAttempts('k1', { failures: 1, window_start: 'x' });
+    await store.saveLinkAttempts('k1', { failures: 2 });
+    expect(await store.getLinkAttempts('k1')).toEqual({ failures: 2, window_start: 'x' });
+    await store.clearLinkAttempts('k1');
+    expect(docs.has('whatsapp_link_attempts/k1')).toBe(false);
+  });
+
   it('le referencias globais e apenas as pessoais do proprio usuario', async () => {
     const { db, docs } = fakeDb();
     docs.set('shared_macros/fixo', { macro_category: 'FIXO' });

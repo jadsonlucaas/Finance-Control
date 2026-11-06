@@ -52,20 +52,36 @@ export function parsePhoneLinks(raw) {
 }
 
 /**
- * Resolve o usuario dono do telefone. A fase de teste usa a configuracao do servidor;
- * no futuro, o cadastro do usuario passa a ser a fonte (mesma interface).
+ * Resolve o usuario dono do telefone.
+ * 1. Vinculo gravado pelo proprio usuario (whatsapp_links/{telefone}, status active), conferido a cada
+ *    requisicao: revogar no Dashboard corta o acesso na hora. A conta precisa estar ativa.
+ * 2. Reserva legada: WHATSAPP_PHONE_LINKS (configuracao manual do servidor), so durante a migracao.
  */
-export function createPhoneResolver(links) {
+export function createPhoneResolver(links = new Map(), { store } = {}) {
   return {
     async resolve({ telefone, accountId } = {}) {
       const phone = normalizePhone(telefone);
       if (!phone) throw new ApiError(400, 'INVALID_PHONE', 'Telefone invalido.');
+      const phoneHash = hashPhone(phone);
+
+      const stored = store?.getActiveLinkByPhone ? await store.getActiveLinkByPhone(phone) : null;
+      if (stored) {
+        if (stored.chatwoot_account_id && String(accountId ?? '') !== String(stored.chatwoot_account_id)) {
+          throw new ApiError(403, 'ACCOUNT_MISMATCH', 'Conta de atendimento nao corresponde ao vinculo.');
+        }
+        const profile = await store.getUserProfile(stored.uid);
+        if (!profile || profile.status !== 'active') {
+          throw new ApiError(403, 'ACCOUNT_NOT_ACTIVE', 'A conta vinculada nao esta ativa.');
+        }
+        return { uid: stored.uid, phoneHash, source: 'link' };
+      }
+
       const link = links.get(phone);
       if (!link) throw new ApiError(403, 'PHONE_NOT_LINKED', 'Telefone nao vinculado a nenhum usuario.');
       if (link.chatwootAccountId && String(accountId ?? '') !== link.chatwootAccountId) {
         throw new ApiError(403, 'ACCOUNT_MISMATCH', 'Conta de atendimento nao corresponde ao vinculo.');
       }
-      return { uid: link.uid, phoneHash: hashPhone(phone) };
+      return { uid: link.uid, phoneHash, source: 'legacy' };
     }
   };
 }
