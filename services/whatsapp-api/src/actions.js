@@ -5,7 +5,7 @@ import { ApiError, badRequest } from './errors.js';
 import { isCompetence, isDate, todayIn } from './dates.js';
 import { formatBRL, parseAmount } from './money.js';
 import { toPublicRecord } from './queries.js';
-import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory } from './references.js';
+import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory, resolvePaymentMethod } from './references.js';
 
 export const PENDING_ACTION_TTL_MS = 10 * 60 * 1000;
 export const ACTIONS = Object.freeze(['registrar_despesa', 'registrar_receita', 'marcar_pago', 'editar', 'excluir']);
@@ -89,7 +89,7 @@ function buildNewRecord(action, dados, today, nowIso, lookups = null) {
   let paymentMethod = type === 'saida' ? (cleanText(dados.forma_pagamento, 'forma_pagamento') || undefined) : undefined;
   if (type === 'saida' && lookups) {
     ({ category_name: categoryName, macro_category: macroCategory } = resolveExpenseCategory(lookups.catalog, categoryName, macroCategory));
-    paymentMethod = canonicalPaymentMethod(lookups.paymentMethods, paymentMethod);
+    paymentMethod = resolvePaymentMethod(lookups.paymentMethods, paymentMethod);
   }
 
   const record = stripUndefined({
