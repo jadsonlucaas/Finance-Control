@@ -261,6 +261,22 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     expect((await call('acoes/preparar', { acao: 'marcar_pago', dados: { lancamento_id: 'r1' } })).body.erro.codigo).toBe('ALREADY_PAID');
   });
 
+  it('confirma a acao pendente mais recente quando nao recebe confirmation_id', async () => {
+    const { call, store } = setup();
+    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10 } });
+    const second = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20 } });
+    const confirmed = await call('acoes/confirmar', {});
+    expect(confirmed.status).toBe(200);
+    expect(confirmed.body.lancamento.descricao).toBe('Segunda');
+    expect(store._dump(UID).pending.find((item) => item.id === second.body.confirmation_id).status).toBe('executed');
+    expect(store._dump(UID).records.some((record) => record.description === 'Primeira')).toBe(false);
+    expect(store._dump(UID).pending.find((item) => item.status === 'cancelled')).toBeTruthy();
+    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30 } });
+    const cancelled = await call('acoes/cancelar', { confirmation_id: 'ultima' });
+    expect(cancelled.body.status).toBe('cancelado');
+    expect((await call('acoes/confirmar', {})).status).toBe(404);
+  });
+
   it('interpreta valores em formato brasileiro', () => {
     expect(parseAmount('150')).toBe(150);
     expect(parseAmount('150,9')).toBe(150.9);
