@@ -9,7 +9,8 @@ import {
   buildResumo,
   buildVencimentos,
   parseListFilters,
-  resolveCompetence
+  resolveCompetence,
+  resolvePeriod
 } from './queries.js';
 
 export const MAX_BODY_BYTES = 16 * 1024;
@@ -25,12 +26,12 @@ export function createApp({ store, resolver, apiKey, now = () => new Date(), log
 
   const readRoutes = {
     despesas: async (uid, body) => buildLegacyDespesas(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now())),
-    resumo: async (uid, body) => buildResumo(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now())),
+    resumo: async (uid, body) => buildResumo(await store.listFinanceRecords(uid), resolvePeriod(body, now())),
     lancamentos: async (uid, body) => {
       const filters = parseListFilters(body, now());
       return buildLancamentos(await store.listFinanceRecords(uid), filters);
     },
-    categorias: async (uid, body) => buildCategorias(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now())),
+    categorias: async (uid, body) => buildCategorias(await store.listFinanceRecords(uid), resolvePeriod(body, now())),
     vencimentos: async (uid, body) => buildVencimentos(await store.listFinanceRecords(uid), body, now())
   };
 
