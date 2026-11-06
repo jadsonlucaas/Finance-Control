@@ -238,6 +238,7 @@ export function parseListFilters(body = {}, now) {
   if (body.status) filters.status = String(body.status);
   if (body.categoria) filters.categoria = normalizeText(body.categoria);
   if (body.busca) filters.busca = normalizeText(body.busca);
+  if (body.forma_pagamento) filters.formaPagamento = normalizeText(body.forma_pagamento);
   const limit = body.limite === undefined ? DEFAULT_LIST_LIMIT : Number(body.limite);
   if (!Number.isInteger(limit) || limit < 1) throw badRequest('INVALID_LIMIT', 'Limite deve ser inteiro positivo.');
   filters.limit = Math.min(limit, MAX_LIST_LIMIT);
@@ -273,7 +274,11 @@ export function buildLancamentos(records, filters) {
       normalizeText(record.description).includes(filters.busca) ||
       normalizeText(record.purchase_name).includes(filters.busca) ||
       normalizeText(record.category_name).includes(filters.busca) ||
-      normalizeText(record.person).includes(filters.busca));
+      normalizeText(record.person).includes(filters.busca) ||
+      normalizeText(record.payment_method).includes(filters.busca));
+  }
+  if (filters.formaPagamento) {
+    list = list.filter((record) => normalizeText(record.payment_method).includes(filters.formaPagamento));
   }
   const sorted = [...list].sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
   const items = sorted.slice(0, filters.limit).map(toPublicRecord);
@@ -284,7 +289,8 @@ export function buildLancamentos(records, filters) {
       tipo: filters.type ? (filters.type === 'entrada' ? 'receita' : 'despesa') : '',
       status: filters.status || '',
       categoria: filters.categoria || '',
-      busca: filters.busca || ''
+      busca: filters.busca || '',
+      forma_pagamento: filters.formaPagamento || ''
     },
     quantidade_encontrada: list.length,
     quantidade_retornada: items.length,

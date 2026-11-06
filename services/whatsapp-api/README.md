@@ -29,9 +29,12 @@ Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (con
 | --- | --- | --- |
 | `/internal/whatsapp/despesas` | `competencia` (YYYY-MM, padrão: mês atual) | Mesmo contrato da API readonly atual: `totalDespesas`, `despesasPagas`, `quantidadeDespesas`, `quantidadePagas` |
 | `/internal/whatsapp/resumo` | `competencia` ou `competencia_inicio` + `competencia_fim` | Despesas (total, pagas, em aberto), receitas (total, recebidas, pendentes), saldo realizado e saldo previsto, já formatados em R$ |
-| `/internal/whatsapp/lancamentos` | `competencia`, `tipo` (despesa/receita), `status` ("em aberto", "Pago"...), `categoria`, `busca`, `limite` (máx. 50) | Lista com `id`, descrição, valor, status, categoria e vencimento, além do total filtrado |
+| `/internal/whatsapp/lancamentos` | `competencia`, `tipo` (despesa/receita), `status` ("em aberto", "Pago"...), `categoria`, `busca`, `forma_pagamento`, `limite` (máx. 50) | Lista com `id`, descrição, valor, status, categoria e vencimento, além do total filtrado |
 | `/internal/whatsapp/categorias` | `competencia` ou `competencia_inicio` + `competencia_fim` | Despesas por categoria, com total, pago, em aberto e % |
 | `/internal/whatsapp/vencimentos` | `dias` (0–90, padrão 7) | Contas atrasadas e contas a vencer até hoje + `dias` |
+| `/internal/whatsapp/opcoes` | `macro` (opcional) | Macros, categorias (globais + pessoais) e formas de pagamento já usadas, para oferecer como opções no cadastro |
+
+Em `registrar_despesa`, a `categoria` é obrigatória e precisa existir no catálogo (sem diferenciar acento ou maiúsculas). A macro é preenchida pela categoria, e a forma de pagamento reaproveita a grafia de uma já usada.
 
 Em `resumo` e `categorias`, um período de até 24 meses pode ser pedido com `competencia_inicio` e `competencia_fim` (`YYYY-MM`). Sem `competencia_fim`, o fim é o mês atual. A resposta de período traz `periodo` (início, fim, meses) no lugar de `competencia`, e `resumo` inclui `por_mes` com os totais de cada mês.
 

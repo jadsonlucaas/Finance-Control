@@ -5,6 +5,7 @@ import { ApiError, badRequest } from './errors.js';
 import { isCompetence, isDate, todayIn } from './dates.js';
 import { formatBRL, parseAmount } from './money.js';
 import { toPublicRecord } from './queries.js';
+import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory } from './references.js';
 
 export const PENDING_ACTION_TTL_MS = 10 * 60 * 1000;
 export const ACTIONS = Object.freeze(['registrar_despesa', 'registrar_receita', 'marcar_pago', 'editar', 'excluir']);
@@ -60,7 +61,8 @@ function describe(record) {
     publicRecord.tipo === 'receita' ? 'Receita' : 'Despesa',
     publicRecord.descricao ? `"${publicRecord.descricao}"` : '',
     publicRecord.valor_formatado,
-    publicRecord.categoria ? `categoria ${publicRecord.categoria}` : '',
+    publicRecord.categoria ? `categoria ${publicRecord.categoria}${publicRecord.macro_categoria ? ` (${publicRecord.macro_categoria})` : ''}` : '',
+    publicRecord.forma_pagamento ? `pagamento ${publicRecord.forma_pagamento}` : '',
     publicRecord.vencimento ? `vencimento ${publicRecord.vencimento}` : '',
     publicRecord.competencia ? `competencia ${publicRecord.competencia}` : '',
     publicRecord.status ? `status ${publicRecord.status}` : ''
@@ -68,7 +70,7 @@ function describe(record) {
   return parts.filter(Boolean).join(', ');
 }
 
-function buildNewRecord(action, dados, today, nowIso) {
+function buildNewRecord(action, dados, today, nowIso, lookups = null) {
   const type = action === 'registrar_receita' ? 'entrada' : 'saida';
   const descricao = cleanText(dados.descricao, 'descricao');
   if (!descricao) throw badRequest('DESCRIPTION_REQUIRED', 'Informe a descricao do lancamento.');
@@ -82,15 +84,23 @@ function buildNewRecord(action, dados, today, nowIso) {
   const allowed = type === 'saida' ? ['Em aberto', 'Pago'] : ['Pago', 'Pendente'];
   if (!allowed.includes(status)) throw badRequest('INVALID_STATUS', `Status permitido: ${allowed.join(' ou ')}.`);
 
+  let categoryName = cleanText(dados.categoria, 'categoria') || undefined;
+  let macroCategory = cleanText(dados.macro_categoria, 'macro_categoria') || undefined;
+  let paymentMethod = type === 'saida' ? (cleanText(dados.forma_pagamento, 'forma_pagamento') || undefined) : undefined;
+  if (type === 'saida' && lookups) {
+    ({ category_name: categoryName, macro_category: macroCategory } = resolveExpenseCategory(lookups.catalog, categoryName, macroCategory));
+    paymentMethod = canonicalPaymentMethod(lookups.paymentMethods, paymentMethod);
+  }
+
   const record = stripUndefined({
     type,
     description: descricao,
     amount,
     liquido: type === 'entrada' ? amount : undefined,
-    category_name: cleanText(dados.categoria, 'categoria') || undefined,
-    macro_category: cleanText(dados.macro_categoria, 'macro_categoria') || undefined,
+    category_name: categoryName,
+    macro_category: macroCategory,
     person: cleanText(dados.pessoa, 'pessoa') || undefined,
-    payment_method: type === 'saida' ? (cleanText(dados.forma_pagamento, 'forma_pagamento') || undefined) : undefined,
+    payment_method: paymentMethod,
     occurred_date: occurredDate,
     due_date: dueDate,
     competence,
@@ -121,7 +131,7 @@ const EDITABLE_FIELDS = Object.freeze({
   pessoa: 'person'
 });
 
-function buildEditPatch(record, alteracoes, today) {
+function buildEditPatch(record, alteracoes, today, lookups = null) {
   if (!alteracoes || typeof alteracoes !== 'object' || Array.isArray(alteracoes)) {
     throw badRequest('CHANGES_REQUIRED', 'Informe as alteracoes em dados.alteracoes.');
   }
@@ -141,6 +151,14 @@ function buildEditPatch(record, alteracoes, today) {
       patch[field] = cleanText(value, key);
     }
   });
+  if (record.type === 'saida' && lookups && (patch.category_name !== undefined || patch.macro_category !== undefined)) {
+    const resolved = resolveExpenseCategory(lookups.catalog, patch.category_name ?? record.category_name, patch.macro_category);
+    patch.category_name = resolved.category_name;
+    patch.macro_category = resolved.macro_category;
+  }
+  if (record.type === 'saida' && lookups && patch.payment_method) {
+    patch.payment_method = canonicalPaymentMethod(lookups.paymentMethods, patch.payment_method);
+  }
   if (patch.status === 'Pago' && record.type === 'saida' && record.status !== 'Pago') patch.paid_at = today;
   if (patch.status && patch.status !== 'Pago' && record.type === 'saida' && record.paid_at) patch.paid_at = '';
   const cleaned = stripUndefined(patch);
@@ -189,6 +207,11 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     }
   }
 
+  async function loadLookups(uid) {
+    const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid)]);
+    return { catalog: buildReferenceCatalog(references), paymentMethods: buildPaymentMethods(records) };
+  }
+
   async function prepare(uid, body = {}) {
     const acao = String(body.acao || '');
     if (!ACTIONS.includes(acao)) throw badRequest('INVALID_ACTION', `Acao deve ser uma de: ${ACTIONS.join(', ')}.`);
@@ -208,7 +231,8 @@ export function createActionService({ store, now = () => new Date(), newId = () 
 
     let resumo;
     if (acao === 'registrar_despesa' || acao === 'registrar_receita') {
-      pending.record = buildNewRecord(acao, dados, today, nowIso);
+      const lookups = acao === 'registrar_despesa' ? await loadLookups(uid) : null;
+      pending.record = buildNewRecord(acao, dados, today, nowIso, lookups);
       resumo = `Registrar ${describe(pending.record)}.`;
     } else {
       const record = await loadEditableRecord(store, uid, dados.lancamento_id);
@@ -220,7 +244,10 @@ export function createActionService({ store, now = () => new Date(), newId = () 
         pending.patch = record.type === 'saida' ? { status: 'Pago', paid_at: today } : { status: 'Pago' };
         resumo = `Marcar como pago: ${describe(record)}.`;
       } else if (acao === 'editar') {
-        pending.patch = buildEditPatch(record, dados.alteracoes, today);
+        const touchesReferences = dados.alteracoes && typeof dados.alteracoes === 'object' &&
+          ['categoria', 'macro_categoria', 'forma_pagamento'].some((key) => key in dados.alteracoes);
+        const lookups = record.type === 'saida' && touchesReferences ? await loadLookups(uid) : null;
+        pending.patch = buildEditPatch(record, dados.alteracoes, today, lookups);
         const changes = Object.entries(pending.patch)
           .filter(([field]) => field !== 'paid_at' && field !== 'liquido')
           .map(([field, value]) => `${field}: ${field === 'amount' ? formatBRL(value) : value || '(vazio)'}`);
