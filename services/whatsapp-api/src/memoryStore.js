@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 const clone = (value) => (value === undefined ? undefined : structuredClone(value));
 
 /** Store em memoria com a mesma interface do Firestore; usado em testes e em desenvolvimento local. */
-export function createMemoryStore(seed = {}) {
+export function createMemoryStore(seed = {}, { shared = [] } = {}) {
   const users = new Map();
   const bucket = (uid) => {
     if (!users.has(uid)) users.set(uid, { records: new Map(), pending: new Map(), receipts: new Map(), audit: [] });
@@ -18,6 +18,10 @@ export function createMemoryStore(seed = {}) {
       return [...bucket(uid).records.values()]
         .filter((record) => record.type === 'saida' || record.type === 'entrada')
         .map(clone);
+    },
+    async listReferenceRecords(uid) {
+      const personal = [...bucket(uid).records.values()].filter((record) => record.type === 'macro' || record.type === 'categoria');
+      return [...shared, ...personal].map(clone);
     },
     async getRecord(uid, id) {
       return clone(bucket(uid).records.get(id)) || null;

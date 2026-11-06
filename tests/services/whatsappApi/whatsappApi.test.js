@@ -3,6 +3,7 @@ import { createApp } from '../../../services/whatsapp-api/src/app.js';
 import { createMemoryStore } from '../../../services/whatsapp-api/src/memoryStore.js';
 import { createPhoneResolver, hashPhone, normalizePhone, parsePhoneLinks } from '../../../services/whatsapp-api/src/phoneLinks.js';
 import { parseAmount } from '../../../services/whatsapp-api/src/money.js';
+import { DEFAULT_CATEGORIES } from '../../../services/whatsapp-api/src/references.js';
 
 const API_KEY = 'test-key-123';
 const PHONE = '+34 637 210 215';
@@ -13,7 +14,7 @@ const NOW = new Date('2026-11-05T15:00:00Z');
 function seed() {
   return {
     [UID]: [
-      { id: 'r1', type: 'saida', description: 'Aluguel', amount: 2000, category_name: 'Moradia', status: 'Pago', competence: '2026-11', due_date: '2026-11-05', paid_at: '2026-11-04', updated_at: '2026-11-01T10:00:00.000Z' },
+      { id: 'r1', type: 'saida', description: 'Aluguel', amount: 2000, category_name: 'Moradia', payment_method: 'Cartão Nubank', status: 'Pago', competence: '2026-11', due_date: '2026-11-05', paid_at: '2026-11-04', updated_at: '2026-11-01T10:00:00.000Z' },
       { id: 'r2', type: 'saida', description: 'Internet', amount: 120.5, category_name: 'Moradia', status: 'Em aberto', competence: '2026-11', due_date: '2026-11-03', updated_at: '2026-11-01T10:00:00.000Z' },
       { id: 'r3', type: 'saida', description: 'Mercado', amount: 450.25, category_name: 'Alimentacao', status: 'Em aberto', competence: '2026-11', due_date: '2026-11-10', updated_at: '2026-11-01T10:00:00.000Z' },
       { id: 'r4', type: 'saida', description: 'Academia', amount: 99.9, category_name: 'Saude', status: 'Cancelado', competence: '2026-11' },
@@ -30,7 +31,8 @@ function seed() {
 }
 
 function setup({ links } = {}) {
-  const store = createMemoryStore(seed());
+  const shared = DEFAULT_CATEGORIES.map((item, index) => ({ id: `cat_${index}`, type: 'categoria', category_name: item.nome, macro_category: item.macro }));
+  const store = createMemoryStore(seed(), { shared });
   const resolver = createPhoneResolver(parsePhoneLinks(links ?? JSON.stringify([{ telefone: PHONE, uid: UID, chatwootAccountId: '3' }])));
   const logger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
   let counter = 0;
@@ -182,7 +184,7 @@ describe('whatsapp-api: leitura', () => {
 describe('whatsapp-api: escrita com confirmacao', () => {
   it('registra despesa somente apos confirmar e com metadados de integracao', async () => {
     const { call, store } = setup();
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Farmacia', valor: '1.234,56', categoria: 'Saude', vencimento: '2026-11-20' } });
+    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Farmacia', valor: '1.234,56', categoria: 'cuidados pessoais', forma_pagamento: 'cartao nubank', vencimento: '2026-11-20' } });
     expect(prepared.status).toBe(200);
     expect(prepared.body.status).toBe('aguardando_confirmacao');
     expect(prepared.body.resumo).toContain('R$ 1.234,56');
@@ -194,6 +196,7 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const created = store._dump(UID).records.find((record) => record.description === 'Farmacia');
     expect(created).toMatchObject({
       type: 'saida', amount: 1234.56, status: 'Em aberto', competence: '2026-11', due_date: '2026-11-20',
+      category_name: 'Cuidados pessoais', macro_category: 'VARIAVEL', payment_method: 'Cartão Nubank',
       owner_uid: UID, source_channel: 'future_integration', created_by_type: 'integration', archived: false
     });
     expect(created).not.toHaveProperty('telefone');
@@ -223,10 +226,10 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     await call('acoes/confirmar', { confirmation_id: pay.body.confirmation_id });
     expect(await store.getRecord(UID, 'r2')).toMatchObject({ status: 'Pago', paid_at: '2026-11-05' });
 
-    const edit = await call('acoes/preparar', { acao: 'editar', dados: { lancamento_id: 'r3', alteracoes: { valor: 500, categoria: 'Mercado' } } });
+    const edit = await call('acoes/preparar', { acao: 'editar', dados: { lancamento_id: 'r3', alteracoes: { valor: 500, categoria: 'alimentacao' } } });
     expect(edit.status).toBe(200);
     await call('acoes/confirmar', { confirmation_id: edit.body.confirmation_id });
-    expect(await store.getRecord(UID, 'r3')).toMatchObject({ amount: 500, category_name: 'Mercado' });
+    expect(await store.getRecord(UID, 'r3')).toMatchObject({ amount: 500, category_name: 'Alimentação', macro_category: 'VARIAVEL' });
 
     const del = await call('acoes/preparar', { acao: 'excluir', dados: { lancamento_id: 'r3' } });
     await call('acoes/confirmar', { confirmation_id: del.body.confirmation_id });
@@ -245,7 +248,7 @@ describe('whatsapp-api: escrita com confirmacao', () => {
   it('nao confirma acao preparada por outro usuario', async () => {
     const links = JSON.stringify([{ telefone: PHONE, uid: UID }, { telefone: '+5511988887777', uid: OTHER_UID }]);
     const { call } = setup({ links });
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Teste', valor: 10 } });
+    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Teste', valor: 10, categoria: 'Outros' } });
     const res = await call('acoes/confirmar', { telefone: '+5511988887777', confirmation_id: prepared.body.confirmation_id });
     expect(res.status).toBe(404);
   });
@@ -262,18 +265,19 @@ describe('whatsapp-api: escrita com confirmacao', () => {
   });
 
   it('expira confirmacoes antigas e permite cancelar', async () => {
-    const store = createMemoryStore(seed());
+    const shared = DEFAULT_CATEGORIES.map((item, index) => ({ id: `cat_${index}`, type: 'categoria', category_name: item.nome, macro_category: item.macro }));
+  const store = createMemoryStore(seed(), { shared });
     const resolver = createPhoneResolver(parsePhoneLinks(JSON.stringify({ [PHONE]: UID })));
     let current = NOW;
     const app = createApp({ store, resolver, apiKey: API_KEY, now: () => current, logger: { info() {}, error() {}, warn() {} } });
     const call = (route, body) => app.handle({ method: 'POST', path: `/internal/whatsapp/${route}`, headers: { 'x-api-key': API_KEY }, body: { telefone: PHONE, ...body } });
 
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Velha', valor: 10 } });
+    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Velha', valor: 10, categoria: 'Outros' } });
     current = new Date(NOW.getTime() + 11 * 60 * 1000);
     expect((await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id })).status).toBe(410);
 
     current = NOW;
-    const other = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cancelar', valor: 10 } });
+    const other = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cancelar', valor: 10, categoria: 'Outros' } });
     expect((await call('acoes/cancelar', { confirmation_id: other.body.confirmation_id })).body.status).toBe('cancelado');
     expect((await call('acoes/confirmar', { confirmation_id: other.body.confirmation_id })).status).toBe(409);
     expect(store._dump(UID).records.some((record) => record.description === 'Cancelar')).toBe(false);
@@ -292,18 +296,49 @@ describe('whatsapp-api: escrita com confirmacao', () => {
 
   it('confirma a acao pendente mais recente quando nao recebe confirmation_id', async () => {
     const { call, store } = setup();
-    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10 } });
-    const second = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20 } });
+    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10, categoria: 'Outros' } });
+    const second = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20, categoria: 'Outros' } });
     const confirmed = await call('acoes/confirmar', {});
     expect(confirmed.status).toBe(200);
     expect(confirmed.body.lancamento.descricao).toBe('Segunda');
     expect(store._dump(UID).pending.find((item) => item.id === second.body.confirmation_id).status).toBe('executed');
     expect(store._dump(UID).records.some((record) => record.description === 'Primeira')).toBe(false);
     expect(store._dump(UID).pending.find((item) => item.status === 'cancelled')).toBeTruthy();
-    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30 } });
+    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30, categoria: 'Outros' } });
     const cancelled = await call('acoes/cancelar', { confirmation_id: 'ultima' });
     expect(cancelled.body.status).toBe('cancelado');
     expect((await call('acoes/confirmar', {})).status).toBe(404);
+  });
+
+  it('exige categoria cadastrada em despesas e preenche a macro pela categoria', async () => {
+    const { call } = setup();
+    const missing = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5 } });
+    expect(missing.body.erro.codigo).toBe('CATEGORY_REQUIRED');
+    const unknown = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5, categoria: 'Inexistente' } });
+    expect(unknown.body.erro.codigo).toBe('CATEGORY_NOT_FOUND');
+    expect(unknown.body.erro.mensagem).toContain('Transporte');
+    const mismatch = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5, categoria: 'Lazer', macro_categoria: 'FIXO' } });
+    expect(mismatch.body.erro.codigo).toBe('CATEGORY_MACRO_MISMATCH');
+    const ok = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cinema', valor: 30, categoria: 'lazer', forma_pagamento: 'Pix' } });
+    expect(ok.status).toBe(200);
+    expect(ok.body.resumo).toContain('categoria Lazer (VARIAVEL)');
+    expect(ok.body.resumo).toContain('pagamento Pix');
+    const receita = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 50 } });
+    expect(receita.status).toBe(200);
+  });
+
+  it('lista opcoes de macro, categoria e forma de pagamento', async () => {
+    const { call } = setup();
+    const res = await call('opcoes', {});
+    expect(res.status).toBe(200);
+    expect(res.body.macros.slice(0, 3)).toEqual(['FIXO', 'VARIAVEL', 'RESERVA']);
+    expect(res.body.categorias).toContainEqual({ nome: 'Transporte', macro: 'FIXO' });
+    expect(res.body.categorias.map((item) => item.nome)).toContain('Moradia');
+    expect(res.body.formas_pagamento).toEqual(['Cartão Nubank']);
+    const fixed = await call('opcoes', { macro: 'fixo' });
+    expect(fixed.body.categorias.every((item) => item.macro === 'FIXO')).toBe(true);
+    const byPayment = await call('lancamentos', { forma_pagamento: 'nubank' });
+    expect(byPayment.body.lancamentos.map((item) => item.id)).toEqual(['r1']);
   });
 
   it('interpreta valores em formato brasileiro', () => {

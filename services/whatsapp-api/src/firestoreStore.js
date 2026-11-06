@@ -14,6 +14,16 @@ export function createFirestoreStore(db) {
       const snapshot = await records(uid).where('type', 'in', ['saida', 'entrada']).get();
       return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     },
+    async listReferenceRecords(uid) {
+      // Referencias globais (shared_macros/shared_categories) + pessoais do proprio usuario.
+      const [macros, categories, personal] = await Promise.all([
+        db.collection('shared_macros').get(),
+        db.collection('shared_categories').get(),
+        records(uid).where('type', 'in', ['macro', 'categoria']).get()
+      ]);
+      const toRecords = (snapshot, type) => snapshot.docs.map((doc) => ({ type, ...doc.data(), id: doc.id }));
+      return [...toRecords(macros, 'macro'), ...toRecords(categories, 'categoria'), ...toRecords(personal)];
+    },
     async getRecord(uid, id) {
       const snapshot = await records(uid).doc(id).get();
       return snapshot.exists ? { ...snapshot.data(), id: snapshot.id } : null;

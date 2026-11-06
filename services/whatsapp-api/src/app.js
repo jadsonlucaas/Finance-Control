@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ApiError } from './errors.js';
 import { isAuthorized } from './auth.js';
 import { createActionService } from './actions.js';
+import { buildOpcoes } from './references.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -32,7 +33,11 @@ export function createApp({ store, resolver, apiKey, now = () => new Date(), log
       return buildLancamentos(await store.listFinanceRecords(uid), filters);
     },
     categorias: async (uid, body) => buildCategorias(await store.listFinanceRecords(uid), resolvePeriod(body, now())),
-    vencimentos: async (uid, body) => buildVencimentos(await store.listFinanceRecords(uid), body, now())
+    vencimentos: async (uid, body) => buildVencimentos(await store.listFinanceRecords(uid), body, now()),
+    opcoes: async (uid, body) => {
+      const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid)]);
+      return buildOpcoes(references, records, body);
+    }
   };
 
   const writeRoutes = {

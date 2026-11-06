@@ -25,8 +25,16 @@ function fakeDb() {
     collection: (name) => collectionRef(`${path}/${name}`)
   });
   let auto = 0;
+  const listDocs = (path) => {
+    const prefix = `${path}/`;
+    return [...docs.entries()].filter(([key]) => key.startsWith(prefix) && !key.slice(prefix.length).includes('/'));
+  };
   const collectionRef = (path) => ({
     doc: (id) => docRef(`${path}/${id ?? `auto${++auto}`}`),
+    async get() {
+      calls.push(['list', path]);
+      return { docs: listDocs(path).map(([key, value]) => ({ id: key.slice(path.length + 1), ref: docRef(key), data: () => ({ ...value }) })) };
+    },
     where: (field, op, values) => ({
       async get() {
         calls.push(['query', path, field, op]);
@@ -47,6 +55,18 @@ function fakeDb() {
 }
 
 describe('whatsapp-api: adaptador Firestore', () => {
+  it('le referencias globais e apenas as pessoais do proprio usuario', async () => {
+    const { db, docs } = fakeDb();
+    docs.set('shared_macros/fixo', { macro_category: 'FIXO' });
+    docs.set('shared_categories/cat_fixo_transporte', { type: 'categoria', category_name: 'Transporte', macro_category: 'FIXO' });
+    docs.set('users/a/finance_records/c1', { type: 'categoria', category_name: 'Pets', macro_category: 'VARIAVEL' });
+    docs.set('users/a/finance_records/r1', { type: 'saida', amount: 10 });
+    docs.set('users/b/finance_records/c2', { type: 'categoria', category_name: 'Segredo' });
+    const refs = await createFirestoreStore(db).listReferenceRecords('a');
+    expect(refs.map((item) => item.category_name || item.macro_category).sort()).toEqual(['FIXO', 'Pets', 'Transporte']);
+    expect(refs.find((item) => item.id === 'fixo').type).toBe('macro');
+  });
+
   it('le e grava apenas sob users/{uid}', async () => {
     const { db, docs } = fakeDb();
     docs.set('users/a/finance_records/r1', { type: 'saida', amount: 10 });
