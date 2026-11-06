@@ -34,7 +34,7 @@ Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (con
 | `/internal/whatsapp/vencimentos` | `dias` (0–90, padrão 7) | Contas atrasadas e contas a vencer até hoje + `dias` |
 | `/internal/whatsapp/opcoes` | `macro` (opcional) | Macros, categorias (globais + pessoais) e formas de pagamento já usadas, para oferecer como opções no cadastro |
 
-Em `registrar_despesa`, a `categoria` é obrigatória e precisa existir no catálogo (sem diferenciar acento ou maiúsculas). A macro é preenchida pela categoria, e a forma de pagamento reaproveita a grafia de uma já usada.
+Em `registrar_despesa`, a API conduz o cadastro: enquanto faltar macro, categoria ou forma de pagamento, `acoes/preparar` devolve 400 com `MACRO_REQUIRED`, `CATEGORY_REQUIRED`, `CATEGORY_NOT_FOUND`, `CATEGORY_MACRO_MISMATCH` ou `PAYMENT_REQUIRED`. O erro traz `detalhes.pergunta` e `detalhes.opcoes` (até 10; se houver mais, 9 + "Outra"), e a mensagem já inclui a linha `[opcoes: ...]` que o n8n transforma em botões. A macro é deduzida quando a categoria existe em uma só macro. A comparação ignora acento e maiúsculas e aceita a opção cortada pelo WhatsApp (terminada em "…"). A forma de pagamento reaproveita a grafia de uma já usada.
 
 Em `resumo` e `categorias`, um período de até 24 meses pode ser pedido com `competencia_inicio` e `competencia_fim` (`YYYY-MM`). Sem `competencia_fim`, o fim é o mês atual. A resposta de período traz `periodo` (início, fim, meses) no lugar de `competencia`, e `resumo` inclui `por_mes` com os totais de cada mês.
 
@@ -50,12 +50,12 @@ Regras de cálculo:
 
 ```json
 { "telefone": "+...", "accountId": 3, "acao": "registrar_despesa",
-  "dados": { "descricao": "Farmácia", "valor": "123,45", "categoria": "Saúde", "vencimento": "2026-11-20" } }
+  "dados": { "descricao": "Farmácia", "valor": "123,45", "categoria": "Cuidados pessoais", "forma_pagamento": "Pix", "vencimento": "2026-11-20" } }
 ```
 
 | `acao` | `dados` |
 | --- | --- |
-| `registrar_despesa` | `descricao`*, `valor`*, `categoria`, `macro_categoria`, `data`, `vencimento`, `competencia`, `status` (Em aberto/Pago), `forma_pagamento`, `pessoa` |
+| `registrar_despesa` | `descricao`*, `valor`*, `categoria`*, `forma_pagamento`*, `macro_categoria` (se a categoria existir em mais de uma macro), `data`, `vencimento`, `competencia`, `status` (Em aberto/Pago), `pessoa` |
 | `registrar_receita` | `descricao`*, `valor`*, `categoria`, `data`, `competencia`, `status` (Pago/Pendente), `pessoa` |
 | `marcar_pago` | `lancamento_id`* |
 | `editar` | `lancamento_id`*, `alteracoes`* com `descricao`, `valor`, `categoria`, `macro_categoria`, `vencimento`, `data`, `competencia`, `status`, `forma_pagamento` ou `pessoa` |

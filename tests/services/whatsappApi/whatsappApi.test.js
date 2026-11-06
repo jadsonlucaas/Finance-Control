@@ -30,8 +30,8 @@ function seed() {
   };
 }
 
-function setup({ links } = {}) {
-  const shared = DEFAULT_CATEGORIES.map((item, index) => ({ id: `cat_${index}`, type: 'categoria', category_name: item.nome, macro_category: item.macro }));
+function setup({ links, extraShared = [] } = {}) {
+  const shared = [...DEFAULT_CATEGORIES.map((item, index) => ({ id: `cat_${index}`, type: 'categoria', category_name: item.nome, macro_category: item.macro })), ...extraShared];
   const store = createMemoryStore(seed(), { shared });
   const resolver = createPhoneResolver(parsePhoneLinks(links ?? JSON.stringify([{ telefone: PHONE, uid: UID, chatwootAccountId: '3' }])));
   const logger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
@@ -248,7 +248,7 @@ describe('whatsapp-api: escrita com confirmacao', () => {
   it('nao confirma acao preparada por outro usuario', async () => {
     const links = JSON.stringify([{ telefone: PHONE, uid: UID }, { telefone: '+5511988887777', uid: OTHER_UID }]);
     const { call } = setup({ links });
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Teste', valor: 10, categoria: 'Outros' } });
+    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Teste', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
     const res = await call('acoes/confirmar', { telefone: '+5511988887777', confirmation_id: prepared.body.confirmation_id });
     expect(res.status).toBe(404);
   });
@@ -272,12 +272,12 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const app = createApp({ store, resolver, apiKey: API_KEY, now: () => current, logger: { info() {}, error() {}, warn() {} } });
     const call = (route, body) => app.handle({ method: 'POST', path: `/internal/whatsapp/${route}`, headers: { 'x-api-key': API_KEY }, body: { telefone: PHONE, ...body } });
 
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Velha', valor: 10, categoria: 'Outros' } });
+    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Velha', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
     current = new Date(NOW.getTime() + 11 * 60 * 1000);
     expect((await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id })).status).toBe(410);
 
     current = NOW;
-    const other = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cancelar', valor: 10, categoria: 'Outros' } });
+    const other = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cancelar', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
     expect((await call('acoes/cancelar', { confirmation_id: other.body.confirmation_id })).body.status).toBe('cancelado');
     expect((await call('acoes/confirmar', { confirmation_id: other.body.confirmation_id })).status).toBe(409);
     expect(store._dump(UID).records.some((record) => record.description === 'Cancelar')).toBe(false);
@@ -296,35 +296,72 @@ describe('whatsapp-api: escrita com confirmacao', () => {
 
   it('confirma a acao pendente mais recente quando nao recebe confirmation_id', async () => {
     const { call, store } = setup();
-    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10, categoria: 'Outros' } });
-    const second = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20, categoria: 'Outros' } });
+    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    const second = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20, categoria: 'Outros', forma_pagamento: 'Pix' } });
     const confirmed = await call('acoes/confirmar', {});
     expect(confirmed.status).toBe(200);
     expect(confirmed.body.lancamento.descricao).toBe('Segunda');
     expect(store._dump(UID).pending.find((item) => item.id === second.body.confirmation_id).status).toBe('executed');
     expect(store._dump(UID).records.some((record) => record.description === 'Primeira')).toBe(false);
     expect(store._dump(UID).pending.find((item) => item.status === 'cancelled')).toBeTruthy();
-    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30, categoria: 'Outros' } });
+    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30, categoria: 'Outros', forma_pagamento: 'Pix' } });
     const cancelled = await call('acoes/cancelar', { confirmation_id: 'ultima' });
     expect(cancelled.body.status).toBe('cancelado');
     expect((await call('acoes/confirmar', {})).status).toBe(404);
   });
 
-  it('exige categoria cadastrada em despesas e preenche a macro pela categoria', async () => {
+  it('guia o cadastro de despesa: macro, categoria e forma de pagamento com opcoes clicaveis', async () => {
     const { call } = setup();
-    const missing = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5 } });
-    expect(missing.body.erro.codigo).toBe('CATEGORY_REQUIRED');
-    const unknown = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5, categoria: 'Inexistente' } });
-    expect(unknown.body.erro.codigo).toBe('CATEGORY_NOT_FOUND');
-    expect(unknown.body.erro.mensagem).toContain('Transporte');
-    const mismatch = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5, categoria: 'Lazer', macro_categoria: 'FIXO' } });
-    expect(mismatch.body.erro.codigo).toBe('CATEGORY_MACRO_MISMATCH');
-    const ok = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cinema', valor: 30, categoria: 'lazer', forma_pagamento: 'Pix' } });
+    const prep = (dados) => call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, ...dados } });
+
+    const semNada = await prep({});
+    expect(semNada.status).toBe(400);
+    expect(semNada.body.erro.codigo).toBe('MACRO_REQUIRED');
+    expect(semNada.body.erro.detalhes.opcoes.slice(0, 3)).toEqual(['FIXO', 'VARIAVEL', 'RESERVA']);
+    expect(semNada.body.erro.mensagem).toContain('[opcoes: FIXO | VARIAVEL | RESERVA');
+
+    const soMacro = await prep({ macro_categoria: 'variavel' });
+    expect(soMacro.body.erro.codigo).toBe('CATEGORY_REQUIRED');
+    expect(soMacro.body.erro.detalhes.opcoes).toContain('Lazer');
+    expect(soMacro.body.erro.detalhes.opcoes).not.toContain('Transporte');
+
+    const inexistente = await prep({ categoria: 'Inexistente' });
+    expect(inexistente.body.erro.codigo).toBe('CATEGORY_NOT_FOUND');
+    expect(inexistente.body.erro.detalhes.opcoes.slice(0, 3)).toEqual(['FIXO', 'VARIAVEL', 'RESERVA']);
+
+    const errada = await prep({ categoria: 'Lazer', macro_categoria: 'FIXO' });
+    expect(errada.body.erro.codigo).toBe('CATEGORY_MACRO_MISMATCH');
+    expect(errada.body.erro.detalhes.opcoes).toContain('Transporte');
+
+    const semPagamento = await prep({ categoria: 'lazer' });
+    expect(semPagamento.body.erro.codigo).toBe('PAYMENT_REQUIRED');
+    expect(semPagamento.body.erro.detalhes.opcoes).toEqual(['Cartão Nubank', 'Outra']);
+
+    const outra = await prep({ categoria: 'lazer', forma_pagamento: 'Outra' });
+    expect(outra.body.erro.codigo).toBe('PAYMENT_REQUIRED');
+    expect(outra.body.erro.detalhes.opcoes).toEqual([]);
+
+    const cortado = await prep({ categoria: 'Reserva de emergênc…', forma_pagamento: 'Cartão Nu…' });
+    expect(cortado.status).toBe(200);
+    expect(cortado.body.resumo).toContain('categoria Reserva de emergência (RESERVA)');
+    expect(cortado.body.resumo).toContain('pagamento Cartão Nubank');
+
+    const ok = await prep({ categoria: 'lazer', forma_pagamento: 'Pix' });
     expect(ok.status).toBe(200);
     expect(ok.body.resumo).toContain('categoria Lazer (VARIAVEL)');
     expect(ok.body.resumo).toContain('pagamento Pix');
     const receita = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 50 } });
     expect(receita.status).toBe(200);
+  });
+
+  it('pergunta a macro quando a categoria existe em mais de uma', async () => {
+    const extra = [{ id: 'c_dup', type: 'categoria', category_name: 'Alimentação', macro_category: 'FIXO' }];
+    const { call } = setup({ extraShared: extra });
+    const dup = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', forma_pagamento: 'Pix' } });
+    expect(dup.body.erro.codigo).toBe('MACRO_REQUIRED');
+    expect(dup.body.erro.detalhes.opcoes).toEqual(['FIXO', 'VARIAVEL']);
+    const ok = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', macro_categoria: 'VARIAVEL', forma_pagamento: 'Pix' } });
+    expect(ok.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
   });
 
   it('lista opcoes de macro, categoria e forma de pagamento', async () => {
