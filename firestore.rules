@@ -728,6 +728,47 @@ service cloud.firestore {
         && isActiveUser();
     }
 
+    // Vinculo conta <-> WhatsApp.
+    // O Dashboard so cria pedidos de codigo para o proprio usuario ativo, com validade curta,
+    // guardando apenas o hash do codigo como id. Quem consome o codigo e grava o vinculo e a
+    // whatsapp-api (Admin SDK). O usuario so le e revoga os proprios vinculos.
+    function isValidWhatsAppLinkCodeCreate(codeId) {
+      let d = request.resource.data;
+      return codeId.matches('^[a-f0-9]{64}$')
+        && d.keys().hasOnly(['owner_uid', 'status', 'created_at', 'expires_at'])
+        && d.owner_uid == request.auth.uid
+        && d.status == 'pending'
+        && d.created_at == request.time
+        && d.expires_at is timestamp
+        && d.expires_at > request.time
+        && d.expires_at <= request.time + duration.value(15, 'm');
+    }
+
+    function isValidWhatsAppLinkRevocation() {
+      return resource.data.status == 'active'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'revoked_at', 'revoked_by'])
+        && request.resource.data.status == 'revoked'
+        && request.resource.data.revoked_at == request.time
+        && request.resource.data.revoked_by == 'user';
+    }
+
+    match /whatsapp_link_codes/{codeId} {
+      allow read: if isActiveUser() && resource.data.owner_uid == request.auth.uid;
+      allow create: if isActiveUser() && isValidWhatsAppLinkCodeCreate(codeId);
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.owner_uid == request.auth.uid;
+    }
+
+    match /whatsapp_links/{phoneId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create, delete: if false;
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid && isValidWhatsAppLinkRevocation();
+    }
+
+    match /whatsapp_link_attempts/{phoneKey} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

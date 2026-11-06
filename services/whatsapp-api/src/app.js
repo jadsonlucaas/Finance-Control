@@ -3,6 +3,7 @@ import { ApiError } from './errors.js';
 import { isAuthorized } from './auth.js';
 import { createActionService } from './actions.js';
 import { buildOpcoes } from './references.js';
+import { createLinkService } from './links.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -24,6 +25,24 @@ const PREFIX = '/internal/whatsapp';
 export function createApp({ store, resolver, apiKey, now = () => new Date(), logger = console, newId = () => randomUUID() }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const actions = createActionService({ store, now, newId });
+  const links = createLinkService({ store, now });
+
+  // Rotas sem usuario resolvido: o telefone ainda pode nao estar vinculado.
+  const linkRoutes = {
+    'vinculo/confirmar': async (body) => {
+      const { phoneHash, ...result } = await links.confirm(body);
+      return { phoneHash, result };
+    },
+    'vinculo/status': async (body) => {
+      try {
+        const { phoneHash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
+        return { phoneHash, result: { vinculado: true } };
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 403) return { phoneHash: '', result: { vinculado: false, motivo: error.code } };
+        throw error;
+      }
+    }
+  };
 
   const readRoutes = {
     despesas: async (uid, body) => buildLegacyDespesas(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now())),
@@ -64,6 +83,12 @@ export function createApp({ store, resolver, apiKey, now = () => new Date(), log
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'INVALID_BODY', 'Corpo JSON obrigatorio.');
 
       const name = route.slice(PREFIX.length + 1);
+      if (linkRoutes[name]) {
+        const { phoneHash: hash, result } = await linkRoutes[name](body);
+        phoneHash = hash;
+        status = 200;
+        return { status, body: result };
+      }
       const handler = readRoutes[name] || writeRoutes[name];
       if (!handler) throw new ApiError(404, 'NOT_FOUND', 'Rota nao encontrada.');
 

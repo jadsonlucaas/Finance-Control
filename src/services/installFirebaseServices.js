@@ -3,6 +3,7 @@ import { createAuditService, installAuditGlobals } from './audit.js';
 import { createDataSdkService } from './dataSdk.js';
 import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
+import { createWhatsAppLinkService } from './whatsappLink.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -26,6 +27,10 @@ export function installFirebaseServices({ target = window, config } = {}) {
   target.dataSdk = dataServices.dataSdk;
   const authService = createAuthService(auth, auditService);
   target.userAdminSdk = createUserAdminService(db, auditService);
+  target.whatsappLinkSdk = createWhatsAppLinkService(db);
+  target.__financeWhatsAppConfig = Object.freeze({
+    botNumber: String(import.meta.env?.VITE_WHATSAPP_BOT_NUMBER || '').trim()
+  });
   const profileAccessService = createProfileAccessService({
     authService,
     userAdminService: target.userAdminSdk

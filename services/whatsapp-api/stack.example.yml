@@ -1,7 +1,7 @@
 # Stack de exemplo para Portainer (Docker Swarm).
 # Antes de usar, crie em Portainer > Secrets:
 #   financecontrol_whatsapp_api_key_dev_v1        -> chave da API (a mesma configurada no n8n)
-#   financecontrol_whatsapp_phone_links_dev_v1    -> JSON do vinculo telefone -> uid
+#   financecontrol_whatsapp_phone_links_dev_v1    -> (opcional) JSON de vinculos manuais de reserva; novos usuarios se vinculam pelo app
 #   financecontrol_firebase_sa_dev_v1             -> conteudo do .json da service account
 # Troque REDE_DO_N8N pelo nome da rede overlay em que o n8n esta.
 version: '3.8'

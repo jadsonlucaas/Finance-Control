@@ -3,12 +3,16 @@ import { randomUUID } from 'node:crypto';
 const clone = (value) => (value === undefined ? undefined : structuredClone(value));
 
 /** Store em memoria com a mesma interface do Firestore; usado em testes e em desenvolvimento local. */
-export function createMemoryStore(seed = {}, { shared = [] } = {}) {
+export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}) {
   const users = new Map();
   const bucket = (uid) => {
     if (!users.has(uid)) users.set(uid, { records: new Map(), pending: new Map(), receipts: new Map(), audit: [] });
     return users.get(uid);
   };
+  const userProfiles = new Map(Object.entries(profiles).map(([uid, profile]) => [uid, clone(profile)]));
+  const linkCodes = new Map();
+  const links = new Map();
+  const linkAttempts = new Map();
   Object.entries(seed).forEach(([uid, records]) => {
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
   });
@@ -68,6 +72,60 @@ export function createMemoryStore(seed = {}, { shared = [] } = {}) {
     },
     async writeAudit(uid, entry) {
       bucket(uid).audit.push(clone(entry));
+    },
+    async getUserProfile(uid) {
+      return clone(userProfiles.get(uid)) || null;
+    },
+    async getActiveLinkByPhone(phone) {
+      const link = links.get(phone);
+      return link && link.status === 'active' ? clone(link) : null;
+    },
+    async getLinkCode(codeId) {
+      return clone(linkCodes.get(codeId)) || null;
+    },
+    async getLinkAttempts(phoneKey) {
+      return clone(linkAttempts.get(phoneKey)) || null;
+    },
+    async saveLinkAttempts(phoneKey, data) {
+      linkAttempts.set(phoneKey, { ...(linkAttempts.get(phoneKey) || {}), ...clone(data) });
+    },
+    async clearLinkAttempts(phoneKey) {
+      linkAttempts.delete(phoneKey);
+    },
+    async completeLink({ codeId, phone, uid, chatwootAccountId, nowIso, nowMs }) {
+      const code = linkCodes.get(codeId);
+      if (!code || code.status !== 'pending' || code.owner_uid !== uid || !(Date.parse(code.expires_at) > nowMs)) return 'code_invalid';
+      const existing = links.get(phone);
+      if (existing && existing.status === 'active' && existing.uid !== uid) return 'phone_taken';
+      linkCodes.set(codeId, { ...code, status: 'used', used_at: nowIso });
+      if (existing && existing.status === 'active') {
+        links.set(phone, { ...existing, chatwoot_account_id: chatwootAccountId });
+        return 'already_linked';
+      }
+      links.forEach((link, key) => {
+        if (link.uid === uid && link.status === 'active' && key !== phone) {
+          links.set(key, { ...link, status: 'revoked', revoked_at: nowIso, revoked_by: 'relink' });
+        }
+      });
+      links.set(phone, { uid, telefone: phone, chatwoot_account_id: chatwootAccountId, status: 'active', linked_at: nowIso, link_method: 'whatsapp_code', schema_version: 1 });
+      return 'linked';
+    },
+    // Apenas para testes: simula o Dashboard e o estado das colecoes de vinculo.
+    _setProfile(uid, profile) {
+      userProfiles.set(uid, clone(profile));
+    },
+    _putLinkCode(codeId, data) {
+      linkCodes.set(codeId, clone(data));
+    },
+    _revokeLink(phone) {
+      const link = links.get(phone);
+      if (link) links.set(phone, { ...link, status: 'revoked', revoked_by: 'user' });
+    },
+    _links() {
+      return [...links.values()].map(clone);
+    },
+    _linkCode(codeId) {
+      return clone(linkCodes.get(codeId)) || null;
     },
     // Apenas para testes.
     _dump(uid) {

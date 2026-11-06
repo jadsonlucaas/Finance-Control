@@ -1,3 +1,6 @@
+import { toMillis } from './links.js';
+import { hashPhone } from './phoneLinks.js';
+
 /**
  * Adaptador Firestore (Firebase Admin SDK). Mesma interface do memoryStore.
  * Tudo fica sob users/{uid}/..., entao um uid nunca enxerga dados de outro.
@@ -8,6 +11,9 @@ export function createFirestoreStore(db) {
   const pending = (uid) => userDoc(uid).collection('whatsapp_pending_actions');
   const receipts = (uid) => userDoc(uid).collection('idempotency_receipts');
   const audits = (uid) => userDoc(uid).collection('audit_logs');
+  const linkCodes = db.collection('whatsapp_link_codes');
+  const links = db.collection('whatsapp_links');
+  const linkAttempts = db.collection('whatsapp_link_attempts');
 
   return {
     async listFinanceRecords(uid) {
@@ -76,6 +82,72 @@ export function createFirestoreStore(db) {
     },
     async writeAudit(uid, entry) {
       await audits(uid).add(entry);
+    },
+
+    // --- Vinculo conta <-> WhatsApp (colecoes de topo, gravadas so pelo servidor) ---
+    async getUserProfile(uid) {
+      const snapshot = await userDoc(uid).get();
+      return snapshot.exists ? snapshot.data() : null;
+    },
+    async getActiveLinkByPhone(phone) {
+      const snapshot = await links.doc(phone).get();
+      if (!snapshot.exists) return null;
+      const data = snapshot.data();
+      return data.status === 'active' ? data : null;
+    },
+    async getLinkCode(codeId) {
+      const snapshot = await linkCodes.doc(codeId).get();
+      return snapshot.exists ? snapshot.data() : null;
+    },
+    async getLinkAttempts(phoneKey) {
+      const snapshot = await linkAttempts.doc(phoneKey).get();
+      return snapshot.exists ? snapshot.data() : null;
+    },
+    async saveLinkAttempts(phoneKey, data) {
+      await linkAttempts.doc(phoneKey).set(data, { merge: true });
+    },
+    async clearLinkAttempts(phoneKey) {
+      await linkAttempts.doc(phoneKey).delete();
+    },
+    /**
+     * Consome o codigo e grava o vinculo numa transacao. Resultado:
+     * 'linked' | 'already_linked' | 'code_invalid' | 'phone_taken'.
+     */
+    async completeLink({ codeId, phone, uid, chatwootAccountId, nowIso, nowMs }) {
+      return db.runTransaction(async (tx) => {
+        const codeRef = linkCodes.doc(codeId);
+        const linkRef = links.doc(phone);
+        const [codeSnap, linkSnap, ownLinks] = await Promise.all([
+          tx.get(codeRef),
+          tx.get(linkRef),
+          tx.get(links.where('uid', '==', uid).where('status', '==', 'active'))
+        ]);
+        const code = codeSnap.exists ? codeSnap.data() : null;
+        if (!code || code.status !== 'pending' || code.owner_uid !== uid || !(toMillis(code.expires_at) > nowMs)) return 'code_invalid';
+        const existing = linkSnap.exists ? linkSnap.data() : null;
+        if (existing && existing.status === 'active' && existing.uid !== uid) return 'phone_taken';
+
+        tx.update(codeRef, { status: 'used', used_at: nowIso, used_by_phone_hash: hashPhone(phone) });
+        if (existing && existing.status === 'active' && existing.uid === uid) {
+          if (String(existing.chatwoot_account_id || '') !== chatwootAccountId) {
+            tx.update(linkRef, { chatwoot_account_id: chatwootAccountId, updated_at: nowIso });
+          }
+          return 'already_linked';
+        }
+        ownLinks.docs
+          .filter((doc) => doc.id !== phone)
+          .forEach((doc) => tx.update(doc.ref, { status: 'revoked', revoked_at: nowIso, revoked_by: 'relink' }));
+        tx.set(linkRef, {
+          uid,
+          telefone: phone,
+          chatwoot_account_id: chatwootAccountId,
+          status: 'active',
+          linked_at: nowIso,
+          link_method: 'whatsapp_code',
+          schema_version: 1
+        });
+        return 'linked';
+      });
     }
   };
 }
