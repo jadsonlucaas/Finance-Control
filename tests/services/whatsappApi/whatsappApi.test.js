@@ -132,6 +132,35 @@ describe('whatsapp-api: leitura', () => {
     expect((await call('lancamentos', { tipo: 'outro' })).status).toBe(400);
   });
 
+  it('calcula resumo e categorias de um periodo de varios meses', async () => {
+    const { call } = setup();
+    const resumo = await call('resumo', { competencia_inicio: '2026-10', competencia_fim: '2026-11' });
+    expect(resumo.status).toBe(200);
+    expect(resumo.body.periodo).toMatchObject({ inicio: '2026-10', fim: '2026-11', quantidade_meses: 2 });
+    expect(resumo.body.total_despesas).toBe(2870.75);
+    expect(resumo.body.despesas_pagas).toBe(2300);
+    expect(resumo.body.por_mes.map((item) => [item.competencia, item.total_despesas])).toEqual([['2026-10', 300], ['2026-11', 2570.75]]);
+    expect(resumo.body.formatado.total_despesas).toBe('R$ 2.870,75');
+
+    const categorias = await call('categorias', { competencia_inicio: '2026-10', competencia_fim: '2026-11' });
+    expect(categorias.body.periodo.meses).toEqual(['2026-10', '2026-11']);
+    expect(categorias.body.total_despesas).toBe(2870.75);
+    expect(categorias.body.categorias[0]).toMatchObject({ categoria: 'Moradia', total: 2420.5, quantidade: 3 });
+  });
+
+  it('usa o mes atual como fim do periodo e valida limites', async () => {
+    const { call } = setup();
+    const open = await call('resumo', { competencia_inicio: '2025-12' });
+    expect(open.body.periodo).toMatchObject({ inicio: '2025-12', fim: '2026-11', quantidade_meses: 12 });
+    expect(open.body.total_despesas).toBe(2870.75);
+    expect((await call('resumo', { competencia_inicio: '2026-11', competencia_fim: '2026-10' })).status).toBe(400);
+    expect((await call('categorias', { competencia_inicio: '2024-01', competencia_fim: '2026-11' })).status).toBe(400);
+    expect((await call('resumo', { competencia_inicio: '10/2026' })).status).toBe(400);
+    const single = await call('resumo', { competencia_inicio: '2026-11', competencia_fim: '2026-11' });
+    expect(single.body.competencia).toBe('2026-11');
+    expect(single.body.por_mes).toBeUndefined();
+  });
+
   it('agrupa despesas por categoria', async () => {
     const { call } = setup();
     const res = await call('categorias', { competencia: '2026-11' });

@@ -36,6 +36,54 @@ export function resolveCompetence(value, now) {
   return String(value);
 }
 
+export const MAX_PERIOD_MONTHS = 24;
+
+function competenceIndex(competence) {
+  const [year, month] = competence.split('-').map(Number);
+  return year * 12 + (month - 1);
+}
+
+function competenceFromIndex(index) {
+  const year = Math.floor(index / 12);
+  const month = (index % 12) + 1;
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/**
+ * Resolve um mes (competencia) ou um periodo (competencia_inicio..competencia_fim).
+ * Devolve { inicio, fim, meses: [YYYY-MM...] }. Periodo maximo de 24 meses.
+ */
+export function resolvePeriod(body = {}, now) {
+  const hasStart = body.competencia_inicio !== undefined && body.competencia_inicio !== null && body.competencia_inicio !== '';
+  const hasEnd = body.competencia_fim !== undefined && body.competencia_fim !== null && body.competencia_fim !== '';
+  if (!hasStart && !hasEnd) {
+    const competence = resolveCompetence(body.competencia, now);
+    return { inicio: competence, fim: competence, meses: [competence] };
+  }
+  const inicio = resolveCompetence(hasStart ? body.competencia_inicio : body.competencia_fim, now);
+  const fim = resolveCompetence(hasEnd ? body.competencia_fim : currentCompetence(now), now);
+  const start = competenceIndex(inicio);
+  const end = competenceIndex(fim);
+  if (start > end) throw badRequest('INVALID_PERIOD', 'competencia_inicio deve ser anterior ou igual a competencia_fim.');
+  if (end - start + 1 > MAX_PERIOD_MONTHS) throw badRequest('INVALID_PERIOD', `Periodo maximo de ${MAX_PERIOD_MONTHS} meses.`);
+  const meses = [];
+  for (let index = start; index <= end; index += 1) meses.push(competenceFromIndex(index));
+  return { inicio, fim, meses };
+}
+
+function isPeriod(period) {
+  return period.meses.length > 1;
+}
+
+function periodInfo(period) {
+  return { inicio: period.inicio, fim: period.fim, quantidade_meses: period.meses.length, meses: period.meses };
+}
+
+function byPeriod(records, period) {
+  const months = new Set(period.meses);
+  return records.filter((record) => months.has(getRecordCompetence(record)));
+}
+
 export function activeFinanceRecords(records = []) {
   return records.filter((record) => record && record.archived !== true && (record.type === 'saida' || record.type === 'entrada'));
 }
@@ -93,8 +141,7 @@ export function buildLegacyDespesas(records, competence) {
   };
 }
 
-export function buildResumo(records, competence) {
-  const monthRecords = byCompetence(activeFinanceRecords(records), competence);
+function summarizeRecords(monthRecords) {
   const saidas = monthRecords.filter((record) => record.type === 'saida');
   const entradas = monthRecords.filter((record) => record.type === 'entrada');
   const despesas = splitExpenses(saidas);
@@ -121,20 +168,60 @@ export function buildResumo(records, competence) {
   };
 
   return {
-    competencia: competence,
-    ...values,
-    formatado: Object.fromEntries(Object.entries(values).map(([key, value]) => [key, formatBRL(value)])),
+    values,
     quantidade: {
       despesas: despesas.valid.length,
       despesas_pagas: despesas.pagas.length,
       despesas_em_aberto: despesas.abertas.length,
       receitas: receitas.valid.length,
       receitas_pendentes: receitas.pendentes.length
-    },
-    regras: {
-      saldo_realizado: 'receitas recebidas - despesas pagas',
-      saldo_previsto: 'total de receitas - total de despesas (cancelados ficam de fora)'
     }
+  };
+}
+
+function formatValues(values) {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, formatBRL(value)]));
+}
+
+const RESUMO_RULES = Object.freeze({
+  saldo_realizado: 'receitas recebidas - despesas pagas',
+  saldo_previsto: 'total de receitas - total de despesas (cancelados ficam de fora)'
+});
+
+/** Aceita uma competencia (YYYY-MM) ou um periodo vindo de resolvePeriod. */
+export function buildResumo(records, competenceOrPeriod) {
+  const period = typeof competenceOrPeriod === 'string'
+    ? { inicio: competenceOrPeriod, fim: competenceOrPeriod, meses: [competenceOrPeriod] }
+    : competenceOrPeriod;
+  const active = activeFinanceRecords(records);
+  const { values, quantidade } = summarizeRecords(byPeriod(active, period));
+
+  if (!isPeriod(period)) {
+    return { competencia: period.inicio, ...values, formatado: formatValues(values), quantidade, regras: RESUMO_RULES };
+  }
+
+  const porMes = period.meses.map((competence) => {
+    const month = summarizeRecords(byCompetence(active, competence)).values;
+    return {
+      competencia: competence,
+      total_despesas: month.total_despesas,
+      total_receitas: month.total_receitas,
+      saldo_previsto: month.saldo_previsto,
+      formatado: {
+        total_despesas: formatBRL(month.total_despesas),
+        total_receitas: formatBRL(month.total_receitas),
+        saldo_previsto: formatBRL(month.saldo_previsto)
+      }
+    };
+  });
+
+  return {
+    periodo: periodInfo(period),
+    ...values,
+    formatado: formatValues(values),
+    quantidade,
+    por_mes: porMes,
+    regras: RESUMO_RULES
   };
 }
 
@@ -208,8 +295,12 @@ export function buildLancamentos(records, filters) {
   };
 }
 
-export function buildCategorias(records, competence) {
-  const saidas = byCompetence(activeFinanceRecords(records), competence)
+/** Aceita uma competencia (YYYY-MM) ou um periodo vindo de resolvePeriod. */
+export function buildCategorias(records, competenceOrPeriod) {
+  const period = typeof competenceOrPeriod === 'string'
+    ? { inicio: competenceOrPeriod, fim: competenceOrPeriod, meses: [competenceOrPeriod] }
+    : competenceOrPeriod;
+  const saidas = byPeriod(activeFinanceRecords(records), period)
     .filter((record) => record.type === 'saida' && record.status !== 'Cancelado');
   const groups = new Map();
   saidas.forEach((record) => {
@@ -230,7 +321,8 @@ export function buildCategorias(records, competence) {
       total_formatado: formatBRL(group.total),
       percentual: total > 0 ? Math.round((group.total / total) * 1000) / 10 : 0
     }));
-  return { competencia: competence, total_despesas: total, total_despesas_formatado: formatBRL(total), categorias };
+  const base = { total_despesas: total, total_despesas_formatado: formatBRL(total), categorias };
+  return isPeriod(period) ? { periodo: periodInfo(period), ...base } : { competencia: period.inicio, ...base };
 }
 
 export function buildVencimentos(records, body = {}, now) {
