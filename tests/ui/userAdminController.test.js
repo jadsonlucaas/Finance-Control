@@ -105,4 +105,43 @@ describe('createUserAdminController', () => {
     expect(previous.users[0].uid).toBe('user-0');
     expect(controller.getState().cursorHistory).toEqual([]);
   });
+
+  it('mostra e alterna o acesso cortesia ao WhatsApp, inclusive para o proprio admin', async () => {
+    const render = vi.fn();
+    let grants = { 'admin-a': { status: 'revoked' } };
+    const setAssistantComp = vi.fn(async (uid, active) => {
+      grants = { ...grants, [uid]: { status: active ? 'active' : 'revoked' } };
+    });
+    const controller = createUserAdminController({
+      document: {},
+      presenter: { render },
+      readSource: {
+        listUsers: vi.fn(async () => [
+          { uid: 'admin-a', email: 'admin@example.test', role: 'owner', status: 'active' },
+          { uid: 'juan', email: 'juan@example.test', role: 'user', status: 'active' },
+          { uid: 'pending-a', email: 'pending@example.test', role: 'user', status: 'pending' }
+        ]),
+        listAssistantComps: vi.fn(async () => grants)
+      },
+      actions: { updateUser: vi.fn(), setAssistantComp },
+      authContext: () => ({ currentUser: { uid: 'admin-a' }, profile: { uid: 'admin-a', role: 'owner', status: 'active' } }),
+      confirm: () => true,
+      notify: vi.fn(),
+      consoleRef: { error: vi.fn() }
+    });
+
+    const model = await controller.refresh();
+    const byUid = Object.fromEntries(model.users.map((user) => [user.uid, user]));
+    expect(byUid['admin-a']).toMatchObject({ assistantComp: false, actions: { assistantComp: true, self: true } });
+    expect(byUid['pending-a'].actions.assistantComp).toBe(false);
+
+    await controller.setAssistantComp('admin-a', true);
+    await controller.setAssistantComp('juan', true);
+    expect(setAssistantComp).toHaveBeenCalledWith('juan', true, { targetEmail: 'juan@example.test' });
+    const after = controller.getState().model.users;
+    expect(after.filter((user) => user.assistantComp).map((user) => user.uid)).toEqual(['admin-a', 'juan']);
+
+    await controller.setAssistantComp('juan', false);
+    expect(controller.getState().model.users.find((user) => user.uid === 'juan').assistantComp).toBe(false);
+  });
 });

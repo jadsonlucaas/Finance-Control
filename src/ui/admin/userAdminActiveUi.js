@@ -24,10 +24,17 @@ function getCurrentProfile(target) {
 function createUserAdminWebAdapter(target = globalThis) {
   return {
     readSource: {
-      listUsers: (query = {}) => target.userAdminSdk?.listUsers?.(query) || []
+      listUsers: (query = {}) => target.userAdminSdk?.listUsers?.(query) || [],
+      listAssistantComps: () => target.assistantAccessSdk?.listCompGrants?.() || {}
     },
     actions: {
-      updateUser: (uid, payload) => target.userAdminSdk?.updateUser?.(uid, payload)
+      updateUser: (uid, payload) => target.userAdminSdk?.updateUser?.(uid, payload),
+      setAssistantComp: (uid, active, options = {}) => {
+        const adminUid = getCurrentUser(target)?.uid || '';
+        const sdk = target.assistantAccessSdk;
+        if (!sdk) throw new Error('ASSISTANT_ACCESS_SERVICE_UNAVAILABLE');
+        return active ? sdk.grantComp(adminUid, uid, options) : sdk.revokeComp(adminUid, uid, options);
+      }
     },
     authContext: () => {
       const profile = getCurrentProfile(target);
@@ -74,6 +81,12 @@ function bindUserAdminActions(target, controller) {
     if (!previous) return;
     event.preventDefault();
     controller.previousPage();
+  });
+  documentRef.addEventListener('click', (event) => {
+    const button = event.target.closest?.('[data-set-assistant-comp]');
+    if (!button) return;
+    event.preventDefault();
+    controller.setAssistantComp(button.dataset.setAssistantComp, button.dataset.assistantComp === 'on');
   });
   documentRef.documentElement.dataset.financeUserAdminModernActionsBound = 'true';
 }

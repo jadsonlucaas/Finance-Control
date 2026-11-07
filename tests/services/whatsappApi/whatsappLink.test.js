@@ -76,7 +76,7 @@ describe('whatsapp-api: codigo de vinculo', () => {
     expect(store._linkCode(hashLinkCode('K7QM3XPA')).status).toBe('used');
     expect(store._dump(ALICE).audit.map((entry) => entry.event_type)).toContain('whatsapp.link_created');
 
-    expect((await call('vinculo/status', { telefone: PHONE_A })).body).toEqual({ vinculado: true });
+    expect((await call('vinculo/status', { telefone: PHONE_A })).body).toMatchObject({ vinculado: true });
     const list = await call('lancamentos', { telefone: PHONE_A });
     expect(list.body.lancamentos.map((item) => item.descricao)).toEqual(['Mercado Alice']);
   });

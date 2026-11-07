@@ -38,7 +38,8 @@ export function createUserAdminController({
     cursorHistory: [],
     pendingActions: {},
     model: null,
-    lastItems: []
+    lastItems: [],
+    compGrants: {}
   };
 
   function getAuth() {
@@ -53,10 +54,23 @@ export function createUserAdminController({
     };
   }
 
+  function withAssistantAccess(items) {
+    return items.map((user) => ({ ...user, assistantComp: state.compGrants[user.uid]?.status === 'active' }));
+  }
+
+  async function loadCompGrants() {
+    if (typeof readSource.listAssistantComps !== 'function') return;
+    try {
+      state.compGrants = (await readSource.listAssistantComps()) || {};
+    } catch (error) {
+      consoleRef.error?.(error);
+    }
+  }
+
   function renderFromItems(items, pageInfo = null, error = '') {
     const auth = getAuth();
     state.model = buildUserAdminReadModel({
-      users: items,
+      users: withAssistantAccess(items),
       currentUser: auth.currentUser,
       permissions: auth.permissions,
       filters: state.filters,
@@ -92,6 +106,7 @@ export function createUserAdminController({
         }
       }));
       state.lastItems = result.items;
+      await loadCompGrants();
       return renderFromItems(result.items, result.pageInfo);
     } catch (error) {
       consoleRef.error?.(error);
@@ -124,8 +139,35 @@ export function createUserAdminController({
     }
   }
 
+  async function setAssistantComp(uid, active) {
+    const target = state.lastItems.find((user) => String(user.uid) === String(uid));
+    if (!target || state.pendingActions[uid] || typeof actions.setAssistantComp !== 'function') {
+      return { isOk: false, code: 'USER_ADMIN_ACTION_IGNORED' };
+    }
+    if (!active && confirm && !confirm('Revogar o acesso cortesia ao assistente deste usuário?')) {
+      return { isOk: false, code: 'USER_ADMIN_ACTION_CANCELLED' };
+    }
+    try {
+      state.pendingActions = { ...state.pendingActions, [uid]: true };
+      renderFromItems(state.lastItems);
+      await actions.setAssistantComp(uid, active, { targetEmail: target.email || '' });
+      await refresh();
+      notify?.(active ? 'Acesso cortesia ao assistente concedido.' : 'Acesso cortesia ao assistente revogado.');
+      return { isOk: true };
+    } catch (error) {
+      consoleRef.error?.(error);
+      notify?.('Erro ao atualizar o acesso ao assistente', true);
+      return renderFromItems(state.lastItems, null, 'Falha ao atualizar o acesso ao assistente.');
+    } finally {
+      const { [uid]: _removed, ...rest } = state.pendingActions;
+      state.pendingActions = rest;
+      renderFromItems(state.lastItems);
+    }
+  }
+
   return {
     refresh,
+    setAssistantComp,
     setRole: (uid, role) => update(uid, { role }),
     setStatus: (uid, status) => update(uid, { status }),
     toggleStatus: (uid) => {

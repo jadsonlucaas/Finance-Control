@@ -147,4 +147,14 @@ describe('whatsapp-api: adaptador Firestore', () => {
     expect(docs.get('users/a/whatsapp_pending_actions/p1').status).toBe('cancelled');
     expect(await store.getLatestPendingAction('a')).toBeNull();
   });
+
+  it('le o direito de uso so do proprio uid (cortesia e assinatura)', async () => {
+    const { db, docs } = fakeDb();
+    const store = createFirestoreStore(db);
+    docs.set('whatsapp_comp_access/a', { uid: 'a', status: 'active' });
+    docs.set('billing_subscriptions/b', { uid: 'b', status: 'trialing' });
+    expect(await store.getWhatsAppAccess('a')).toEqual({ comp: { uid: 'a', status: 'active' }, subscription: null });
+    expect(await store.getWhatsAppAccess('b')).toEqual({ comp: null, subscription: { uid: 'b', status: 'trialing' } });
+    expect(await store.getWhatsAppAccess('c')).toEqual({ comp: null, subscription: null });
+  });
 });

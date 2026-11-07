@@ -2,6 +2,7 @@ import http from 'node:http';
 import { createApp, MAX_BODY_BYTES } from './app.js';
 import { createPhoneResolver, parsePhoneLinks } from './phoneLinks.js';
 import { readSetting } from './settings.js';
+import { normalizeAccessMode } from './access.js';
 
 function required(name) {
   const value = readSetting(name);
@@ -58,7 +59,8 @@ async function main() {
   // Reserva legada (opcional): vinculos manuais enquanto os usuarios migram para o vinculo pelo app.
   const links = parsePhoneLinks(readSetting('WHATSAPP_PHONE_LINKS'));
   const store = await createStore();
-  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey });
+  const accessMode = normalizeAccessMode(readSetting('WHATSAPP_ACCESS_MODE'));
+  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode });
   const port = Number(process.env.PORT || 3000);
 
   const server = http.createServer(async (req, res) => {
@@ -78,7 +80,7 @@ async function main() {
   });
 
   server.listen(port, () => {
-    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size }));
+    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode }));
   });
 
   const shutdown = () => server.close(() => process.exit(0));

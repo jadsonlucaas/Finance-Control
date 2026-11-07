@@ -14,8 +14,17 @@ export function createFirestoreStore(db) {
   const linkCodes = db.collection('whatsapp_link_codes');
   const links = db.collection('whatsapp_links');
   const linkAttempts = db.collection('whatsapp_link_attempts');
+  const compAccess = db.collection('whatsapp_comp_access');
+  const subscriptions = db.collection('billing_subscriptions');
 
   return {
+    async getWhatsAppAccess(uid) {
+      const [comp, subscription] = await Promise.all([compAccess.doc(uid).get(), subscriptions.doc(uid).get()]);
+      return {
+        comp: comp.exists ? comp.data() : null,
+        subscription: subscription.exists ? subscription.data() : null
+      };
+    },
     async listFinanceRecords(uid) {
       const snapshot = await records(uid).where('type', 'in', ['saida', 'entrada']).get();
       return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
