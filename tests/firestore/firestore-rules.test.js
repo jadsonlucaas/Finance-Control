@@ -39,8 +39,9 @@ function profile(uid, overrides = {}) {
 }
 
 function initialProfile(uid, overrides = {}) {
+  // Cadastro publico nasce ativo no plano Gratuito (decisao de 07/11/2026).
   return profile(uid, {
-    status: 'pending',
+    status: 'active',
     ...overrides
   });
 }
@@ -658,10 +659,10 @@ describe('Firestore Rules - perfil e administracao', () => {
     await assertFails(setDoc(doc(db, 'users/new-user'), initialProfile('new-user', { role: 'admin' })));
   });
 
-  it('30 perfil inicial exige status pending', async () => {
+  it('30 perfil inicial nasce active (nem pending nem inactive)', async () => {
     const db = dbFor('new-user');
 
-    await assertFails(setDoc(doc(db, 'users/new-user'), profile('new-user', { status: 'active' })));
+    await assertFails(setDoc(doc(db, 'users/new-user'), profile('new-user', { status: 'pending' })));
     await assertFails(setDoc(doc(db, 'users/new-user'), profile('new-user', { status: 'inactive' })));
   });
 

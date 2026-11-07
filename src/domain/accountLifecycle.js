@@ -83,7 +83,7 @@ export function buildInitialUserProfile(user, { now = new Date() } = {}) {
     uid: user.uid,
     email: user.email || '',
     role: ACCOUNT_ROLE.USER,
-    status: ACCOUNT_STATUS.PENDING,
+    status: ACCOUNT_STATUS.ACTIVE,
     created_at: timestamp,
     updated_at: timestamp,
     last_login_at: timestamp

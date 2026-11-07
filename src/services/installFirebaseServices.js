@@ -5,6 +5,7 @@ import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
 import { createWhatsAppAccessService } from './whatsappAccess.js';
+import { createAccountOnboardingService, validateSignupDetails } from './accountOnboarding.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -45,8 +46,23 @@ export function installFirebaseServices({ target = window, config } = {}) {
     authService,
     userAdminService: target.userAdminSdk
   });
+  target.accountOnboardingSdk = createAccountOnboardingService(db);
   target.authSdk = {
     ...authService,
+    validateSignupDetails,
+    // Cria a conta e guarda pais/WhatsApp. Se essa gravacao falhar, a conta continua criada
+    // e os dados podem ser completados depois (antes do checkout).
+    signUp: async (email, password, details = null) => {
+      const credential = await authService.signUp(email, password);
+      if (details && credential?.user?.uid) {
+        try {
+          await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, details);
+        } catch (error) {
+          captureError(error, { operation: 'auth.sign_up.onboarding_details' });
+        }
+      }
+      return credential;
+    },
     loadProfileAccess: profileAccessService.load,
     getProfileAccessErrorMessage
   };

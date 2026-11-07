@@ -163,8 +163,9 @@
             document.getElementById('auth-title').textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
             document.getElementById('auth-subtitle').textContent = authMode === 'login'
                 ? 'Use seu email e senha para acessar seus registros financeiros.'
-                : 'Crie sua conta para acessar a ?rea pessoal e aguarde liberação do admin quando necessário.';
+                : 'Crie sua conta grátis. O Premium (WhatsApp, alertas e IA) tem 7 dias grátis.';
             document.getElementById('auth-confirm-wrap').classList.toggle('hidden', authMode !== 'signup');
+            document.getElementById('auth-signup-details')?.classList.toggle('hidden', authMode !== 'signup');
             document.getElementById('auth-confirm-password').required = authMode === 'signup';
             document.getElementById('auth-password').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
             document.getElementById('auth-toggle-label').textContent = authMode === 'login' ? 'Ainda não tem conta?' : 'Já tem conta?';
@@ -450,13 +451,28 @@
                 return;
             }
 
+            let signupDetails = null;
+            if (authMode === 'signup' && typeof window.authSdk.validateSignupDetails === 'function') {
+                const checked = window.authSdk.validateSignupDetails({
+                    name: document.getElementById('auth-name')?.value || '',
+                    country: document.getElementById('auth-country')?.value || '',
+                    phone: document.getElementById('auth-phone')?.value || '',
+                    consent: Boolean(document.getElementById('auth-whatsapp-consent')?.checked)
+                });
+                if (!checked.ok) {
+                    setAuthError(checked.error);
+                    return;
+                }
+                signupDetails = checked.value;
+            }
+
             try {
                 setAuthError('');
                 setAuthLoading(true);
                 if (authMode === 'login') {
                     await window.authSdk.signIn(email, password);
                 } else {
-                    await window.authSdk.signUp(email, password);
+                    await window.authSdk.signUp(email, password, signupDetails);
                 }
             } catch (error) {
                 setAuthError(window.authSdk.normalizeError(error));

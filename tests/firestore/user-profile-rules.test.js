@@ -57,21 +57,21 @@ afterAll(async () => {
 
 describe('Perfil: criacao', () => {
   it('cria perfil inicial com email igual ao token Auth', async () => {
-    await assertSucceeds(setDoc(doc(dbFor('new-user'), 'users/new-user'), profile('new-user', { status: 'pending' })));
+    await assertSucceeds(setDoc(doc(dbFor('new-user'), 'users/new-user'), profile('new-user', { status: 'active' })));
   });
 
   it('recusa email divergente do token ou com HTML', async () => {
     const db = dbFor('new-user');
-    await assertFails(setDoc(doc(db, 'users/new-user'), profile('new-user', { status: 'pending', email: 'outra@example.test' })));
+    await assertFails(setDoc(doc(db, 'users/new-user'), profile('new-user', { status: 'active', email: 'outra@example.test' })));
     await assertFails(setDoc(doc(db, 'users/new-user'), profile('new-user', {
-      status: 'pending',
+      status: 'active',
       email: '<img src=x onerror=alert(1)>'
     })));
   });
 
   it('recusa criacao quando o token nao tem email', async () => {
     const db = testEnv.authenticatedContext('no-email-user', {}).firestore();
-    await assertFails(setDoc(doc(db, 'users/no-email-user'), profile('no-email-user', { status: 'pending' })));
+    await assertFails(setDoc(doc(db, 'users/no-email-user'), profile('no-email-user', { status: 'active' })));
   });
 });
 
