@@ -108,6 +108,20 @@ describe('whatsapp-api: checkout criado pelo servidor', () => {
     expect((await setup({ configured: false }).call('checkout', { idToken: 'token-alice' })).status).toBe(503);
   });
 
+  it('rota unica do relay escolhe a acao pelo corpo', async () => {
+    const { store, stripe } = setup();
+    const app = createApp({
+      store,
+      resolver: createPhoneResolver(new Map(), { store }),
+      apiKey: API_KEY,
+      checkout: createCheckoutService({ store, stripe, verifyIdToken: async () => ({ uid: ALICE }), prices: PRICES, appUrl: 'https://app.example.test' }),
+      logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
+    });
+    const call = (body) => app.handle({ method: 'POST', path: '/internal/billing', headers: { 'x-api-key': API_KEY }, body });
+    expect((await call({ acao: 'checkout', idToken: 't' })).body.url).toMatch(/checkout/);
+    expect((await call({ acao: 'apagar', idToken: 't' })).body.erro.codigo).toBe('INVALID_ACTION');
+  });
+
   it('portal abre a sessao do proprio cliente', async () => {
     const { call, stripe, store } = setup();
     expect((await call('portal', { idToken: 'token-alice' })).body.erro.codigo).toBe('NO_SUBSCRIPTION');
