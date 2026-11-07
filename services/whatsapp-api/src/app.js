@@ -4,7 +4,8 @@ import { isAuthorized } from './auth.js';
 import { createActionService } from './actions.js';
 import { buildOpcoes } from './references.js';
 import { createLinkService } from './links.js';
-import { ACCESS_REQUIRED_MESSAGE, createAccessPolicy } from './access.js';
+import { accessMessage, createAccessPolicy } from './access.js';
+import { createBillingService, verifyStripeSignature } from './billing.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -17,6 +18,9 @@ import {
 } from './queries.js';
 
 export const MAX_BODY_BYTES = 16 * 1024;
+// Eventos do Stripe (checkout/assinatura) passam facil de 16 KB.
+export const MAX_STRIPE_BODY_BYTES = 512 * 1024;
+export const STRIPE_WEBHOOK_PATH = '/internal/stripe/webhook';
 const PREFIX = '/internal/whatsapp';
 
 /**
@@ -28,6 +32,7 @@ export function createApp({
   resolver,
   apiKey,
   accessMode = 'open',
+  stripeWebhookSecret = '',
   now = () => new Date(),
   logger = console,
   newId = () => randomUUID()
@@ -36,6 +41,7 @@ export function createApp({
   const access = createAccessPolicy({ store, mode: accessMode });
   const actions = createActionService({ store, now, newId });
   const links = createLinkService({ store, now });
+  const billing = stripeWebhookSecret ? createBillingService({ store, now, logger }) : null;
 
   // Rotas sem usuario resolvido: o telefone ainda pode nao estar vinculado.
   const linkRoutes = {
@@ -46,11 +52,11 @@ export function createApp({
     'vinculo/status': async (body) => {
       try {
         const { uid, phoneHash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
-        const permitted = await access.check(uid);
+        const permitted = await access.check(uid, { phone: body.telefone });
         if (!permitted.allowed) {
           return {
             phoneHash,
-            result: { vinculado: false, motivo: 'WHATSAPP_ACCESS_REQUIRED', assinatura: permitted.status, mensagem: ACCESS_REQUIRED_MESSAGE }
+            result: { vinculado: false, motivo: 'WHATSAPP_ACCESS_REQUIRED', assinatura: permitted.status, mensagem: accessMessage(permitted.status) }
           };
         }
         return { phoneHash, result: { vinculado: true, acesso: permitted.source } };
@@ -82,7 +88,14 @@ export function createApp({
     'acoes/cancelar': (uid, body) => actions.cancel(uid, body)
   };
 
-  async function handle({ method, path, headers = {}, body }) {
+  async function handleStripeWebhook(headers, rawBody) {
+    if (!billing) throw new ApiError(503, 'BILLING_NOT_CONFIGURED', 'Webhook do Stripe nao configurado.');
+    verifyStripeSignature(rawBody, headers['stripe-signature'], stripeWebhookSecret, { nowSeconds: Math.floor(now().getTime() / 1000) });
+    // Usa exatamente os bytes assinados, nunca um corpo reinterpretado no caminho.
+    return billing.handleEvent(JSON.parse(rawBody));
+  }
+
+  async function handle({ method, path, headers = {}, body, rawBody }) {
     const requestId = newId();
     const started = Date.now();
     const route = String(path || '').split('?')[0];
@@ -95,6 +108,13 @@ export function createApp({
         return { status, body: { ok: true } };
       }
       if (!isAuthorized(headers, apiKey)) throw new ApiError(401, 'UNAUTHORIZED', 'Chave de API ausente ou invalida.');
+      if (route === STRIPE_WEBHOOK_PATH) {
+        if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
+        const result = await handleStripeWebhook(headers, rawBody);
+        code = result.resultado;
+        status = 200;
+        return { status, body: result };
+      }
       if (!route.startsWith(`${PREFIX}/`)) throw new ApiError(404, 'NOT_FOUND', 'Rota nao encontrada.');
       if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'INVALID_BODY', 'Corpo JSON obrigatorio.');
@@ -111,7 +131,7 @@ export function createApp({
 
       const { uid, phoneHash: hash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
       phoneHash = hash;
-      await access.assert(uid);
+      await access.assert(uid, { phone: body.telefone });
       const result = await handler(uid, body);
       status = 200;
       return { status, body: result };

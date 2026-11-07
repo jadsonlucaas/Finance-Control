@@ -4,6 +4,19 @@
  */
 export const STATUS_POLL_MS = 4000;
 
+// Mesmo formato de services/whatsappLink.js (sem importar o Firestore na camada de UI).
+function maskPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 6) return '';
+  return `+${digits.slice(0, 2)} ••• ••• ${digits.slice(-3)}`;
+}
+
+function toDate(value) {
+  if (!value) return null;
+  const date = typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 const ERROR_MESSAGES = Object.freeze({
   'permission-denied': 'Sua conta precisa estar ativa para vincular o WhatsApp.',
   unavailable: 'Sem conexão no momento. Tente de novo em instantes.'
@@ -19,6 +32,7 @@ export function createWhatsAppLinkController({
   accessService = null,
   presenter,
   uidProvider,
+  emailProvider = () => '',
   now = () => Date.now(),
   setTimer = (fn, ms) => setTimeout(fn, ms),
   clearTimer = (id) => clearTimeout(id),
@@ -40,7 +54,18 @@ export function createWhatsAppLinkController({
     if (!accessService?.getMyAccess) return;
     try {
       const result = await accessService.getMyAccess(uid);
-      access = { allowed: result.allowed, source: result.source, status: result.status };
+      const subscription = result.subscription || null;
+      access = {
+        allowed: result.allowed,
+        source: result.source,
+        status: result.status,
+        // Telefone informado no pagamento = numero principal do WhatsApp no Premium.
+        principalPhone: maskPhone(subscription?.phone),
+        cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
+        periodEnd: toDate(subscription?.current_period_end),
+        hasCustomer: Boolean(subscription?.customer_id),
+        account: { uid, email: String(emailProvider() || '') }
+      };
     } catch (error) {
       access = null;
       report('whatsapp_link.access', error);

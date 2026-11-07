@@ -16,6 +16,13 @@ export function createFirestoreStore(db) {
   const linkAttempts = db.collection('whatsapp_link_attempts');
   const compAccess = db.collection('whatsapp_comp_access');
   const subscriptions = db.collection('billing_subscriptions');
+  const billingEvents = db.collection('billing_webhook_events');
+  const billingCustomers = db.collection('billing_customers');
+  const stripeSubscriptions = db.collection('billing_stripe_subscriptions');
+  const readData = async (ref) => {
+    const snapshot = await ref.get();
+    return snapshot.exists ? snapshot.data() : null;
+  };
 
   return {
     async getWhatsAppAccess(uid) {
@@ -24,6 +31,32 @@ export function createFirestoreStore(db) {
         comp: comp.exists ? comp.data() : null,
         subscription: subscription.exists ? subscription.data() : null
       };
+    },
+
+    // --- Cobranca (Stripe), gravada so pelo servidor ---
+    async reserveBillingEvent(eventId, data) {
+      try {
+        await billingEvents.doc(eventId).create(data);
+        return { created: true };
+      } catch (error) {
+        if (error?.code === 6 || error?.code === 'already-exists') return { created: false };
+        throw error;
+      }
+    },
+    async releaseBillingEvent(eventId) {
+      await billingEvents.doc(eventId).delete();
+    },
+    getBillingCustomer: (customerId) => readData(billingCustomers.doc(customerId)),
+    async setBillingCustomer(customerId, data) {
+      await billingCustomers.doc(customerId).set(data, { merge: true });
+    },
+    getStripeSubscription: (subscriptionId) => readData(stripeSubscriptions.doc(subscriptionId)),
+    async saveStripeSubscription(subscriptionId, data) {
+      await stripeSubscriptions.doc(subscriptionId).set(data, { merge: true });
+    },
+    getBillingSubscription: (uid) => readData(subscriptions.doc(uid)),
+    async mergeBillingSubscription(uid, patch) {
+      await subscriptions.doc(uid).set(patch, { merge: true });
     },
     async listFinanceRecords(uid) {
       const snapshot = await records(uid).where('type', 'in', ['saida', 'entrada']).get();

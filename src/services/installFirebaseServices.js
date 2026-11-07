@@ -33,7 +33,13 @@ export function installFirebaseServices({ target = window, config } = {}) {
   // Alias neutro de canal para o painel de usuarios.
   target.assistantAccessSdk = target.whatsappAccessSdk;
   target.__financeWhatsAppConfig = Object.freeze({
-    botNumber: String(import.meta.env?.VITE_WHATSAPP_BOT_NUMBER || '').trim()
+    botNumber: String(import.meta.env?.VITE_WHATSAPP_BOT_NUMBER || '').trim(),
+    // Links publicos do Stripe (Payment Links e portal do cliente); nao sao segredos.
+    billing: Object.freeze({
+      premiumLinkBrl: String(import.meta.env?.VITE_STRIPE_PREMIUM_LINK_BRL || '').trim(),
+      premiumLinkEur: String(import.meta.env?.VITE_STRIPE_PREMIUM_LINK_EUR || '').trim(),
+      portalUrl: String(import.meta.env?.VITE_STRIPE_PORTAL_URL || '').trim()
+    })
   });
   const profileAccessService = createProfileAccessService({
     authService,

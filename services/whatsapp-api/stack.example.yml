@@ -3,6 +3,7 @@
 #   financecontrol_whatsapp_api_key_dev_v1        -> chave da API (a mesma configurada no n8n)
 #   financecontrol_whatsapp_phone_links_dev_v1    -> (opcional) JSON de vinculos manuais de reserva; novos usuarios se vinculam pelo app
 #   financecontrol_firebase_sa_dev_v1             -> conteudo do .json da service account
+#   financecontrol_stripe_webhook_secret_test_v1  -> (opcional) segredo whsec_... do endpoint do webhook no Stripe
 # Troque REDE_DO_N8N pelo nome da rede overlay em que o n8n esta.
 version: '3.8'
 
@@ -16,10 +17,13 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/financecontrol_firebase_sa_dev_v1
       # open (padrao) ou entitlement: exige assinatura do Stripe ou cortesia do admin.
       WHATSAPP_ACCESS_MODE: open
+      # Opcional: sem ele o webhook do Stripe responde 503.
+      STRIPE_WEBHOOK_SECRET_FILE: /run/secrets/financecontrol_stripe_webhook_secret_test_v1
     secrets:
       - financecontrol_whatsapp_api_key_dev_v1
       - financecontrol_whatsapp_phone_links_dev_v1
       - financecontrol_firebase_sa_dev_v1
+      - financecontrol_stripe_webhook_secret_test_v1
     networks:
       - n8n_net
     deploy:
@@ -33,6 +37,8 @@ secrets:
   financecontrol_whatsapp_phone_links_dev_v1:
     external: true
   financecontrol_firebase_sa_dev_v1:
+    external: true
+  financecontrol_stripe_webhook_secret_test_v1:
     external: true
 
 networks:

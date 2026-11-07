@@ -15,6 +15,9 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   const linkAttempts = new Map();
   const compAccess = new Map();
   const subscriptions = new Map();
+  const billingEvents = new Map();
+  const billingCustomers = new Map();
+  const stripeSubscriptions = new Map();
   Object.entries(seed).forEach(([uid, records]) => {
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
   });
@@ -30,6 +33,32 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     _setSubscription(uid, data) {
       if (data) subscriptions.set(uid, clone(data));
       else subscriptions.delete(uid);
+    },
+    async reserveBillingEvent(eventId, data) {
+      if (billingEvents.has(eventId)) return { created: false };
+      billingEvents.set(eventId, clone(data));
+      return { created: true };
+    },
+    async releaseBillingEvent(eventId) {
+      billingEvents.delete(eventId);
+    },
+    async getBillingCustomer(customerId) {
+      return clone(billingCustomers.get(customerId)) || null;
+    },
+    async setBillingCustomer(customerId, data) {
+      billingCustomers.set(customerId, { ...(billingCustomers.get(customerId) || {}), ...clone(data) });
+    },
+    async getStripeSubscription(subscriptionId) {
+      return clone(stripeSubscriptions.get(subscriptionId)) || null;
+    },
+    async saveStripeSubscription(subscriptionId, data) {
+      stripeSubscriptions.set(subscriptionId, { ...(stripeSubscriptions.get(subscriptionId) || {}), ...clone(data) });
+    },
+    async getBillingSubscription(uid) {
+      return clone(subscriptions.get(uid)) || null;
+    },
+    async mergeBillingSubscription(uid, patch) {
+      subscriptions.set(uid, { ...(subscriptions.get(uid) || {}), ...clone(patch) });
     },
     async listFinanceRecords(uid) {
       return [...bucket(uid).records.values()]

@@ -9,6 +9,14 @@ function currentUid(target = globalThis) {
     || '';
 }
 
+function currentEmail(target = globalThis) {
+  return target.currentUser?.email
+    || target.auth?.currentUser?.email
+    || target.authSdk?.getCurrentUser?.()?.email
+    || target.currentUserProfile?.email
+    || '';
+}
+
 function bind(target, controller) {
   const documentRef = target.document;
   if (!documentRef || documentRef.documentElement.dataset.financeWhatsAppLinkBound) return;
@@ -32,13 +40,15 @@ export function installWhatsAppLinkActiveUi(target = globalThis, options = {}) {
 
   const presenter = options.presenter || createWhatsAppLinkPresenter({
     documentRef: target.document,
-    botNumber: options.botNumber ?? target.__financeWhatsAppConfig?.botNumber ?? ''
+    botNumber: options.botNumber ?? target.__financeWhatsAppConfig?.botNumber ?? '',
+    billing: options.billing ?? target.__financeWhatsAppConfig?.billing ?? {}
   });
   const controller = options.controller || createWhatsAppLinkController({
     service,
     accessService: options.accessService ?? target.whatsappAccessSdk ?? null,
     presenter,
     uidProvider: options.uidProvider || (() => currentUid(target)),
+    emailProvider: options.emailProvider || (() => currentEmail(target)),
     confirmRevoke: options.confirmRevoke || (() => (typeof target.confirm === 'function'
       ? target.confirm('Desvincular o WhatsApp? O assistente deixa de responder a esse número.')
       : true)),
