@@ -549,6 +549,15 @@ function installPlannerStorageRuntime(target = globalThis) {
   return target.financeApp.plannerStorage;
 }
 
+// Escolha de plano (apos o cadastro) e volta do Stripe. Falha aqui nao derruba o app.
+function installPlanChooserLater(target = globalThis) {
+  import('./ui/billing/planChooserUi.js')
+    .then((module) => module.installPlanChooser(target))
+    .catch((error) => {
+      target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'plan_chooser_ui' });
+    });
+}
+
 export async function installFirebaseServicesWhenReady(target = globalThis) {
   if (target.__financeFirebaseServicesInstalled) return target.__financeFirebaseServicesPromise;
 
@@ -558,6 +567,7 @@ export async function installFirebaseServicesWhenReady(target = globalThis) {
   target.__financeFirebaseServicesPromise = (target.__financeFirebaseServicesModulePromise || import('./services/installFirebaseServices.js'))
     .then(({ installFirebaseServices }) => {
       const services = installFirebaseServices({ target });
+      installPlanChooserLater(target);
       const rawDataSdk = target.__financeRawDataSdk || target.dataSdk;
       FinanceRepository.setTarget(target);
       FinanceRepository.setDataProvider(createFirebaseDataProvider(rawDataSdk));

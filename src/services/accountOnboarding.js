@@ -8,6 +8,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
  * As regras do Firestore validam o formato; so o proprio usuario grava e le (admin le).
  */
 const COLLECTION = 'user_onboarding';
+// Conta recem-criada: mostrar a escolha de plano (Gratuito/Premium) ao entrar.
+export const PLAN_CHOICE_STORAGE_KEY = 'fc.planChoicePending';
 
 export const SIGNUP_COUNTRIES = Object.freeze([
   { code: 'BR', label: 'Brasil', dial: '55' },
@@ -37,7 +39,13 @@ export function validateSignupDetails({ name = '', country = '', phone = '', con
 export function createAccountOnboardingService(db, { now = () => new Date().toISOString() } = {}) {
   async function saveSignupDetails(uid, details) {
     if (!uid) throw new Error('ONBOARDING_UID_REQUIRED');
-    const checked = validateSignupDetails(details);
+    // Aceita o formulario ({phone, consent}) ou o resultado ja validado ({whatsapp_phone, whatsapp_consent}).
+    const checked = validateSignupDetails({
+      name: details?.name,
+      country: details?.country,
+      phone: details?.phone ?? details?.whatsapp_phone,
+      consent: details?.consent ?? details?.whatsapp_consent
+    });
     if (!checked.ok) throw new Error(checked.error);
     const timestamp = now();
     const data = { uid, ...checked.value, updated_at: timestamp };

@@ -62,6 +62,11 @@
             if (!notice || !title || !message) return;
 
             const lifecycle = accountLifecycle();
+            // Sem status = esconder (normalizeAccountStatus('') cairia em "pendente").
+            if (!status) {
+                notice.classList.add('hidden');
+                return;
+            }
             const isProfileError = status === 'error';
             const normalized = isProfileError ? 'error' : (lifecycle.normalizeAccountStatus
                 ? lifecycle.normalizeAccountStatus(status)
@@ -381,6 +386,7 @@
 
                 accessState = 'active';
                 syncFinanceAuthContext();
+                setAccessNotice('', '');
                 authScreen.classList.add('hidden');
                 app.classList.remove('hidden');
                 applyRoleVisibility();
@@ -394,6 +400,7 @@
                     renderManagedUsers();
                 }
                 if (currentTab === 'configuracoes') renderConfiguracoes();
+                window.dispatchEvent(new CustomEvent('financeAccessActive', { detail: { uid: authPayload.uid } }));
             } catch (error) {
                 clearFinancialUiState();
                 profileState = 'error';
