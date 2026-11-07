@@ -36,6 +36,11 @@ describe('Firestore security rules', () => {
     expect(rules).toContain('allow update: if false');
   });
 
+  it('keeps privileged profile fields out of client self-updates', () => {
+    expect(rules).toContain(".hasOnly(['updated_at', 'last_login_at'])");
+    expect(rules).toContain("request.resource.data.email == request.auth.token.get('email', '')");
+  });
+
   it('validates local cache ownership and user profile lookups safely', () => {
     expect(rules).toContain("request.resource.data.key.matches('^finance-control-.*')");
     expect(rules).toContain('request.resource.data.owner_uid == request.auth.uid');
