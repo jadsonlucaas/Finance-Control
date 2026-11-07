@@ -1,6 +1,6 @@
 # Inventario de API Global
 
-Gerado em: 2026-10-31T12:23:20.950Z
+Gerado em: 2026-11-07T00:20:41.338Z
 
 Este documento congela as funcoes globais e handlers inline conhecidos antes da migracao para modulos. A regra de seguranca e: qualquer item usado por HTML, template string ou outro script legado deve continuar disponivel ate que o uso seja migrado para imports explicitos.
 
@@ -49,7 +49,7 @@ A coluna "Situacao preliminar de migracao" nao autoriza migracao por si so. Qual
 | `deletePercentageExitRule` | src/legacy/inline/part-29.js:1155 (window assignment) | Sem handler inline direto encontrado. | evento / operacao | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `editPercentageExitRule` | src/legacy/inline/part-29.js:1092 (window assignment) | Sem handler inline direto encontrado. | evento / operacao | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `ensureDashboardRangeControls` | src/legacy/inline/part-29.js:1424 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
-| `financeApp` | src/app.js:597 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
+| `financeApp` | src/app.js:599 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `fmt` | src/ui/dashboard/dashboardCards.js:77 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `fmtCompactCurrency` | src/ui/dashboard/dashboardCharts.js:197 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `formatCompetence` | src/ui/dashboard/dashboardCards.js:72 (window assignment) | Sem handler inline direto encontrado. | calculo / dados | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
@@ -58,7 +58,7 @@ A coluna "Situacao preliminar de migracao" nao autoriza migracao por si so. Qual
 | `getSyncedPercentageExitRules` | src/legacy/inline/part-29.js:352 (window assignment) | Sem handler inline direto encontrado. | calculo / dados | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `getThemeTextSecondaryColor` | src/ui/dashboard/dashboardCharts.js:47 (window assignment) | Sem handler inline direto encontrado. | calculo / dados | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `goBackTab` | src/ui/router.js:22 (window assignment) | Sem handler inline direto encontrado. | renderizacao / evento | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
-| `isCurrentUserAdmin` | src/legacy/inline/part-28.js:29 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
+| `isCurrentUserAdmin` | src/legacy/inline/part-28.js:36 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `isFinancialEntradaRecord` | src/ui/dashboard/dashboardData.js:222 (window assignment) | Sem handler inline direto encontrado. | evento / global | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `openEntryDiscountHistoryModal` | src/legacy/inline/part-16.js:345 (window assignment) | Sem handler inline direto encontrado. | renderizacao / evento | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |
 | `openEntryOtherRevenuesModal` | src/legacy/inline/part-16.js:212 (window assignment) | Sem handler inline direto encontrado. | renderizacao / evento | Candidato preliminar somente se busca completa confirmar ausencia de consumidores legados. |

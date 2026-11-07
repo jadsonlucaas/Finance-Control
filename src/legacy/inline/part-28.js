@@ -412,7 +412,29 @@
 
         async function handleAuthSubmit(event) {
             event.preventDefault();
-            if (!window.authSdk) return;
+            // O formulario aparece antes do Firebase terminar de carregar. Em vez de
+            // ignorar o clique em silencio, aguarda a conexao por alguns segundos.
+            if (!window.authSdk) {
+                setAuthError('');
+                setAuthLoading(true);
+                const ready = await new Promise((resolve) => {
+                    const onReady = () => {
+                        clearTimeout(timer);
+                        resolve(Boolean(window.authSdk));
+                    };
+                    const timer = setTimeout(() => {
+                        window.removeEventListener('firebasePronto', onReady);
+                        resolve(Boolean(window.authSdk));
+                    }, 15000);
+                    window.addEventListener('firebasePronto', onReady, { once: true });
+                });
+                if (!ready) {
+                    setAuthLoading(false);
+                    setAuthError('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
+                    return;
+                }
+                setAuthLoading(false);
+            }
 
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
