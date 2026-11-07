@@ -26,6 +26,9 @@ function bind(target, controller) {
     if (action === 'cancel') controller.cancelCode();
     if (action === 'revoke') controller.revoke();
     if (action === 'reload') controller.load();
+    const premium = event.target.closest?.('[data-premium-action]')?.dataset.premiumAction;
+    if (premium === 'checkout') controller.startCheckout();
+    if (premium === 'portal') controller.openPortal();
   });
   // Troca de usuario na mesma aba: recarrega o status da nova conta.
   target.addEventListener?.('authStateChanged', () => controller.load());
@@ -41,11 +44,12 @@ export function installWhatsAppLinkActiveUi(target = globalThis, options = {}) {
   const presenter = options.presenter || createWhatsAppLinkPresenter({
     documentRef: target.document,
     botNumber: options.botNumber ?? target.__financeWhatsAppConfig?.botNumber ?? '',
-    billing: options.billing ?? target.__financeWhatsAppConfig?.billing ?? {}
+    billing: options.billing ?? { enabled: Boolean(target.billingCheckoutSdk?.enabled) }
   });
   const controller = options.controller || createWhatsAppLinkController({
     service,
     accessService: options.accessService ?? target.whatsappAccessSdk ?? null,
+    billingService: options.billingService ?? target.billingCheckoutSdk ?? null,
     presenter,
     uidProvider: options.uidProvider || (() => currentUid(target)),
     emailProvider: options.emailProvider || (() => currentEmail(target)),

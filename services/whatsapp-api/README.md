@@ -52,6 +52,17 @@ Rollout seguro: conceda a cortesia a quem precisa **antes** de trocar para `enti
 
 **Número principal (Premium pelo Stripe):** o telefone informado no pagamento fica em `billing_subscriptions/{uid}.phone`. Só esse número usa o Premium no WhatsApp; outro número vinculado à mesma conta recebe `assinatura: "phone_mismatch"` e a mensagem para usar o número do pagamento ou trocá-lo em "Gerenciar assinatura". A cortesia do admin não depende do telefone.
 
+## Checkout e portal (criados pelo servidor)
+
+O Dashboard chama um webhook público do n8n, que repassa (com a `x-api-key`) para:
+
+- `POST /internal/billing/checkout` com `{ "idToken": "<ID token do Firebase>" }`: confere o token (inclusive revogação), exige conta `active` e cadastro completo (`user_onboarding/{uid}`: país e WhatsApp). Cria (ou reaproveita) o cliente Stripe com e-mail, nome e telefone, e abre uma sessão de assinatura com o preço do país (`BR` → `STRIPE_PRICE_BRL`; demais → `STRIPE_PRICE_EUR`), `client_reference_id` = uid, metadados com uid e WhatsApp, e 7 dias grátis só na primeira assinatura. Quem já assina recebe `{ jaAssinante: true }`.
+- `POST /internal/billing/portal` com o mesmo corpo: abre o portal do cliente Stripe da própria conta.
+
+Configuração (todas opcionais; sem elas as rotas respondem 503): `STRIPE_SECRET_KEY` (ou `_FILE`, chave restrita), `STRIPE_PRICE_BRL`, `STRIPE_PRICE_EUR`, `APP_URL` (para onde o Stripe volta).
+
+Permissões da chave restrita: **Customers: Write**, **Checkout Sessions: Write**, **Customer portal: Write**. Nada mais.
+
 ## Webhook do Stripe
 
 `POST /internal/stripe/webhook` (com a mesma `x-api-key`) recebe os eventos do Stripe repassados pelo n8n. O n8n é só o carteiro: ele precisa repassar o **corpo cru** e o cabeçalho `stripe-signature`, e a API confere a assinatura de novo (HMAC-SHA256, tolerância de 5 minutos) com `STRIPE_WEBHOOK_SECRET` (ou `STRIPE_WEBHOOK_SECRET_FILE`). Sem o segredo, a rota responde 503 e nada é gravado.

@@ -30,6 +30,8 @@ function messageFor(error) {
 export function createWhatsAppLinkController({
   service,
   accessService = null,
+  billingService = null,
+  navigate = (url) => globalThis.location?.assign?.(url),
   presenter,
   uidProvider,
   emailProvider = () => '',
@@ -160,8 +162,30 @@ export function createWhatsAppLinkController({
     }
   }
 
+  async function openBilling(action) {
+    if (busy || !billingService?.enabled) return;
+    busy = true;
+    set({ ...state, billingPending: true, billingError: '' });
+    try {
+      let result = action === 'portal' ? await billingService.openPortal() : await billingService.startCheckout();
+      // Ja assina: leva para o portal em vez de abrir um segundo checkout.
+      if (result?.jaAssinante) result = await billingService.openPortal();
+      if (!result?.url) throw new Error('BILLING_NO_URL');
+      navigate(result.url);
+      set({ ...state, billingPending: false });
+    } catch (error) {
+      report(`whatsapp_link.billing_${action}`, error);
+      const message = billingService.errorMessage?.(error) || 'Não foi possível abrir a assinatura agora. Tente de novo.';
+      set({ ...state, billingPending: false, billingError: message });
+    } finally {
+      busy = false;
+    }
+  }
+
   return {
     load,
+    startCheckout: () => openBilling('checkout'),
+    openPortal: () => openBilling('portal'),
     generateCode,
     cancelCode,
     revoke,

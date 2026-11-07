@@ -109,6 +109,12 @@ describe('whatsapp-api: eventos do Stripe gravam a assinatura', () => {
     expect(await store.getBillingSubscription(ALICE)).toMatchObject({ status: 'trialing', phone: PHONE_A });
   });
 
+  it('checkout criado pelo servidor sem telefone usa o WhatsApp do cadastro (metadados)', async () => {
+    const { deliver, store } = setup();
+    await deliver(checkout({ customer_details: { email: 'alice@example.com', phone: null }, metadata: { uid: ALICE, whatsapp_phone: PHONE_A } }));
+    expect((await store.getBillingSubscription(ALICE)).phone).toBe(PHONE_A);
+  });
+
   it('evento repetido e ignorado (idempotencia)', async () => {
     const { deliver, store } = setup();
     const first = checkout();

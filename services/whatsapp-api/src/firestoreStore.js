@@ -55,6 +55,7 @@ export function createFirestoreStore(db) {
       await stripeSubscriptions.doc(subscriptionId).set(data, { merge: true });
     },
     getBillingSubscription: (uid) => readData(subscriptions.doc(uid)),
+    getOnboarding: (uid) => readData(db.collection('user_onboarding').doc(uid)),
     async mergeBillingSubscription(uid, patch) {
       await subscriptions.doc(uid).set(patch, { merge: true });
     },
