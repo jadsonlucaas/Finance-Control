@@ -77,6 +77,8 @@ export function installPlanChooser(target = globalThis, options = {}) {
       if (clean) target.history?.replaceState?.(null, '', clean);
       model.open({ mode: checkoutReturn === 'sucesso' ? 'success' : 'canceled' });
       target.financeApp?.whatsappLinkActiveUi?.refresh?.();
+      // O webhook do Stripe pode levar alguns segundos: confere o plano de novo.
+      setTimeout(() => target.financeApp?.planGate?.refresh?.(), 5000);
       return;
     }
     if (takePlanChoicePending(target, uid)) model.open({ waitFor: target.__financeSignupInFlight });

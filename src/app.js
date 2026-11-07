@@ -551,8 +551,11 @@ function installPlannerStorageRuntime(target = globalThis) {
 
 // Escolha de plano (apos o cadastro) e volta do Stripe. Falha aqui nao derruba o app.
 function installPlanChooserLater(target = globalThis) {
-  import('./ui/billing/planChooserUi.js')
-    .then((module) => module.installPlanChooser(target))
+  Promise.all([import('./ui/billing/planChooserUi.js'), import('./ui/billing/planGate.js')])
+    .then(([chooser, gate]) => {
+      chooser.installPlanChooser(target);
+      gate.installPlanGate(target);
+    })
     .catch((error) => {
       target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'plan_chooser_ui' });
     });

@@ -102,8 +102,12 @@ export function renderPlanChooser(state = {}) {
       </div>${error}`;
   } else {
     const needsDetails = !state.loading && !hasCheckoutDetails(state.details);
-    content = `<h2 class="text-lg font-bold text-textPrimary">Escolha seu plano</h2>
-      <p class="text-sm text-textSecondary mt-1">Você pode mudar depois em Configurações.</p>
+    const heading = state.reason ? `${escapeHtml(state.reason)} é do Premium` : 'Escolha seu plano';
+    const subtitle = state.reason
+      ? 'No Gratuito você lança entradas e saídas e vê o dashboard. Assine para liberar o resto.'
+      : 'Você pode mudar depois em Configurações.';
+    content = `<h2 class="text-lg font-bold text-textPrimary">${heading}</h2>
+      <p class="text-sm text-textSecondary mt-1">${subtitle}</p>
       <div class="grid gap-3 mt-4 sm:grid-cols-2">
         <div class="rounded-xl border border-surfaceLight p-4 flex flex-col" data-plan="free">
           <h3 class="font-semibold text-textPrimary">Gratuito</h3>
@@ -122,7 +126,8 @@ export function renderPlanChooser(state = {}) {
             <li>Tudo do Gratuito</li>
             <li>Assistente no WhatsApp com IA</li>
             <li>Alertas de vencimento</li>
-            <li>Relatórios, planejador e importação</li>
+            <li>Parcelamentos, importação e controle de horas</li>
+            <li>Planner e relatório em PDF</li>
           </ul>
           ${needsDetails ? detailsForm(state.details) : ''}
           <button type="button" data-plan-action="premium" class="${BUTTON_PRIMARY} mt-4" ${busy || (state.loading ? 'disabled' : '')}>${state.pending ? 'Abrindo o Stripe…' : 'Testar 7 dias grátis'}</button>
@@ -145,8 +150,8 @@ export function createPlanChooserModel({ onboarding, billing, validate, getUid, 
   let state = { open: false };
   const set = (next) => { state = next; render(state); };
 
-  async function open({ mode = 'choose', waitFor = null } = {}) {
-    set({ open: true, mode, loading: true, pending: false, details: null, error: '' });
+  async function open({ mode = 'choose', waitFor = null, reason = '' } = {}) {
+    set({ open: true, mode, reason, loading: true, pending: false, details: null, error: '' });
     let details = null;
     try {
       // Logo apos o cadastro, espera os dados do cadastro serem gravados.
