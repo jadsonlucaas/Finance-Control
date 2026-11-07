@@ -5,11 +5,20 @@ import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
 import { createWhatsAppAccessService } from './whatsappAccess.js';
-import { createAccountOnboardingService, validateSignupDetails } from './accountOnboarding.js';
+import { createAccountOnboardingService, PLAN_CHOICE_STORAGE_KEY, validateSignupDetails } from './accountOnboarding.js';
 import { createBillingCheckoutService } from './billingCheckout.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
+
+function setPlanChoicePending(target, pending) {
+  try {
+    if (pending) target.sessionStorage?.setItem(PLAN_CHOICE_STORAGE_KEY, '1');
+    else target.sessionStorage?.removeItem(PLAN_CHOICE_STORAGE_KEY);
+  } catch {
+    // Sem sessionStorage a escolha de plano continua em Configuracoes.
+  }
+}
 
 export function installFirebaseServices({ target = window, config } = {}) {
   const { auth, db, runtime } = createFirebaseService(config);
@@ -52,16 +61,28 @@ export function installFirebaseServices({ target = window, config } = {}) {
     validateSignupDetails,
     // Cria a conta e guarda pais/WhatsApp. Se essa gravacao falhar, a conta continua criada
     // e os dados podem ser completados depois (antes do checkout).
-    signUp: async (email, password, details = null) => {
-      const credential = await authService.signUp(email, password);
-      if (details && credential?.user?.uid) {
+    signUp: (email, password, details = null) => {
+      // Marca antes de criar a conta: o login pode liberar o acesso antes desta promessa terminar.
+      setPlanChoicePending(target, true);
+      const flow = (async () => {
+        let credential;
         try {
-          await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, details);
+          credential = await authService.signUp(email, password);
         } catch (error) {
-          captureError(error, { operation: 'auth.sign_up.onboarding_details' });
+          setPlanChoicePending(target, false);
+          throw error;
         }
-      }
-      return credential;
+        if (details && credential?.user?.uid) {
+          try {
+            await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, details);
+          } catch (error) {
+            captureError(error, { operation: 'auth.sign_up.onboarding_details' });
+          }
+        }
+        return credential;
+      })();
+      target.__financeSignupInFlight = flow;
+      return flow;
     },
     loadProfileAccess: profileAccessService.load,
     getProfileAccessErrorMessage

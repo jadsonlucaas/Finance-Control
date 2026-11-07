@@ -27,7 +27,11 @@ function bind(target, controller) {
     if (action === 'revoke') controller.revoke();
     if (action === 'reload') controller.load();
     const premium = event.target.closest?.('[data-premium-action]')?.dataset.premiumAction;
-    if (premium === 'checkout') controller.startCheckout();
+    // A escolha de plano confirma pais/WhatsApp antes do checkout (contas antigas podem nao ter).
+    if (premium === 'checkout') {
+      if (target.financeApp?.planChooser?.open) target.financeApp.planChooser.open();
+      else controller.startCheckout();
+    }
     if (premium === 'portal') controller.openPortal();
   });
   // Troca de usuario na mesma aba: recarrega o status da nova conta.
