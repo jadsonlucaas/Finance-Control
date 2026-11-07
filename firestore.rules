@@ -638,17 +638,21 @@ service cloud.firestore {
 
       // Enterprise mode: admin/owner elevation must be bootstrapped manually
       // or via trusted server tooling. Client self-creation cannot assign admin.
+      // O email do perfil espelha o token Auth: o cliente nao planta texto
+      // arbitrario que o painel administrativo depois exibe.
       allow create: if isSelf(uid)
         && hasValidUserProfileShape()
         && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.get('email', '')
         && request.resource.data.role == 'user'
         && request.resource.data.status == 'pending';
 
+      // O dono so atualiza metadados de login. Qualquer outro campo (plano,
+      // assinatura, papel, status, vinculos) fica reservado a admin ou backend
+      // confiavel (Admin SDK, ex.: webhooks do Stripe via n8n/API).
       allow update: if isSelf(uid)
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['updated_at', 'last_login_at'])
         && request.resource.data.updated_at is string;
 
       allow update: if isAdmin() && hasValidAdminProfileUpdate();
