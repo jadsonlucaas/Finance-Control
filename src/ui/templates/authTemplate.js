@@ -26,6 +26,31 @@ export function authTemplate() {
                     <label for="auth-confirm-password" class="text-xs text-textSecondary mb-1 block">Confirmar senha</label>
                     <input id="auth-confirm-password" type="password" autocomplete="new-password" placeholder="Repita a senha" class="w-full text-sm">
                 </div>
+                <div id="auth-signup-details" class="hidden space-y-4">
+                    <div>
+                        <label for="auth-name" class="text-xs text-textSecondary mb-1 block">Nome</label>
+                        <input id="auth-name" type="text" autocomplete="name" maxlength="80" placeholder="Seu nome" class="w-full text-sm">
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label for="auth-country" class="text-xs text-textSecondary mb-1 block">País</label>
+                            <select id="auth-country" autocomplete="country" class="w-full text-sm">
+                                <option value="BR">Brasil</option>
+                                <option value="ES">Espanha</option>
+                                <option value="PT">Portugal</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label for="auth-phone" class="text-xs text-textSecondary mb-1 block">WhatsApp</label>
+                            <input id="auth-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999" class="w-full text-sm">
+                        </div>
+                    </div>
+                    <p class="text-xs text-textSecondary -mt-2">Esse número vira o principal do assistente no WhatsApp quando você assinar o Premium.</p>
+                    <label class="flex items-start gap-2 text-xs text-textSecondary">
+                        <input id="auth-whatsapp-consent" type="checkbox" class="mt-0.5">
+                        <span>Aceito receber mensagens do Finance Control no WhatsApp (boas-vindas e alertas). Posso cancelar quando quiser.</span>
+                    </label>
+                </div>
                 <div id="auth-error" class="hidden text-sm rounded-lg border border-danger/20 bg-danger/10 text-danger px-3 py-2"></div>
                 <div id="account-access-notice" class="hidden rounded-xl border border-surfaceLight bg-surfaceLight/60 px-3 py-3">
                     <div class="flex items-start gap-3">

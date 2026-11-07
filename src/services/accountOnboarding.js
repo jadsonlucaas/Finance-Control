@@ -1,0 +1,56 @@
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+/**
+ * Dados do cadastro usados no checkout e no WhatsApp (user_onboarding/{uid}).
+ * - country: define a moeda do Premium (BR -> BRL; demais -> EUR).
+ * - whatsapp_phone: numero que vira o principal do WhatsApp; vai pre-preenchido no checkout.
+ * - whatsapp_consent: aceite para receber mensagens (boas-vindas, alertas) no WhatsApp.
+ * As regras do Firestore validam o formato; so o proprio usuario grava e le (admin le).
+ */
+const COLLECTION = 'user_onboarding';
+
+export const SIGNUP_COUNTRIES = Object.freeze([
+  { code: 'BR', label: 'Brasil', dial: '55' },
+  { code: 'ES', label: 'Espanha', dial: '34' },
+  { code: 'PT', label: 'Portugal', dial: '351' }
+]);
+
+export function normalizeWhatsAppPhone(value, country = '') {
+  let digits = String(value ?? '').replace(/\D/g, '');
+  const raw = String(value ?? '').trim();
+  const dial = SIGNUP_COUNTRIES.find((item) => item.code === country)?.dial || '';
+  // Sem "+" e sem o DDI do pais: assume o pais escolhido (ex.: 11 99999-9999 no Brasil).
+  if (!raw.startsWith('+') && dial && !digits.startsWith(dial)) digits = `${dial}${digits}`;
+  if (digits.length < 10 || digits.length > 15 || digits.startsWith('0')) return '';
+  return `+${digits}`;
+}
+
+export function validateSignupDetails({ name = '', country = '', phone = '', consent = false } = {}) {
+  const cleanName = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (cleanName.length < 2) return { ok: false, error: 'Informe seu nome.' };
+  if (!SIGNUP_COUNTRIES.some((item) => item.code === country)) return { ok: false, error: 'Escolha o país.' };
+  const whatsappPhone = normalizeWhatsAppPhone(phone, country);
+  if (!whatsappPhone) return { ok: false, error: 'Informe um telefone de WhatsApp válido, com DDD.' };
+  return { ok: true, value: { name: cleanName, country, whatsapp_phone: whatsappPhone, whatsapp_consent: Boolean(consent) } };
+}
+
+export function createAccountOnboardingService(db, { now = () => new Date().toISOString() } = {}) {
+  async function saveSignupDetails(uid, details) {
+    if (!uid) throw new Error('ONBOARDING_UID_REQUIRED');
+    const checked = validateSignupDetails(details);
+    if (!checked.ok) throw new Error(checked.error);
+    const timestamp = now();
+    const data = { uid, ...checked.value, updated_at: timestamp };
+    if (checked.value.whatsapp_consent) data.consent_at = timestamp;
+    await setDoc(doc(db, COLLECTION, uid), data, { merge: true });
+    return data;
+  }
+
+  async function getMyDetails(uid) {
+    if (!uid) return null;
+    const snapshot = await getDoc(doc(db, COLLECTION, uid));
+    return snapshot.exists() ? snapshot.data() : null;
+  }
+
+  return { saveSignupDetails, getMyDetails };
+}

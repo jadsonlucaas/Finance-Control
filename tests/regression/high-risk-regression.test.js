@@ -84,10 +84,12 @@ describe('high-risk local regression coverage', () => {
       uid: 'new-user',
       email: 'new-user@example.test',
       role: ACCOUNT_ROLE.USER,
-      status: ACCOUNT_STATUS.PENDING
+      // Decisao de 07/11/2026: cadastro publico nasce ativo no plano Gratuito; o admin ainda pode desativar.
+      status: ACCOUNT_STATUS.ACTIVE
     });
-    expect(getUserAccessState(created).canAccessFinancialData).toBe(false);
-    expect(getUserAccessState({ ...created, status: ACCOUNT_STATUS.ACTIVE }).canAccessFinancialData).toBe(true);
+    expect(getUserAccessState(created).canAccessFinancialData).toBe(true);
+    expect(getUserAccessState({ ...created, status: ACCOUNT_STATUS.PENDING }).canAccessFinancialData).toBe(false);
+    expect(getUserAccessState({ ...created, status: ACCOUNT_STATUS.INACTIVE }).canAccessFinancialData).toBe(false);
     expect(buildAdminUpdatePlan(
       { ...created, status: ACCOUNT_STATUS.PENDING },
       { status: ACCOUNT_STATUS.ACTIVE }
