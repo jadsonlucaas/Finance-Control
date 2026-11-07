@@ -1,8 +1,10 @@
 import {
+  EmailAuthProvider,
   browserSessionPersistence,
   createUserWithEmailAndPassword,
   getIdTokenResult,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   setPersistence,
   signInWithEmailAndPassword,
   signOut
@@ -59,6 +61,13 @@ export function createAuthService(auth, auditService = null) {
     }),
     normalizeError: normalizeAuthError
   };
+}
+
+// Confirma a senha do usuario logado (exigido antes de acoes destrutivas, como excluir a conta).
+export function reauthenticateWithPassword(auth, password) {
+  const user = auth?.currentUser;
+  if (!user?.email) return Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' }));
+  return reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
 }
 
 export function persistAuthSession(auth) {

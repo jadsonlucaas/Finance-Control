@@ -29,6 +29,8 @@ export function createUserAdminController({
   authContext,
   presenter = createUserAdminPresenter(document),
   confirm = globalThis.confirm,
+  prompt = globalThis.prompt,
+  describeError = () => '',
   notify = globalThis.showToast,
   consoleRef = console
 } = {}) {
@@ -165,9 +167,44 @@ export function createUserAdminController({
     }
   }
 
+  async function deleteUser(uid) {
+    const target = state.lastItems.find((user) => String(user.uid) === String(uid));
+    if (!target || state.pendingActions[uid] || typeof actions.deleteUser !== 'function') {
+      return { isOk: false, code: 'USER_ADMIN_ACTION_IGNORED' };
+    }
+    const email = String(target.email || '').trim();
+    const typed = prompt?.(
+      `Excluir DEFINITIVAMENTE a conta ${email || uid}?\n\n`
+      + 'Apaga lançamentos, configurações, assinatura, vínculos e o login. Não dá para desfazer.\n\n'
+      + 'Digite o e-mail da conta para confirmar:'
+    );
+    if (typed === null || typed === undefined) return { isOk: false, code: 'USER_ADMIN_ACTION_CANCELLED' };
+    if (String(typed).trim().toLowerCase() !== email.toLowerCase()) {
+      notify?.('O e-mail digitado não confere. Nada foi excluído.', true);
+      return { isOk: false, code: 'CONFIRMATION_MISMATCH' };
+    }
+    try {
+      state.pendingActions = { ...state.pendingActions, [uid]: true };
+      renderFromItems(state.lastItems);
+      await actions.deleteUser(uid, String(typed).trim());
+      state.lastItems = state.lastItems.filter((user) => String(user.uid) !== String(uid));
+      notify?.('Conta excluída definitivamente.');
+      return { isOk: true };
+    } catch (error) {
+      consoleRef.error?.(error);
+      notify?.(describeError(error) || 'Erro ao excluir a conta.', true);
+      return { isOk: false, code: error?.code || 'USER_ADMIN_DELETE_FAILED' };
+    } finally {
+      const { [uid]: _removed, ...rest } = state.pendingActions;
+      state.pendingActions = rest;
+      await refresh();
+    }
+  }
+
   return {
     refresh,
     setAssistantComp,
+    deleteUser,
     setRole: (uid, role) => update(uid, { role }),
     setStatus: (uid, status) => update(uid, { status }),
     toggleStatus: (uid) => {

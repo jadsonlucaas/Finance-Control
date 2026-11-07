@@ -100,6 +100,7 @@ function renderUser(user) {
           ${approve}
           ${statusButton}
           ${renderAssistantCompButton(user)}
+          ${user.actions.remove ? `<button data-delete-managed-user="${escapeHtml(user.uid)}" class="${BUTTON_BASE} bg-danger/10 text-danger hover:bg-danger hover:text-white" title="Apaga a conta e todos os dados, sem volta" ${disabledAttr(disabled)}>Excluir</button>` : ''}
         </div>
       </div>
     </div>`;

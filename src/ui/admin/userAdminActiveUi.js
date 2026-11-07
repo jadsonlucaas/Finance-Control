@@ -34,8 +34,15 @@ function createUserAdminWebAdapter(target = globalThis) {
         const sdk = target.assistantAccessSdk;
         if (!sdk) throw new Error('ASSISTANT_ACCESS_SERVICE_UNAVAILABLE');
         return active ? sdk.grantComp(adminUid, uid, options) : sdk.revokeComp(adminUid, uid, options);
+      },
+      deleteUser: (uid, confirmacao) => {
+        const sdk = target.accountDeletionSdk;
+        if (!sdk?.enabled) throw Object.assign(new Error('ACCOUNT_DELETION_NOT_CONFIGURED'), { code: 'ACCOUNT_DELETION_NOT_CONFIGURED' });
+        return sdk.deleteUser(uid, confirmacao);
       }
     },
+    describeError: (error) => target.accountDeletionSdk?.errorMessage?.(error) || '',
+    prompt: (message) => target.prompt?.(message),
     authContext: () => {
       const profile = getCurrentProfile(target);
       const claims = target.financeApp?.authContext?.claims || target.currentAuthClaims || {};
@@ -87,6 +94,12 @@ function bindUserAdminActions(target, controller) {
     if (!button) return;
     event.preventDefault();
     controller.setAssistantComp(button.dataset.setAssistantComp, button.dataset.assistantComp === 'on');
+  });
+  documentRef.addEventListener('click', (event) => {
+    const button = event.target.closest?.('[data-delete-managed-user]');
+    if (!button) return;
+    event.preventDefault();
+    controller.deleteUser(button.dataset.deleteManagedUser);
   });
   documentRef.documentElement.dataset.financeUserAdminModernActionsBound = 'true';
 }

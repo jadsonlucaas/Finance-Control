@@ -27,6 +27,8 @@ export const BILLING_PORTAL_PATH = '/internal/billing/portal';
 // Rota unica para o relay do n8n: a acao vem no corpo ({ acao: 'checkout' | 'portal', idToken }).
 export const BILLING_PATH = '/internal/billing';
 const PREFIX = '/internal/whatsapp';
+// Exclusao de conta: mesma rota/relay do n8n, acao no corpo.
+export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOwnAccount', excluir_usuario: 'deleteUserAsAdmin' });
 
 /**
  * Nucleo HTTP independente de framework: recebe {method, path, headers, body}
@@ -39,6 +41,7 @@ export function createApp({
   accessMode = 'open',
   stripeWebhookSecret = '',
   checkout = null,
+  accountDeletion = null,
   now = () => new Date(),
   logger = console,
   newId = () => randomUUID()
@@ -123,6 +126,14 @@ export function createApp({
       }
       if (route === BILLING_PATH || route === BILLING_CHECKOUT_PATH || route === BILLING_PORTAL_PATH) {
         if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
+        const deletion = route === BILLING_PATH ? ACCOUNT_DELETION_ACTIONS[String(body?.acao || '')] : '';
+        if (deletion) {
+          if (!accountDeletion?.configured) throw new ApiError(503, 'ACCOUNT_DELETION_NOT_CONFIGURED', 'Exclusao de conta indisponivel no momento.');
+          const result = await accountDeletion[deletion](body);
+          code = 'ACCOUNT_DELETED';
+          status = 200;
+          return { status, body: result };
+        }
         if (!checkout?.configured) throw new ApiError(503, 'BILLING_NOT_CONFIGURED', 'Assinatura indisponivel no momento.');
         const action = route === BILLING_PATH ? String(body?.acao || '') : route.slice(BILLING_PATH.length + 1);
         if (!['checkout', 'portal'].includes(action)) throw new ApiError(400, 'INVALID_ACTION', 'Acao invalida.');

@@ -301,11 +301,19 @@ async function loadChannelSettings(target = globalThis) {
   const loader = app.channelSettingsLoader
     || (() => import('./ui/whatsapp/loadWhatsAppLinkActiveUi.js')
       .then((module) => module.loadAndInstallWhatsAppLinkActiveUi(target)));
+  let accountDeletion;
   try {
-    return { whatsappLink: await loader() };
+    const module = await (app.accountDeletionUiLoader || (() => import('./ui/account/accountDeletionUi.js')))();
+    accountDeletion = module.installAccountDeletionUi(target);
+  } catch (error) {
+    target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'account_deletion_ui' });
+    accountDeletion = { installed: false, reason: 'ACCOUNT_DELETION_LOAD_FAILED' };
+  }
+  try {
+    return { whatsappLink: await loader(), accountDeletion };
   } catch (error) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'channel_settings_ui' });
-    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' } };
+    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion };
   }
 }
 
