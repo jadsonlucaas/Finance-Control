@@ -4,6 +4,7 @@ import { createDataSdkService } from './dataSdk.js';
 import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
+import { createWhatsAppAccessService } from './whatsappAccess.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -28,6 +29,9 @@ export function installFirebaseServices({ target = window, config } = {}) {
   const authService = createAuthService(auth, auditService);
   target.userAdminSdk = createUserAdminService(db, auditService);
   target.whatsappLinkSdk = createWhatsAppLinkService(db);
+  target.whatsappAccessSdk = createWhatsAppAccessService(db, auditService);
+  // Alias neutro de canal para o painel de usuarios.
+  target.assistantAccessSdk = target.whatsappAccessSdk;
   target.__financeWhatsAppConfig = Object.freeze({
     botNumber: String(import.meta.env?.VITE_WHATSAPP_BOT_NUMBER || '').trim()
   });

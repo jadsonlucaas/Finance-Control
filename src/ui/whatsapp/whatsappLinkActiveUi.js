@@ -36,6 +36,7 @@ export function installWhatsAppLinkActiveUi(target = globalThis, options = {}) {
   });
   const controller = options.controller || createWhatsAppLinkController({
     service,
+    accessService: options.accessService ?? target.whatsappAccessSdk ?? null,
     presenter,
     uidProvider: options.uidProvider || (() => currentUid(target)),
     confirmRevoke: options.confirmRevoke || (() => (typeof target.confirm === 'function'

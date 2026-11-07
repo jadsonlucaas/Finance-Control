@@ -30,9 +30,25 @@ Issue: #28
 | Rota | Campos | Retorno |
 | --- | --- | --- |
 | `/internal/whatsapp/vinculo/confirmar` | `telefone`, `accountId`, `codigo` | `{ vinculado: true, ja_vinculado }` ou erro `LINK_CODE_INVALID` (400), `ACCOUNT_NOT_ACTIVE` (403), `PHONE_LINKED_OTHER_ACCOUNT` (409), `LINK_TOO_MANY_ATTEMPTS` (429) |
-| `/internal/whatsapp/vinculo/status` | `telefone`, `accountId` | `{ vinculado: true }` ou `{ vinculado: false, motivo }` (para o n8n responder a telefone desconhecido sem chamar a IA) |
+| `/internal/whatsapp/vinculo/status` | `telefone`, `accountId` | `{ vinculado: true, acesso }` ou `{ vinculado: false, motivo, mensagem? }` (para o n8n responder a telefone desconhecido ou sem acesso sem chamar a IA) |
 
 O código e o telefone nunca vão para os logs (só o hash do telefone). Auditoria: `whatsapp.link_created` em `users/{uid}/audit_logs`.
+
+## Direito de uso: assinatura ou cortesia
+
+O assistente no WhatsApp é do Premium. A API decide se a conta pode usar o canal:
+
+- **Cortesia:** `whatsapp_comp_access/{uid}` com `status: active`. Só um admin ativo concede ou revoga, pelo painel **Usuários do sistema** (botão "Assistente cortesia"). Serve para sócios e testes.
+- **Assinatura:** `billing_subscriptions/{uid}`, gravada só pelo servidor a partir dos webhooks do Stripe. Libera com `trialing`, `active` ou `past_due` (o Stripe ainda tenta cobrar). `canceled`, `unpaid`, `incomplete` e outros bloqueiam.
+
+`WHATSAPP_ACCESS_MODE` controla a exigência:
+
+| Valor | Efeito |
+| --- | --- |
+| `open` (padrão) | Comportamento anterior: qualquer número vinculado usa o assistente. |
+| `entitlement` | Exige cortesia ativa ou assinatura em dia. Sem isso, `vinculo/status` devolve `{ vinculado: false, motivo: "WHATSAPP_ACCESS_REQUIRED", assinatura, mensagem }` e as demais rotas respondem 403 `WHATSAPP_ACCESS_REQUIRED`. |
+
+Rollout seguro: conceda a cortesia a quem precisa **antes** de trocar para `entitlement`.
 
 ## Rotas
 
@@ -89,7 +105,7 @@ Formato: `{ "erro": { "codigo": "...", "mensagem": "..." } }`.
 | --- | --- |
 | 400 | Entrada inválida |
 | 401 | Chave ausente ou inválida |
-| 403 | Telefone ou conta não vinculados |
+| 403 | Telefone ou conta não vinculados, conta inativa ou sem direito de uso (`WHATSAPP_ACCESS_REQUIRED`) |
 | 404 | Não encontrado |
 | 409 | Conflito, ação já paga ou ação cancelada |
 | 410 | Confirmação expirada |
@@ -116,7 +132,8 @@ docker run -d --name financecontrol_whatsapp_api_dev --network <rede-do-n8n> \
 1. Copie `.env.example` para `.env`, que não é versionado.
 2. Gere `WHATSAPP_API_KEY` com `openssl rand -hex 32`. Use uma chave **nova**, sem reaproveitar a da API readonly.
 3. (Opcional) `WHATSAPP_PHONE_LINKS`: vínculos manuais de reserva. Novos usuários se vinculam pelo app.
-4. Forneça a service account com `FIREBASE_SERVICE_ACCOUNT_JSON` ou com um arquivo montado em `GOOGLE_APPLICATION_CREDENTIALS`.
+4. (Opcional) `WHATSAPP_ACCESS_MODE`: `open` (padrão) ou `entitlement` (exige assinatura ou cortesia).
+5. Forneça a service account com `FIREBASE_SERVICE_ACCOUNT_JSON` ou com um arquivo montado em `GOOGLE_APPLICATION_CREDENTIALS`.
 
 Teste rápido:
 

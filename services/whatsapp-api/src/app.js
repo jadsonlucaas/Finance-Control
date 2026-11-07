@@ -4,6 +4,7 @@ import { isAuthorized } from './auth.js';
 import { createActionService } from './actions.js';
 import { buildOpcoes } from './references.js';
 import { createLinkService } from './links.js';
+import { ACCESS_REQUIRED_MESSAGE, createAccessPolicy } from './access.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -22,8 +23,17 @@ const PREFIX = '/internal/whatsapp';
  * Nucleo HTTP independente de framework: recebe {method, path, headers, body}
  * e devolve {status, body}. O servidor (server.js) so faz a ponte com node:http.
  */
-export function createApp({ store, resolver, apiKey, now = () => new Date(), logger = console, newId = () => randomUUID() }) {
+export function createApp({
+  store,
+  resolver,
+  apiKey,
+  accessMode = 'open',
+  now = () => new Date(),
+  logger = console,
+  newId = () => randomUUID()
+}) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
+  const access = createAccessPolicy({ store, mode: accessMode });
   const actions = createActionService({ store, now, newId });
   const links = createLinkService({ store, now });
 
@@ -35,8 +45,15 @@ export function createApp({ store, resolver, apiKey, now = () => new Date(), log
     },
     'vinculo/status': async (body) => {
       try {
-        const { phoneHash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
-        return { phoneHash, result: { vinculado: true } };
+        const { uid, phoneHash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
+        const permitted = await access.check(uid);
+        if (!permitted.allowed) {
+          return {
+            phoneHash,
+            result: { vinculado: false, motivo: 'WHATSAPP_ACCESS_REQUIRED', assinatura: permitted.status, mensagem: ACCESS_REQUIRED_MESSAGE }
+          };
+        }
+        return { phoneHash, result: { vinculado: true, acesso: permitted.source } };
       } catch (error) {
         if (error instanceof ApiError && error.status === 403) return { phoneHash: '', result: { vinculado: false, motivo: error.code } };
         throw error;
@@ -94,6 +111,7 @@ export function createApp({ store, resolver, apiKey, now = () => new Date(), log
 
       const { uid, phoneHash: hash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
       phoneHash = hash;
+      await access.assert(uid);
       const result = await handler(uid, body);
       status = 200;
       return { status, body: result };

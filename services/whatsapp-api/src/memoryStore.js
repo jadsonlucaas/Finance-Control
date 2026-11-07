@@ -13,11 +13,24 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   const linkCodes = new Map();
   const links = new Map();
   const linkAttempts = new Map();
+  const compAccess = new Map();
+  const subscriptions = new Map();
   Object.entries(seed).forEach(([uid, records]) => {
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
   });
 
   return {
+    async getWhatsAppAccess(uid) {
+      return { comp: clone(compAccess.get(uid)) || null, subscription: clone(subscriptions.get(uid)) || null };
+    },
+    _setComp(uid, data) {
+      if (data) compAccess.set(uid, clone(data));
+      else compAccess.delete(uid);
+    },
+    _setSubscription(uid, data) {
+      if (data) subscriptions.set(uid, clone(data));
+      else subscriptions.delete(uid);
+    },
     async listFinanceRecords(uid) {
       return [...bucket(uid).records.values()]
         .filter((record) => record.type === 'saida' || record.type === 'entrada')

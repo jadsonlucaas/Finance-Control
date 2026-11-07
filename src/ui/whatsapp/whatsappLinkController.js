@@ -16,6 +16,7 @@ function messageFor(error) {
 
 export function createWhatsAppLinkController({
   service,
+  accessService = null,
   presenter,
   uidProvider,
   now = () => Date.now(),
@@ -27,12 +28,24 @@ export function createWhatsAppLinkController({
   let state = { view: 'loading' };
   let pollTimer = null;
   let busy = false;
+  let access = null;
 
   const render = () => presenter.render(state);
   const set = (next) => {
-    state = next;
+    state = access ? { ...next, access } : next;
     render();
   };
+
+  async function loadAccess(uid) {
+    if (!accessService?.getMyAccess) return;
+    try {
+      const result = await accessService.getMyAccess(uid);
+      access = { allowed: result.allowed, source: result.source, status: result.status };
+    } catch (error) {
+      access = null;
+      report('whatsapp_link.access', error);
+    }
+  }
   const stopPolling = () => {
     if (pollTimer !== null) clearTimer(pollTimer);
     pollTimer = null;
@@ -70,7 +83,8 @@ export function createWhatsAppLinkController({
     stopPolling();
     set({ view: 'loading' });
     try {
-      const status = await service.getStatus(uidProvider());
+      const uid = uidProvider();
+      const [status] = await Promise.all([service.getStatus(uid), loadAccess(uid)]);
       set(status.linked ? { view: 'linked', ...status } : { view: 'unlinked' });
     } catch (error) {
       report('whatsapp_link.load', error);

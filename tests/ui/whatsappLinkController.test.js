@@ -123,6 +123,37 @@ describe('whatsapp link: controller', () => {
   });
 });
 
+describe('whatsapp link: acesso no card', () => {
+  it('carrega o acesso junto com o status e mantem em todos os estados', async () => {
+    const accessService = { getMyAccess: vi.fn(async () => ({ allowed: true, source: 'comp', status: 'active', comp: {} })) };
+    const presenter = { render: vi.fn() };
+    const controller = createWhatsAppLinkController({
+      service: { getStatus: vi.fn(async () => ({ linked: false })), createCode: vi.fn(async () => ({ formatted: 'K7QM-3XPA', expiresAt: new Date(Date.now() + 600_000) })) },
+      accessService,
+      presenter,
+      uidProvider: () => 'alice',
+      setTimer: () => 1,
+      clearTimer: () => {}
+    });
+    await controller.load();
+    expect(accessService.getMyAccess).toHaveBeenCalledWith('alice');
+    expect(controller.getState()).toMatchObject({ view: 'unlinked', access: { allowed: true, source: 'comp' } });
+    await controller.generateCode();
+    expect(controller.getState()).toMatchObject({ view: 'code', access: { source: 'comp' } });
+  });
+
+  it('falha ao ler o acesso nao impede o vinculo', async () => {
+    const controller = createWhatsAppLinkController({
+      service: { getStatus: vi.fn(async () => ({ linked: false })) },
+      accessService: { getMyAccess: vi.fn(async () => { throw new Error('offline'); }) },
+      presenter: { render: vi.fn() },
+      uidProvider: () => 'alice'
+    });
+    await controller.load();
+    expect(controller.getState()).toEqual({ view: 'unlinked' });
+  });
+});
+
 describe('whatsapp link: presenter', () => {
   function fakeDocument() {
     const panel = { innerHTML: '' };
@@ -147,6 +178,19 @@ describe('whatsapp link: presenter', () => {
 
     presenter.render({ view: 'error', message: 'Falhou' });
     expect(panel.innerHTML).toContain('role="alert"');
+  });
+
+  it('mostra a origem do acesso (cortesia, Premium ou sem assinatura)', () => {
+    const { panel, documentRef } = fakeDocument();
+    const presenter = createWhatsAppLinkPresenter({ documentRef });
+    presenter.render({ view: 'unlinked', access: { allowed: true, source: 'comp', status: 'active' } });
+    expect(panel.innerHTML).toContain('data-whatsapp-access="comp"');
+    presenter.render({ view: 'linked', maskedPhone: '+34', access: { allowed: true, source: 'stripe', status: 'trialing' } });
+    expect(panel.innerHTML).toContain('teste grátis');
+    presenter.render({ view: 'unlinked', access: { allowed: false, source: 'none', status: 'none' } });
+    expect(panel.innerHTML).toContain('data-whatsapp-access="none"');
+    presenter.render({ view: 'loading', access: { allowed: true, source: 'comp' } });
+    expect(panel.innerHTML).not.toContain('data-whatsapp-access');
   });
 
   it('sem numero do bot configurado nao mostra o atalho do WhatsApp', () => {

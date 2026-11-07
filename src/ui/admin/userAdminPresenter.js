@@ -64,6 +64,13 @@ function renderControls(model) {
     </div>`;
 }
 
+function renderAssistantCompButton(user) {
+  const active = user.assistantComp === true;
+  const label = active ? 'Revogar assistente' : 'Assistente cortesia';
+  const style = active ? 'bg-warn/10 text-warn hover:bg-warn hover:text-white' : 'bg-success/10 text-success hover:bg-success hover:text-white';
+  return `<button data-set-assistant-comp="${escapeHtml(user.uid)}" data-assistant-comp="${active ? 'off' : 'on'}" class="${BUTTON_BASE} ${style}" title="Acesso ao assistente sem assinatura" ${disabledAttr(!user.actions.assistantComp)}>${label}</button>`;
+}
+
 function renderUser(user) {
   const disabled = user.actions.self || user.actions.loading;
   const approve = user.actions.approve
@@ -82,6 +89,7 @@ function renderUser(user) {
           <div class="flex gap-2 mt-2 flex-wrap">
             <span class="px-2 py-1 rounded-full text-[11px] font-semibold ${roleClass(user.role)}">${escapeHtml(user.roleLabel)}</span>
             <span class="px-2 py-1 rounded-full text-[11px] font-semibold ${statusClass(user.status)}">${escapeHtml(user.statusLabel)}</span>
+            ${user.assistantComp ? '<span class="px-2 py-1 rounded-full text-[11px] font-semibold bg-success/10 text-success" data-admin-user-assistant-comp>Assistente: cortesia</span>' : ''}
             ${user.actions.self ? '<span class="px-2 py-1 rounded-full text-[11px] font-semibold bg-surface text-textSecondary border border-surfaceLight">Você</span>' : ''}
             ${user.actions.loading ? '<span class="px-2 py-1 rounded-full text-[11px] font-semibold bg-surface text-textSecondary border border-surfaceLight">Atualizando</span>' : ''}
           </div>
@@ -91,6 +99,7 @@ function renderUser(user) {
           <button data-set-managed-user-role="${escapeHtml(user.uid)}" data-managed-user-role="user" class="${BUTTON_BASE} ${user.role === 'user' ? 'bg-accent text-white' : 'bg-accent/10 text-accent hover:bg-accent hover:text-white'}" ${disabledAttr(disabled || !user.actions.changeRole)}>Padrão</button>
           ${approve}
           ${statusButton}
+          ${renderAssistantCompButton(user)}
         </div>
       </div>
     </div>`;

@@ -769,6 +769,41 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Direito de uso do assistente no WhatsApp.
+    // Cortesia: so um admin ativo concede ou revoga, sempre em nome proprio e com horario do servidor.
+    // Assinatura: gravada apenas pelo servidor (webhook do Stripe via Admin SDK); o usuario so le a propria.
+    function isValidWhatsAppCompGrant(uid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['uid', 'status', 'granted_by', 'granted_at', 'note'])
+        && d.uid == uid
+        && d.status == 'active'
+        && d.granted_by == request.auth.uid
+        && d.granted_at == request.time
+        && (!('note' in d) || (d.note is string && d.note.size() <= 200))
+        && userProfileExists(uid);
+    }
+
+    function isValidWhatsAppCompRevocation() {
+      return resource.data.status == 'active'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'revoked_by', 'revoked_at'])
+        && request.resource.data.status == 'revoked'
+        && request.resource.data.revoked_by == request.auth.uid
+        && request.resource.data.revoked_at == request.time;
+    }
+
+    match /whatsapp_comp_access/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || (isAdmin() && isActiveUser()));
+      allow create: if isAdmin() && isActiveUser() && isValidWhatsAppCompGrant(uid);
+      allow update: if isAdmin() && isActiveUser()
+        && (isValidWhatsAppCompGrant(uid) || isValidWhatsAppCompRevocation());
+      allow delete: if false;
+    }
+
+    match /billing_subscriptions/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

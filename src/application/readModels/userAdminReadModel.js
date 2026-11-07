@@ -26,7 +26,8 @@ function normalizeUser(user = {}) {
     role,
     status,
     roleLabel: getAccountRoleLabel(role),
-    statusLabel: getAccountStatusLabel(status)
+    statusLabel: getAccountStatusLabel(status),
+    assistantComp: user.assistantComp === true
   };
 }
 
@@ -67,6 +68,8 @@ function allowedActions(user, currentUser, permissions = {}, pendingActions = {}
     deactivate: baseAllowed && permissions.canDeactivateUser === true && user.status !== ACCOUNT_STATUS.INACTIVE,
     reactivate: baseAllowed && permissions.canReactivateUser === true && user.status === ACCOUNT_STATUS.INACTIVE,
     changeRole: baseAllowed && permissions.canChangeUserRole === true,
+    // Cortesia do assistente pode ser dada a si mesmo (ex.: socios); exige permissao de gestao.
+    assistantComp: !isLoading && permissions.canManageUsers === true && user.status === ACCOUNT_STATUS.ACTIVE,
     self: isSelf,
     loading: isLoading
   };

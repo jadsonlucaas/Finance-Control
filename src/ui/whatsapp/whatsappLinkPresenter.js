@@ -35,6 +35,21 @@ function botLink(botNumber, code) {
   return `<a href="https://wa.me/${digits}?text=${text}" target="_blank" rel="noopener noreferrer" class="${BUTTON_PRIMARY} inline-block">Abrir no WhatsApp</a>`;
 }
 
+const SUBSCRIPTION_LABELS = Object.freeze({
+  trialing: 'Premium (teste grátis)',
+  active: 'Premium ativo',
+  past_due: 'Premium com pagamento pendente'
+});
+
+function accessLine(access) {
+  if (!access) return '';
+  if (access.source === 'comp') return '<p class="text-xs text-success mb-2" data-whatsapp-access="comp">Acesso cortesia liberado.</p>';
+  if (access.allowed) {
+    return `<p class="text-xs text-success mb-2" data-whatsapp-access="stripe">${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.</p>`;
+  }
+  return '<p class="text-xs text-warn mb-2" data-whatsapp-access="none">O assistente do WhatsApp faz parte do Premium. Sem assinatura ativa, o número vinculado não recebe respostas.</p>';
+}
+
 function body(state, { botNumber } = {}) {
   const disabled = state.pending ? 'disabled aria-busy="true"' : '';
   switch (state.view) {
@@ -77,6 +92,7 @@ export function createWhatsAppLinkPresenter({ documentRef = document, botNumber 
     element.innerHTML = `
       <div class="bg-surface rounded-xl p-4 border border-surfaceLight mb-4" data-whatsapp-link-root>
         <h3 class="font-semibold text-sm mb-2">WhatsApp</h3>
+        ${state.view === 'loading' ? '' : accessLine(state.access)}
         <div data-whatsapp-link-state="${escapeHtml(state.view)}" aria-live="polite">${body(state, { botNumber })}</div>
       </div>`;
   }
