@@ -2,8 +2,8 @@ export function authTemplate() {
   return `
     <div id="auth-screen" class="fixed inset-0 z-[100] flex items-center justify-center px-4 py-8">
         <div class="absolute inset-0 bg-slate-950/45 backdrop-blur-sm"></div>
-        <div class="relative z-10 w-full max-w-md glass rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50">
-            <div class="flex items-center gap-3 mb-6">
+        <div class="relative z-10 w-full max-w-md max-h-full overflow-y-auto glass rounded-3xl p-5 md:p-6 shadow-2xl border border-white/50">
+            <div class="flex items-center gap-3 mb-4">
                 <div class="w-11 h-11 rounded-2xl bg-accent/20 flex items-center justify-center">
                     <i data-lucide="wallet" class="w-6 h-6 text-accent"></i>
                 </div>
@@ -12,25 +12,27 @@ export function authTemplate() {
                     <h2 id="auth-title" class="text-2xl font-bold text-textPrimary">Entrar</h2>
                 </div>
             </div>
-            <button id="auth-back-to-login" type="button" class="hidden -mt-3 mb-4 text-sm text-accent font-semibold hover:underline flex items-center gap-1">
+            <button id="auth-back-to-login" type="button" class="hidden -mt-2 mb-3 text-sm text-accent font-semibold hover:underline flex items-center gap-1">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar para o login
             </button>
-            <p id="auth-subtitle" class="text-sm text-textSecondary mb-6">Use seu email e senha para acessar seus registros financeiros.</p>
-            <form id="auth-form" class="space-y-4">
-                <div id="auth-credentials" class="space-y-4">
+            <p id="auth-subtitle" class="text-sm text-textSecondary mb-4">Use seu email e senha para acessar seus registros financeiros.</p>
+            <form id="auth-form" class="space-y-3">
+                <div id="auth-credentials" class="space-y-3">
                 <div>
                     <label for="auth-email" class="text-xs text-textSecondary mb-1 block">Email</label>
                     <input id="auth-email" type="email" autocomplete="email" placeholder="voce@exemplo.com" class="w-full text-sm" required>
                 </div>
-                <div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                <div class="flex-1 min-w-0">
                     <label for="auth-password" class="text-xs text-textSecondary mb-1 block">Senha</label>
                     <input id="auth-password" type="password" autocomplete="current-password" placeholder="Sua senha" class="w-full text-sm" required>
                 </div>
-                <div id="auth-confirm-wrap" class="hidden">
+                <div id="auth-confirm-wrap" class="hidden flex-1 min-w-0">
                     <label for="auth-confirm-password" class="text-xs text-textSecondary mb-1 block">Confirmar senha</label>
                     <input id="auth-confirm-password" type="password" autocomplete="new-password" placeholder="Repita a senha" class="w-full text-sm">
                 </div>
-                <div id="auth-signup-details" class="hidden space-y-4">
+                </div>
+                <div id="auth-signup-details" class="hidden space-y-3">
                     <div>
                         <label for="auth-name" class="text-xs text-textSecondary mb-1 block">Nome</label>
                         <input id="auth-name" type="text" autocomplete="name" maxlength="80" placeholder="Seu nome" class="w-full text-sm">
@@ -45,14 +47,13 @@ export function authTemplate() {
                             </select>
                         </div>
                         <div class="col-span-2">
-                            <label for="auth-phone" class="text-xs text-textSecondary mb-1 block">WhatsApp</label>
+                            <label for="auth-phone" class="text-xs text-textSecondary mb-1 block">WhatsApp <span class="opacity-70">(assistente Premium)</span></label>
                             <input id="auth-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999" class="w-full text-sm">
                         </div>
                     </div>
-                    <p class="text-xs text-textSecondary -mt-2">Esse número vira o principal do assistente no WhatsApp quando você assinar o Premium.</p>
                     <label class="flex items-start gap-2 text-xs text-textSecondary">
                         <input id="auth-whatsapp-consent" type="checkbox" class="mt-0.5">
-                        <span>Aceito receber mensagens do Finance Control no WhatsApp (boas-vindas e alertas). Posso cancelar quando quiser.</span>
+                        <span>Aceito receber mensagens no WhatsApp (boas-vindas e alertas). Posso cancelar quando quiser.</span>
                     </label>
                 </div>
                 </div>
@@ -76,12 +77,12 @@ export function authTemplate() {
                         </div>
                     </div>
                 </div>
-                <button id="auth-submit" type="submit" class="w-full bg-accent hover:bg-accentDark text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
+                <button id="auth-submit" type="submit" class="w-full bg-accent hover:bg-accentDark text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
                     <i data-lucide="log-in" class="w-4 h-4"></i>
                     <span id="auth-submit-text">Entrar</span>
                 </button>
             </form>
-            <div id="auth-toggle-row" class="mt-5 text-sm text-center text-textSecondary">
+            <div id="auth-toggle-row" class="mt-3 text-sm text-center text-textSecondary">
                 <span id="auth-toggle-label">Ainda não tem conta?</span>
                 <button type="button" class="text-accent font-semibold hover:underline ml-1" id="auth-toggle-button">Criar conta</button>
             </div>
