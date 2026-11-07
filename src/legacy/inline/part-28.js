@@ -61,6 +61,14 @@
             const refreshButton = document.getElementById('account-refresh-status');
             if (!notice || !title || !message) return;
 
+            // Sem status (usuario deslogado ou perfil ainda carregando) nao ha aviso.
+            // Antes, '' era normalizado para 'pending' e o aviso aparecia na tela de login.
+            if (!status) {
+                notice.classList.add('hidden');
+                syncAuthFormVisibility(false);
+                return;
+            }
+
             const lifecycle = accountLifecycle();
             const isProfileError = status === 'error';
             const normalized = isProfileError ? 'error' : (lifecycle.normalizeAccountStatus
@@ -69,8 +77,10 @@
 
             if (!normalized || normalized === 'active') {
                 notice.classList.add('hidden');
+                syncAuthFormVisibility(false);
                 return;
             }
+            syncAuthFormVisibility(true);
 
             const label = isProfileError
                 ? 'Não foi possível validar seu acesso'
@@ -88,6 +98,20 @@
                 refreshButton.classList.remove('hidden');
                 refreshButton.textContent = isProfileError ? 'Verificar novamente' : 'Verificar status';
             }
+        }
+
+        // Com o aviso de conta (pendente, bloqueada, erro) visivel, o formulario de
+        // login/cadastro some: o usuario ja esta autenticado e so pode verificar o
+        // status ou voltar para o login.
+        function syncAuthFormVisibility(noticeVisible) {
+            const setHidden = (id, hidden) => document.getElementById(id)?.classList.toggle('hidden', hidden);
+            setHidden('auth-credentials', noticeVisible);
+            setHidden('auth-submit', noticeVisible);
+            setHidden('auth-toggle-row', noticeVisible);
+            setHidden('auth-subtitle', noticeVisible);
+            setHidden('auth-back-to-login', noticeVisible || authMode !== 'signup');
+            const title = document.getElementById('auth-title');
+            if (title) title.textContent = noticeVisible ? 'Sua conta' : (authMode === 'login' ? 'Entrar' : 'Criar conta');
         }
 
         function ensureHeaderSessionControls() {
@@ -158,8 +182,11 @@
             text.textContent = isLoading ? 'Processando...' : (authMode === 'login' ? 'Entrar' : 'Criar conta');
         }
 
-        function toggleAuthMode() {
-            authMode = authMode === 'login' ? 'signup' : 'login';
+        function toggleAuthMode(nextMode) {
+            authMode = nextMode === 'login' || nextMode === 'signup'
+                ? nextMode
+                : (authMode === 'login' ? 'signup' : 'login');
+            document.getElementById('auth-back-to-login')?.classList.toggle('hidden', authMode !== 'signup');
             document.getElementById('auth-title').textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
             document.getElementById('auth-subtitle').textContent = authMode === 'login'
                 ? 'Use seu email e senha para acessar seus registros financeiros.'
@@ -504,7 +531,10 @@
                 refreshAccountStatus().catch(console.error);
             });
             document.getElementById('account-logout-button')?.addEventListener('click', () => {
-                logout().catch(console.error);
+                logout().catch(console.error).finally(() => toggleAuthMode('login'));
+            });
+            document.getElementById('auth-back-to-login')?.addEventListener('click', () => {
+                toggleAuthMode('login');
             });
             setAuthLoading(false);
 

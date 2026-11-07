@@ -10,6 +10,11 @@ describe('initial UI templates', () => {
     expect(html).toContain('id="auth-form"');
     expect(html).toContain('id="auth-toggle-button"');
     expect(html).toContain('id="auth-submit"');
+    // Blocos que somem quando o aviso de conta pendente/bloqueada aparece.
+    expect(html).toContain('id="auth-credentials"');
+    expect(html).toContain('id="auth-toggle-row"');
+    expect(html).toContain('id="auth-back-to-login"');
+    expect(html).toContain('Voltar para o login');
   });
 
   it('mounts the auth template into auth-root once', () => {

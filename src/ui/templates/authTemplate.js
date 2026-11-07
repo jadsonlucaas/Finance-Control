@@ -12,8 +12,12 @@ export function authTemplate() {
                     <h2 id="auth-title" class="text-2xl font-bold text-textPrimary">Entrar</h2>
                 </div>
             </div>
+            <button id="auth-back-to-login" type="button" class="hidden -mt-3 mb-4 text-sm text-accent font-semibold hover:underline flex items-center gap-1">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar para o login
+            </button>
             <p id="auth-subtitle" class="text-sm text-textSecondary mb-6">Use seu email e senha para acessar seus registros financeiros.</p>
             <form id="auth-form" class="space-y-4">
+                <div id="auth-credentials" class="space-y-4">
                 <div>
                     <label for="auth-email" class="text-xs text-textSecondary mb-1 block">Email</label>
                     <input id="auth-email" type="email" autocomplete="email" placeholder="voce@exemplo.com" class="w-full text-sm" required>
@@ -51,6 +55,7 @@ export function authTemplate() {
                         <span>Aceito receber mensagens do Finance Control no WhatsApp (boas-vindas e alertas). Posso cancelar quando quiser.</span>
                     </label>
                 </div>
+                </div>
                 <div id="auth-error" class="hidden text-sm rounded-lg border border-danger/20 bg-danger/10 text-danger px-3 py-2"></div>
                 <div id="account-access-notice" class="hidden rounded-xl border border-surfaceLight bg-surfaceLight/60 px-3 py-3">
                     <div class="flex items-start gap-3">
@@ -65,7 +70,7 @@ export function authTemplate() {
                                     <i data-lucide="refresh-cw" class="w-3 h-3"></i> Verificar status
                                 </button>
                                 <button id="account-logout-button" type="button" class="bg-surface border border-surfaceLight text-textSecondary hover:text-textPrimary text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
-                                    <i data-lucide="log-out" class="w-3 h-3"></i> Sair
+                                    <i data-lucide="arrow-left" class="w-3 h-3"></i> Voltar para o login
                                 </button>
                             </div>
                         </div>
@@ -76,7 +81,7 @@ export function authTemplate() {
                     <span id="auth-submit-text">Entrar</span>
                 </button>
             </form>
-            <div class="mt-5 text-sm text-center text-textSecondary">
+            <div id="auth-toggle-row" class="mt-5 text-sm text-center text-textSecondary">
                 <span id="auth-toggle-label">Ainda não tem conta?</span>
                 <button type="button" class="text-accent font-semibold hover:underline ml-1" id="auth-toggle-button">Criar conta</button>
             </div>
