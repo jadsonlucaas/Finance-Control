@@ -143,6 +143,7 @@
                     </div>
                     <div id="whatsapp-link-panel"></div>
                     <div id="backup-restore-panel"></div>
+                    <div id="account-deletion-panel"></div>
                 </div>
                 <div id="add-person-modal"
                     class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-[90]">

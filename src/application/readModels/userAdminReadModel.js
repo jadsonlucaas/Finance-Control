@@ -68,6 +68,10 @@ function allowedActions(user, currentUser, permissions = {}, pendingActions = {}
     deactivate: baseAllowed && permissions.canDeactivateUser === true && user.status !== ACCOUNT_STATUS.INACTIVE,
     reactivate: baseAllowed && permissions.canReactivateUser === true && user.status === ACCOUNT_STATUS.INACTIVE,
     changeRole: baseAllowed && permissions.canChangeUserRole === true,
+    // Exclusao definitiva: nunca o owner; administradores so pelo owner.
+    remove: baseAllowed
+      && user.role !== 'owner'
+      && (user.role !== 'admin' || permissions.isOwnerByProfile === true),
     // Cortesia do assistente pode ser dada a si mesmo (ex.: socios); exige permissao de gestao.
     assistantComp: !isLoading && permissions.canManageUsers === true && user.status === ACCOUNT_STATUS.ACTIVE,
     self: isSelf,

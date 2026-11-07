@@ -63,6 +63,30 @@ Configuração (todas opcionais; sem elas as rotas respondem 503): `STRIPE_SECRE
 
 Permissões da chave restrita: **Customers: Write**, **Checkout Sessions: Write**, **Customer portal: Write**. Nada mais.
 
+## Exclusão de conta (LGPD/GDPR)
+
+Mesma rota e mesmo relay do n8n que o checkout: `POST /internal/billing` com a ação no corpo.
+
+- `{ "acao": "excluir_conta", "idToken": "...", "confirmacao": "<e-mail da conta>" }`: o próprio usuário. Exige um login recente (o Dashboard pede a senha de novo; `auth_time` de até 10 minutos) e o e-mail digitado. Contas admin/owner não se excluem por aqui.
+- `{ "acao": "excluir_usuario", "idToken": "...", "uid": "<conta>", "confirmacao": "<e-mail da conta>" }`: um admin ativo exclui outra conta. Nunca a própria nem o owner. Admin só o owner exclui.
+
+O que acontece, em ordem (repetir depois de uma falha continua de onde parou):
+
+1. O perfil vira `inactive` e as sessões são revogadas.
+2. O cliente no Stripe é apagado (`DELETE /v1/customers/{id}`), o que cancela a assinatura na hora. As faturas continuam no Stripe para fins fiscais. Se a conta tem cliente Stripe e `STRIPE_SECRET_KEY` não está configurada, responde 503 `STRIPE_REQUIRED` e não apaga nada além do bloqueio.
+3. Apaga `users/{uid}` com **todas** as subcoleções (`recursiveDelete`, inclusive as que surgirem no futuro), `user_onboarding/{uid}`, `whatsapp_links`, `whatsapp_link_codes`, `whatsapp_link_attempts` dos telefones da conta, `whatsapp_comp_access/{uid}`, `billing_subscriptions/{uid}`, `billing_customers` e `billing_stripe_subscriptions`.
+4. Anonimiza o que é de outras pessoas mas cita a conta: logs de auditoria dos admins (`details.target_uid`/`target_email`) e referências compartilhadas criadas por ela (`owner_uid`/`owner_email`).
+5. Apaga o login no Firebase Authentication.
+6. Confere que nada sobrou (senão responde 500 `DELETION_INCOMPLETE` com a lista) e grava `account_deletions/{sha256 do uid}` só com contagens, data e quem pediu.
+
+A lista completa fica em `ACCOUNT_DATA_LOCATIONS` (`src/accountDeletion.js`). **Ao criar uma coleção nova com dado de usuário, inclua-a lá e no store.**
+
+A busca nos logs dos admins usa o índice de grupo `audit_logs.details.target_uid` (`firestore.indexes.json`, publique com `firebase deploy --only firestore:indexes`). Sem o índice, a API varre os logs de cada admin/owner (funciona, só é mais lento).
+
+A chave restrita do Stripe já tem o que precisa (**Customers: Write** inclui apagar cliente).
+
+Fora do alcance da API (apagar à mão se for o caso): conversas no Chatwoot/WhatsApp e eventos no Sentry.
+
 ## Webhook do Stripe
 
 `POST /internal/stripe/webhook` (com a mesma `x-api-key`) recebe os eventos do Stripe repassados pelo n8n. O n8n é só o carteiro: ele precisa repassar o **corpo cru** e o cabeçalho `stripe-signature`, e a API confere a assinatura de novo (HMAC-SHA256, tolerância de 5 minutos) com `STRIPE_WEBHOOK_SECRET` (ou `STRIPE_WEBHOOK_SECRET_FILE`). Sem o segredo, a rota responde 503 e nada é gravado.

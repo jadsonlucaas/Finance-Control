@@ -24,7 +24,133 @@ export function createFirestoreStore(db) {
     return snapshot.exists ? snapshot.data() : null;
   };
 
+  const onboardingCol = db.collection('user_onboarding');
+  const deletions = db.collection('account_deletions');
+  const SHARED_REFERENCE_COLLECTIONS = ['shared_macros', 'shared_categories'];
+
+  async function deleteRefs(refs) {
+    for (let index = 0; index < refs.length; index += 400) {
+      const batch = db.batch();
+      refs.slice(index, index + 400).forEach((ref) => batch.delete(ref));
+      await batch.commit();
+    }
+    return refs.length;
+  }
+
+  // Logs de auditoria de admins que citam a conta (aprovacao, cortesia...).
+  // Consulta por grupo de colecoes (indice em firestore.indexes.json); sem o indice,
+  // varre os logs de cada admin/owner.
+  async function auditMentions(uid) {
+    try {
+      const snapshot = await db.collectionGroup('audit_logs').where('details.target_uid', '==', uid).get();
+      return snapshot.docs;
+    } catch (error) {
+      if (error?.code !== 9 && error?.code !== 'failed-precondition') throw error;
+      const admins = await db.collection('users').where('role', 'in', ['admin', 'owner']).get();
+      const perAdmin = await Promise.all(admins.docs.map((admin) => audits(admin.id).where('details.target_uid', '==', uid).get()));
+      return perAdmin.flatMap((snapshot) => snapshot.docs);
+    }
+  }
+
+  async function countUserTree(uid) {
+    const counts = {};
+    const [profile, subcollections] = await Promise.all([userDoc(uid).get(), userDoc(uid).listCollections()]);
+    if (profile.exists) counts.users = 1;
+    for (const sub of subcollections) {
+      const snapshot = await sub.count().get();
+      const total = snapshot.data().count;
+      if (total) counts[`users/${sub.id}`] = total;
+    }
+    return counts;
+  }
+
   return {
+    // --- Exclusao de conta (accountDeletion.js) ---
+    async markAccountDeleting(uid, nowIso) {
+      const snapshot = await userDoc(uid).get();
+      if (snapshot.exists) await userDoc(uid).set({ status: 'inactive', deletion_started_at: nowIso, updated_at: nowIso }, { merge: true });
+    },
+    async getAccountFootprint(uid) {
+      const [subscription, onboarding, customers, ownLinks] = await Promise.all([
+        readData(subscriptions.doc(uid)),
+        readData(onboardingCol.doc(uid)),
+        billingCustomers.where('uid', '==', uid).get(),
+        links.where('uid', '==', uid).get()
+      ]);
+      return {
+        customerIds: [...customers.docs.map((doc) => doc.id), subscription?.customer_id || ''].filter(Boolean),
+        phones: [...ownLinks.docs.flatMap((doc) => [doc.id, doc.data().telefone]), onboarding?.whatsapp_phone, subscription?.phone].filter(Boolean)
+      };
+    },
+    async purgeAccountData(uid, { customerIds = [], phoneKeys = [], marker = 'conta-excluida' } = {}) {
+      const counts = {};
+      const add = (name, total) => { if (total) counts[name] = (counts[name] || 0) + total; };
+      const deleteQuery = async (name, query) => add(name, await deleteRefs((await query.get()).docs.map((doc) => doc.ref)));
+      const deleteDoc = async (name, ref) => {
+        if ((await ref.get()).exists) {
+          await ref.delete();
+          add(name, 1);
+        }
+      };
+
+      await deleteQuery('whatsapp_links', links.where('uid', '==', uid));
+      await deleteQuery('whatsapp_link_codes', linkCodes.where('owner_uid', '==', uid));
+      for (const key of phoneKeys) await deleteDoc('whatsapp_link_attempts', linkAttempts.doc(key));
+      await deleteDoc('whatsapp_comp_access', compAccess.doc(uid));
+      await deleteDoc('user_onboarding', onboardingCol.doc(uid));
+      await deleteDoc('billing_subscriptions', subscriptions.doc(uid));
+      await deleteQuery('billing_customers', billingCustomers.where('uid', '==', uid));
+      for (const customerId of customerIds) {
+        await deleteDoc('billing_customers', billingCustomers.doc(customerId));
+        await deleteQuery('billing_stripe_subscriptions', stripeSubscriptions.where('customer_id', '==', customerId));
+      }
+
+      // Dados de terceiros que citam a conta: o registro fica, sem identificar a pessoa.
+      const mentions = (await auditMentions(uid)).filter((doc) => !doc.ref.path.startsWith(`users/${uid}/`));
+      for (const doc of mentions) {
+        await doc.ref.update({ 'details.target_uid': marker, 'details.target_email': '', 'details.target_deleted': true });
+      }
+      add('audit_logs_anonimizados', mentions.length);
+      for (const name of SHARED_REFERENCE_COLLECTIONS) {
+        const owned = await db.collection(name).where('owner_uid', '==', uid).get();
+        for (const doc of owned.docs) await doc.ref.update({ owner_uid: marker, owner_email: '' });
+        add(`${name}_anonimizados`, owned.size);
+      }
+
+      // Perfil e TODAS as subcolecoes, inclusive as que surgirem no futuro.
+      Object.entries(await countUserTree(uid)).forEach(([name, total]) => add(name, total));
+      await db.recursiveDelete(userDoc(uid));
+      return counts;
+    },
+    async findAccountLeftovers(uid, { customerIds = [], phoneKeys = [] } = {}) {
+      const leftovers = [];
+      const check = async (name, promise) => {
+        const result = await promise;
+        const found = typeof result?.exists === 'boolean' ? result.exists : (result?.size || 0) > 0;
+        if (found) leftovers.push(name);
+      };
+      Object.keys(await countUserTree(uid)).forEach((name) => leftovers.push(name));
+      await Promise.all([
+        check('user_onboarding', onboardingCol.doc(uid).get()),
+        check('whatsapp_comp_access', compAccess.doc(uid).get()),
+        check('billing_subscriptions', subscriptions.doc(uid).get()),
+        check('whatsapp_links', links.where('uid', '==', uid).limit(1).get()),
+        check('whatsapp_link_codes', linkCodes.where('owner_uid', '==', uid).limit(1).get()),
+        check('billing_customers', billingCustomers.where('uid', '==', uid).limit(1).get()),
+        ...phoneKeys.map((key) => check('whatsapp_link_attempts', linkAttempts.doc(key).get())),
+        ...customerIds.flatMap((id) => [
+          check('billing_customers', billingCustomers.doc(id).get()),
+          check('billing_stripe_subscriptions', stripeSubscriptions.where('customer_id', '==', id).limit(1).get())
+        ]),
+        ...SHARED_REFERENCE_COLLECTIONS.map((name) => check(name, db.collection(name).where('owner_uid', '==', uid).limit(1).get()))
+      ]);
+      if ((await auditMentions(uid)).length) leftovers.push('audit_logs');
+      return [...new Set(leftovers)];
+    },
+    async recordAccountDeletion(id, data) {
+      await deletions.doc(id).set(data);
+    },
+
     async getWhatsAppAccess(uid) {
       const [comp, subscription] = await Promise.all([compAccess.doc(uid).get(), subscriptions.doc(uid).get()]);
       return {

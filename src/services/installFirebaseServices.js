@@ -1,4 +1,5 @@
-import { createAuthService, persistAuthSession, subscribeAuthState } from './auth.js';
+import { createAuthService, persistAuthSession, reauthenticateWithPassword, subscribeAuthState } from './auth.js';
+import { createAccountDeletionService } from './accountDeletion.js';
 import { createAuditService, installAuditGlobals } from './audit.js';
 import { createDataSdkService } from './dataSdk.js';
 import { createFirebaseService } from './firebase.js';
@@ -50,6 +51,12 @@ export function installFirebaseServices({ target = window, config } = {}) {
   target.billingCheckoutSdk = createBillingCheckoutService({
     endpoint: String(import.meta.env?.VITE_BILLING_API_URL || '').trim(),
     getIdToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' })))
+  });
+  // Exclusao definitiva de conta: mesmo endpoint do checkout, feita pelo servidor.
+  target.accountDeletionSdk = createAccountDeletionService({
+    endpoint: String(import.meta.env?.VITE_BILLING_API_URL || '').trim(),
+    getIdToken: (forceRefresh = false) => (auth.currentUser ? auth.currentUser.getIdToken(forceRefresh) : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' }))),
+    reauthenticate: (password) => reauthenticateWithPassword(auth, password)
   });
   const profileAccessService = createProfileAccessService({
     authService,

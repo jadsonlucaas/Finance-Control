@@ -372,6 +372,8 @@
                 clearFinancialUiState();
                 window.financeApp?.plannerStorage?.resetPlannerView?.();
                 setAccessNotice('', '');
+                // Ao sair (inclusive apos excluir a conta) a tela volta sempre para "Entrar".
+                if (authMode !== 'login') toggleAuthMode('login');
                 app.classList.add('hidden');
                 authScreen.classList.remove('hidden');
                 renderManagedUsers();

@@ -50,7 +50,18 @@ export function createStripeClient({ secretKey, fetchImpl = globalThis.fetch } =
     }
     return data;
   }
-  return { post };
+  // DELETE /customers/{id}: cancela as assinaturas na hora e remove o cliente (faturas ficam no Stripe).
+  async function del(path) {
+    const response = await fetchImpl(`${STRIPE_API}${path}`, { method: 'DELETE', headers: { authorization: `Bearer ${secretKey}` } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(`Stripe DELETE ${path}: ${data?.error?.code || response.status}`);
+      error.stripe = { status: response.status, code: data?.error?.code || '', type: data?.error?.type || '' };
+      throw error;
+    }
+    return data;
+  }
+  return { post, del };
 }
 
 export function priceForCountry(country, prices) {
