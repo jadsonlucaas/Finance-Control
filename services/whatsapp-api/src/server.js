@@ -3,6 +3,7 @@ import { createApp, MAX_BODY_BYTES, MAX_STRIPE_BODY_BYTES, STRIPE_WEBHOOK_PATH }
 import { createPhoneResolver, parsePhoneLinks } from './phoneLinks.js';
 import { readSetting } from './settings.js';
 import { normalizeAccessMode } from './access.js';
+import { createCheckoutService, createStripeClient } from './checkout.js';
 
 function required(name) {
   const value = readSetting(name);
@@ -11,6 +12,13 @@ function required(name) {
     process.exit(1);
   }
   return value;
+}
+
+async function createTokenVerifier() {
+  if (process.env.WHATSAPP_API_STORE === 'memory') return null;
+  const { getAuth } = await import('firebase-admin/auth');
+  // checkRevoked: conta desativada ou senha trocada invalida o token na hora.
+  return (token) => getAuth().verifyIdToken(token, true);
 }
 
 async function createStore() {
@@ -62,7 +70,15 @@ async function main() {
   const accessMode = normalizeAccessMode(readSetting('WHATSAPP_ACCESS_MODE'));
   // Opcional: sem ele a rota do webhook do Stripe responde 503 e nada de cobranca e gravado.
   const stripeWebhookSecret = readSetting('STRIPE_WEBHOOK_SECRET');
-  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret });
+  // Opcional: sem chave/precos/URL do app, checkout e portal respondem 503.
+  const checkout = createCheckoutService({
+    store,
+    stripe: createStripeClient({ secretKey: readSetting('STRIPE_SECRET_KEY') }),
+    verifyIdToken: await createTokenVerifier(),
+    prices: { brl: readSetting('STRIPE_PRICE_BRL'), eur: readSetting('STRIPE_PRICE_EUR') },
+    appUrl: readSetting('APP_URL')
+  });
+  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout });
   const port = Number(process.env.PORT || 3000);
 
   const server = http.createServer(async (req, res) => {
@@ -85,7 +101,7 @@ async function main() {
   });
 
   server.listen(port, () => {
-    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret) }));
+    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret), billing_checkout: checkout.configured }));
   });
 
   const shutdown = () => server.close(() => process.exit(0));

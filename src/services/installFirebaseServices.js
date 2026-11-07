@@ -6,6 +6,7 @@ import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
 import { createWhatsAppAccessService } from './whatsappAccess.js';
 import { createAccountOnboardingService, validateSignupDetails } from './accountOnboarding.js';
+import { createBillingCheckoutService } from './billingCheckout.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -34,13 +35,12 @@ export function installFirebaseServices({ target = window, config } = {}) {
   // Alias neutro de canal para o painel de usuarios.
   target.assistantAccessSdk = target.whatsappAccessSdk;
   target.__financeWhatsAppConfig = Object.freeze({
-    botNumber: String(import.meta.env?.VITE_WHATSAPP_BOT_NUMBER || '').trim(),
-    // Links publicos do Stripe (Payment Links e portal do cliente); nao sao segredos.
-    billing: Object.freeze({
-      premiumLinkBrl: String(import.meta.env?.VITE_STRIPE_PREMIUM_LINK_BRL || '').trim(),
-      premiumLinkEur: String(import.meta.env?.VITE_STRIPE_PREMIUM_LINK_EUR || '').trim(),
-      portalUrl: String(import.meta.env?.VITE_STRIPE_PORTAL_URL || '').trim()
-    })
+    botNumber: String(import.meta.env?.VITE_WHATSAPP_BOT_NUMBER || '').trim()
+  });
+  // Checkout/portal do Stripe criados pelo servidor (webhook publico do n8n -> whatsapp-api).
+  target.billingCheckoutSdk = createBillingCheckoutService({
+    endpoint: String(import.meta.env?.VITE_BILLING_API_URL || '').trim(),
+    getIdToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' })))
   });
   const profileAccessService = createProfileAccessService({
     authService,

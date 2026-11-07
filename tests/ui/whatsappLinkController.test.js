@@ -177,6 +177,42 @@ describe('whatsapp link: acesso no card', () => {
   });
 });
 
+describe('whatsapp link: assinatura pelo card', () => {
+  const base = () => ({
+    service: { getStatus: vi.fn(async () => ({ linked: false })) },
+    presenter: { render: vi.fn() },
+    uidProvider: () => 'alice'
+  });
+
+  it('abre o checkout criado pelo servidor', async () => {
+    const navigate = vi.fn();
+    const billingService = { enabled: true, startCheckout: vi.fn(async () => ({ url: 'https://checkout.stripe.test/1' })), openPortal: vi.fn() };
+    const controller = createWhatsAppLinkController({ ...base(), billingService, navigate });
+    await controller.load();
+    await controller.startCheckout();
+    expect(navigate).toHaveBeenCalledWith('https://checkout.stripe.test/1');
+    expect(billingService.openPortal).not.toHaveBeenCalled();
+  });
+
+  it('quem ja assina vai para o portal; erro vira mensagem no card', async () => {
+    const navigate = vi.fn();
+    const billingService = {
+      enabled: true,
+      startCheckout: vi.fn(async () => ({ jaAssinante: true })),
+      openPortal: vi.fn(async () => ({ url: 'https://billing.stripe.test/p' })),
+      errorMessage: () => 'Complete o cadastro.'
+    };
+    const controller = createWhatsAppLinkController({ ...base(), billingService, navigate });
+    await controller.load();
+    await controller.startCheckout();
+    expect(navigate).toHaveBeenCalledWith('https://billing.stripe.test/p');
+
+    billingService.startCheckout = vi.fn(async () => { throw Object.assign(new Error('x'), { code: 'ONBOARDING_REQUIRED' }); });
+    await controller.startCheckout();
+    expect(controller.getState()).toMatchObject({ billingPending: false, billingError: 'Complete o cadastro.' });
+  });
+});
+
 describe('whatsapp link: presenter', () => {
   function fakeDocument() {
     const panel = { innerHTML: '' };
@@ -216,38 +252,34 @@ describe('whatsapp link: presenter', () => {
     expect(panel.innerHTML).not.toContain('data-whatsapp-access');
   });
 
-  it('oferece o Premium com o uid no checkout e mostra o numero principal da assinatura', () => {
+  it('oferece o Premium pelo servidor e mostra o numero principal da assinatura', () => {
     const { panel, documentRef } = fakeDocument();
-    const billing = {
-      premiumLinkBrl: 'https://buy.stripe.com/test_brl',
-      premiumLinkEur: 'https://buy.stripe.com/test_eur',
-      portalUrl: 'https://billing.stripe.com/p/login/test_portal'
-    };
-    const presenter = createWhatsAppLinkPresenter({ documentRef, billing });
-    const account = { uid: 'alice', email: 'a+b@example.com' };
+    const presenter = createWhatsAppLinkPresenter({ documentRef, billing: { enabled: true } });
+    const account = { uid: 'alice', email: 'alice@example.com' };
 
     presenter.render({ view: 'unlinked', access: { allowed: false, source: 'none', status: 'none', account } });
-    expect(panel.innerHTML).toContain('https://buy.stripe.com/test_brl?client_reference_id=alice&amp;prefilled_email=a%2Bb%40example.com');
-    expect(panel.innerHTML).toContain('data-premium-checkout="eur"');
+    expect(panel.innerHTML).toContain('data-premium-action="checkout"');
     expect(panel.innerHTML).toContain('7 dias grátis');
-    expect(panel.innerHTML).not.toContain('data-premium-portal');
+    expect(panel.innerHTML).not.toContain('data-premium-action="portal"');
+    expect(panel.innerHTML).not.toContain('client_reference_id');
 
     presenter.render({
       view: 'linked',
       maskedPhone: '+34',
+      billingError: '<b>falhou</b>',
       access: { allowed: true, source: 'stripe', status: 'active', principalPhone: '+34 ••• ••• 001', hasCustomer: true, cancelAtPeriodEnd: true, periodEnd: new Date('2026-12-07T12:00:00Z'), account }
     });
-    expect(panel.innerHTML).toContain('Número principal');
     expect(panel.innerHTML).toContain('+34 ••• ••• 001');
     expect(panel.innerHTML).toContain('vale até 07/12/2026');
-    expect(panel.innerHTML).toContain('data-premium-portal');
-    expect(panel.innerHTML).not.toContain('data-premium-checkout');
+    expect(panel.innerHTML).toContain('data-premium-action="portal"');
+    expect(panel.innerHTML).not.toContain('data-premium-action="checkout"');
+    expect(panel.innerHTML).toContain('&lt;b&gt;falhou&lt;/b&gt;');
   });
 
-  it('sem links do Stripe configurados nao mostra botoes de assinatura', () => {
+  it('sem checkout configurado nao mostra botoes de assinatura', () => {
     const { panel, documentRef } = fakeDocument();
     createWhatsAppLinkPresenter({ documentRef }).render({ view: 'unlinked', access: { allowed: false, source: 'none', status: 'none', account: { uid: 'alice' } } });
-    expect(panel.innerHTML).not.toContain('data-premium-checkout');
+    expect(panel.innerHTML).not.toContain('data-premium-action');
   });
 
   it('sem numero do bot configurado nao mostra o atalho do WhatsApp', () => {

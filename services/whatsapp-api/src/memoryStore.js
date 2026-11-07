@@ -18,6 +18,7 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   const billingEvents = new Map();
   const billingCustomers = new Map();
   const stripeSubscriptions = new Map();
+  const onboarding = new Map();
   Object.entries(seed).forEach(([uid, records]) => {
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
   });
@@ -53,6 +54,12 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     },
     async saveStripeSubscription(subscriptionId, data) {
       stripeSubscriptions.set(subscriptionId, { ...(stripeSubscriptions.get(subscriptionId) || {}), ...clone(data) });
+    },
+    async getOnboarding(uid) {
+      return clone(onboarding.get(uid)) || null;
+    },
+    _setOnboarding(uid, data) {
+      onboarding.set(uid, clone(data));
     },
     async getBillingSubscription(uid) {
       return clone(subscriptions.get(uid)) || null;

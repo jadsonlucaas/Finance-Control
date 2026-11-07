@@ -21,6 +21,11 @@ export const MAX_BODY_BYTES = 16 * 1024;
 // Eventos do Stripe (checkout/assinatura) passam facil de 16 KB.
 export const MAX_STRIPE_BODY_BYTES = 512 * 1024;
 export const STRIPE_WEBHOOK_PATH = '/internal/stripe/webhook';
+// Chamadas pelo Dashboard (via relay do n8n) com o ID token do Firebase no corpo.
+export const BILLING_CHECKOUT_PATH = '/internal/billing/checkout';
+export const BILLING_PORTAL_PATH = '/internal/billing/portal';
+// Rota unica para o relay do n8n: a acao vem no corpo ({ acao: 'checkout' | 'portal', idToken }).
+export const BILLING_PATH = '/internal/billing';
 const PREFIX = '/internal/whatsapp';
 
 /**
@@ -33,6 +38,7 @@ export function createApp({
   apiKey,
   accessMode = 'open',
   stripeWebhookSecret = '',
+  checkout = null,
   now = () => new Date(),
   logger = console,
   newId = () => randomUUID()
@@ -112,6 +118,15 @@ export function createApp({
         if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
         const result = await handleStripeWebhook(headers, rawBody);
         code = result.resultado;
+        status = 200;
+        return { status, body: result };
+      }
+      if (route === BILLING_PATH || route === BILLING_CHECKOUT_PATH || route === BILLING_PORTAL_PATH) {
+        if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
+        if (!checkout?.configured) throw new ApiError(503, 'BILLING_NOT_CONFIGURED', 'Assinatura indisponivel no momento.');
+        const action = route === BILLING_PATH ? String(body?.acao || '') : route.slice(BILLING_PATH.length + 1);
+        if (!['checkout', 'portal'].includes(action)) throw new ApiError(400, 'INVALID_ACTION', 'Acao invalida.');
+        const result = action === 'checkout' ? await checkout.createCheckout(body) : await checkout.createPortal(body);
         status = 200;
         return { status, body: result };
       }

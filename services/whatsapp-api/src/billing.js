@@ -109,7 +109,8 @@ export function createBillingService({ store, now = () => new Date(), logger = c
       if (!profile) return 'unknown_user';
 
       await store.setBillingCustomer(customerId, { uid, updated_at: nowIso });
-      const phone = normalizePhone(session.customer_details?.phone);
+      // Telefone do checkout; se o checkout nao pediu, o do cadastro (metadados da sessao criada pelo servidor).
+      const phone = normalizePhone(session.customer_details?.phone) || normalizePhone(session.metadata?.whatsapp_phone);
       const patch = {
         uid,
         source: 'stripe',

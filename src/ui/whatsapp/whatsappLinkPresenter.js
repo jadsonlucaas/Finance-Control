@@ -41,65 +41,46 @@ const SUBSCRIPTION_LABELS = Object.freeze({
   past_due: 'Premium com pagamento pendente'
 });
 
-function withCheckoutParams(base, account = {}) {
-  try {
-    const url = new URL(base);
-    if (account.uid) url.searchParams.set('client_reference_id', account.uid);
-    if (account.email) url.searchParams.set('prefilled_email', account.email);
-    return url.toString();
-  } catch {
-    return '';
-  }
-}
-
-function withEmail(base, email) {
-  try {
-    const url = new URL(base);
-    if (email) url.searchParams.set('prefilled_email', email);
-    return url.toString();
-  } catch {
-    return '';
-  }
-}
-
-const externalLink = (href, label, className, extra = '') => `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="${className} inline-block" ${extra}>${escapeHtml(label)}</a>`;
-
-function subscribeOffer(access, billing) {
-  const account = access.account || {};
-  const brl = billing.premiumLinkBrl ? withCheckoutParams(billing.premiumLinkBrl, account) : '';
-  const eur = billing.premiumLinkEur ? withCheckoutParams(billing.premiumLinkEur, account) : '';
-  if (!account.uid || (!brl && !eur)) return '';
+// Checkout e portal sao criados pelo servidor (ver services/billingCheckout.js); aqui so os botoes.
+function subscribeOffer(access, billing, state) {
+  if (!billing.enabled || !access.account?.uid) return '';
+  const busy = state.billingPending ? 'disabled aria-busy="true"' : '';
   return `<div class="flex gap-2 flex-wrap mt-2" data-premium-offer>
-      ${brl ? externalLink(brl, 'Assinar Premium · R$ 24,90/mês', BUTTON_PRIMARY, 'data-premium-checkout="brl"') : ''}
-      ${eur ? externalLink(eur, 'Assinar Premium · € 5,90/mês', BUTTON_PRIMARY, 'data-premium-checkout="eur"') : ''}
+      <button type="button" data-premium-action="checkout" class="${BUTTON_PRIMARY}" ${busy}>Assinar Premium · 7 dias grátis</button>
     </div>
-    <p class="text-xs text-textSecondary mt-1">7 dias grátis. O telefone informado no pagamento vira o número principal do WhatsApp.</p>`;
+    <p class="text-xs text-textSecondary mt-1">R$ 24,90/mês no Brasil ou € 5,90/mês na Europa, conforme o país do cadastro. O WhatsApp do cadastro vira o número principal.</p>`;
 }
 
-function manageLink(access, billing) {
-  if (!billing.portalUrl || !access.hasCustomer) return '';
-  const href = withEmail(billing.portalUrl, access.account?.email);
-  return href ? externalLink(href, 'Gerenciar assinatura', BUTTON_SECONDARY, 'data-premium-portal') : '';
+function manageButton(access, billing, state) {
+  if (!billing.enabled || !access.hasCustomer) return '';
+  const busy = state.billingPending ? 'disabled aria-busy="true"' : '';
+  return `<button type="button" data-premium-action="portal" class="${BUTTON_SECONDARY}" ${busy}>Gerenciar assinatura</button>`;
 }
 
-function accessLine(access, billing = {}) {
+function billingError(state) {
+  return state.billingError ? `<p class="text-xs text-danger mt-2" role="alert">${escapeHtml(state.billingError)}</p>` : '';
+}
+
+function accessLine(access, billing = {}, state = {}) {
   if (!access) return '';
   if (access.source === 'comp') return '<p class="text-xs text-success mb-2" data-whatsapp-access="comp">Acesso cortesia liberado.</p>';
   if (access.allowed) {
     const ending = access.cancelAtPeriodEnd && access.periodEnd ? ` Cancelado: vale até ${escapeHtml(formatDate(access.periodEnd))}.` : '';
     const principal = access.principalPhone ? `<p class="text-xs text-textSecondary">Número principal: <strong>${escapeHtml(access.principalPhone)}</strong></p>` : '';
-    const manage = manageLink(access, billing);
+    const manage = manageButton(access, billing, state);
     return `<div class="mb-2" data-whatsapp-access="stripe">
         <p class="text-xs text-success">${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.${ending}</p>
         ${principal}
         ${manage ? `<div class="mt-2">${manage}</div>` : ''}
+        ${billingError(state)}
       </div>`;
   }
-  const manage = manageLink(access, billing);
+  const manage = manageButton(access, billing, state);
   return `<div class="mb-2" data-whatsapp-access="none">
       <p class="text-xs text-warn">O assistente do WhatsApp faz parte do Premium. Sem assinatura ativa, o número vinculado não recebe respostas.</p>
-      ${subscribeOffer(access, billing)}
+      ${subscribeOffer(access, billing, state)}
       ${manage ? `<div class="mt-2">${manage}</div>` : ''}
+      ${billingError(state)}
     </div>`;
 }
 
@@ -145,7 +126,7 @@ export function createWhatsAppLinkPresenter({ documentRef = document, botNumber 
     element.innerHTML = `
       <div class="bg-surface rounded-xl p-4 border border-surfaceLight mb-4" data-whatsapp-link-root>
         <h3 class="font-semibold text-sm mb-2">WhatsApp</h3>
-        ${state.view === 'loading' ? '' : accessLine(state.access, billing)}
+        ${state.view === 'loading' ? '' : accessLine(state.access, billing, state)}
         <div data-whatsapp-link-state="${escapeHtml(state.view)}" aria-live="polite">${body(state, { botNumber })}</div>
       </div>`;
   }
