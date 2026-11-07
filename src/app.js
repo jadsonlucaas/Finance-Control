@@ -291,6 +291,22 @@ function isSettingsRoute(target = globalThis) {
     || normalizeTabName(target.currentTab || '') === 'configuracoes';
 }
 
+// Secoes de canais (vinculo de WhatsApp) ficam fora dos modulos centrais de
+// Configuracoes, como exige `settings-modernization:check`, e sao instaladas logo
+// depois deles. Falha aqui nunca derruba o restante de Configuracoes.
+async function loadChannelSettings(target = globalThis) {
+  const app = target.financeApp || {};
+  const loader = app.channelSettingsLoader
+    || (() => import('./ui/whatsapp/loadWhatsAppLinkActiveUi.js')
+      .then((module) => module.loadAndInstallWhatsAppLinkActiveUi(target)));
+  try {
+    return { whatsappLink: await loader() };
+  } catch (error) {
+    target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'channel_settings_ui' });
+    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' } };
+  }
+}
+
 export function installSettingsLazyLoader(target = globalThis) {
   if (!target || target.financeApp?.settingsActiveUi?.loaderInstalled) return target.financeApp?.settingsActiveUi;
 
@@ -305,10 +321,11 @@ export function installSettingsLazyLoader(target = globalThis) {
   const loadActiveUi = () => {
     state.promise = state.promise || app.settingsActiveUiLoader()
       .then((module) => module.loadAndInstallSettingsActiveUi(target))
-      .then((result) => {
+      .then(async (result) => {
         state.controller = result?.controller || state.controller;
         state.installed = true;
-        return result;
+        const channelSettings = await loadChannelSettings(target);
+        return { ...result, ...channelSettings };
       })
       .catch((error) => {
         state.promise = null;
