@@ -43,6 +43,10 @@ import {
   User,
   UtensilsCrossed,
   Wallet,
+  AlertTriangle,
+  Calendar,
+  CreditCard,
+  ShieldCheck,
   X
 } from 'lucide';
 
@@ -91,6 +95,10 @@ export const icons = {
   User,
   UtensilsCrossed,
   Wallet,
+  AlertTriangle,
+  Calendar,
+  CreditCard,
+  ShieldCheck,
   X,
   archive: Archive,
   'archive-restore': ArchiveRestore,
@@ -136,5 +144,9 @@ export const icons = {
   user: User,
   'utensils-crossed': UtensilsCrossed,
   wallet: Wallet,
+  'alert-triangle': AlertTriangle,
+  'calendar': Calendar,
+  'credit-card': CreditCard,
+  'shield-check': ShieldCheck,
   x: X
 };

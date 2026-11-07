@@ -21,6 +21,17 @@ function bindPlannerActions(target, controller) {
   const documentRef = target.document;
   if (!documentRef || documentRef.documentElement.dataset.financePlannerModernActionsBound) return;
   documentRef.addEventListener('click', (event) => {
+    // Botao "x" do modal e clique no fundo escurecido fecham o Planner.
+    const closeButton = event.target.closest?.('[data-close-modal="planner-modal"]');
+    const modal = documentRef.getElementById?.('planner-modal');
+    const clickedBackdrop = modal && !modal.classList.contains('hidden')
+      && (event.target === modal || event.target === modal.firstElementChild);
+    if (closeButton || clickedBackdrop) {
+      event.preventDefault();
+      controller.close();
+      return;
+    }
+
     const button = event.target.closest?.('[data-planner-action]');
     if (!button) return;
     event.preventDefault();
