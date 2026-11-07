@@ -48,6 +48,7 @@ import { installMetricCardGlobals } from './ui/components/metricCard.js';
 import { installModalGlobals } from './ui/components/modal.js';
 import { installCreateElementGlobals } from './ui/dom/createElement.js';
 import { installLegacyEventBindings } from './ui/legacy-events.js';
+import { installModalKeyboard } from './ui/modalKeyboard.js';
 import { installRecordFormReaderGlobals } from './ui/records/recordFormReader.js';
 import { installRecordFormValidationGlobals } from './ui/records/recordFormValidation.js';
 import { installRecordListRendererGlobals } from './ui/records/recordListRenderer.js';
@@ -95,6 +96,7 @@ export function bootstrapApp() {
   installFinanceRecordMutationGlobals(globalThis);
   installImportPipelineGlobals(globalThis);
   installLegacyEventBindings(globalThis);
+  installModalKeyboard(globalThis);
   installRecordFormReaderGlobals(globalThis);
   installRecordFormValidationGlobals(globalThis);
   installRecordListRendererGlobals(globalThis);
