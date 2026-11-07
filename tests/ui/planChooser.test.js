@@ -12,6 +12,8 @@ const DETAILS = { name: 'Luana', country: 'BR', whatsapp_phone: '+5592981327903'
 
 function harness({ details = DETAILS, checkout = async () => ({ url: 'https://checkout.stripe.test/1' }), form = {} } = {}) {
   const renders = [];
+  // Como no navegador: cada render recria os campos vazios.
+  let liveForm = { ...form };
   const navigate = vi.fn();
   const onboarding = {
     getMyDetails: vi.fn(async () => details),
@@ -24,10 +26,10 @@ function harness({ details = DETAILS, checkout = async () => ({ url: 'https://ch
     validate: validateSignupDetails,
     getUid: () => 'uid-luana',
     navigate,
-    render: (state) => renders.push(state),
-    readForm: () => form
+    render: (state) => { renders.push(state); liveForm = {}; },
+    readForm: () => liveForm
   });
-  return { model, onboarding, billing, navigate, renders, last: () => renders.at(-1) };
+  return { model, onboarding, billing, navigate, renders, last: () => renders.at(-1), type: (value = form) => { liveForm = { ...value }; } };
 }
 
 describe('escolha de plano', () => {
@@ -51,24 +53,28 @@ describe('escolha de plano', () => {
   });
 
   it('conta sem pais/WhatsApp completa os dados no proprio modal antes do checkout', async () => {
-    const { model, navigate, onboarding, last } = harness({
+    const { model, navigate, onboarding, last, type } = harness({
       details: null,
       form: { name: 'Luana', country: 'BR', phone: '92 98132-7903', consent: true }
     });
     await model.open();
     expect(renderPlanChooser(last())).toContain('data-plan-details-form');
+    type(); // usuario digita depois que o modal abriu
     await model.choosePremium();
     expect(onboarding.saveSignupDetails).toHaveBeenCalledWith('uid-luana', expect.objectContaining({ country: 'BR', whatsapp_phone: '+5592981327903' }));
     expect(navigate).toHaveBeenCalled();
   });
 
   it('dados invalidos nao abrem o checkout', async () => {
-    const { model, navigate, billing, last } = harness({ details: null, form: { name: 'Lu', country: 'BR', phone: '12' } });
+    const { model, navigate, billing, last, type } = harness({ details: null, form: { name: 'Lu', country: 'BR', phone: '12' } });
     await model.open();
+    type();
     await model.choosePremium();
     expect(billing.startCheckout).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
     expect(last().error).toMatch(/telefone/);
+    // O que foi digitado continua nos campos depois do erro.
+    expect(renderPlanChooser(last())).toContain('value="Lu"');
   });
 
   it('quem ja assina ve o aviso em vez de outro checkout; erro do servidor aparece no modal', async () => {

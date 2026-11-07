@@ -129,7 +129,7 @@ export function renderPlanChooser(state = {}) {
             <li>Parcelamentos, importação e controle de horas</li>
             <li>Planner e relatório em PDF</li>
           </ul>
-          ${needsDetails ? detailsForm(state.details) : ''}
+          ${needsDetails ? detailsForm(state.draft || state.details) : ''}
           <button type="button" data-plan-action="premium" class="${BUTTON_PRIMARY} mt-4" ${busy || (state.loading ? 'disabled' : '')}>${state.pending ? 'Abrindo o Stripe…' : 'Testar 7 dias grátis'}</button>
         </div>
       </div>${error}`;
@@ -181,10 +181,14 @@ export function createPlanChooserModel({ onboarding, billing, validate, getUid, 
       set({ ...state, mode: 'choose', error: '' });
       return state;
     }
-    set({ ...state, pending: true, error: '' });
+    // Le o formulario ANTES de redesenhar o modal (o redesenho recria os campos vazios).
+    const needsDetails = !hasCheckoutDetails(state.details);
+    const form = needsDetails ? readForm() : null;
+    const draft = form ? { name: form.name, country: form.country, whatsapp_phone: form.phone, whatsapp_consent: Boolean(form.consent) } : state.draft;
+    set({ ...state, draft, pending: true, error: '' });
     try {
-      if (!hasCheckoutDetails(state.details)) {
-        const checked = validate(readForm());
+      if (needsDetails) {
+        const checked = validate(form);
         if (!checked.ok) {
           set({ ...state, pending: false, error: checked.error });
           return state;
