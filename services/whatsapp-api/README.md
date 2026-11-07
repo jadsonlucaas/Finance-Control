@@ -50,6 +50,20 @@ O assistente no WhatsApp é do Premium. A API decide se a conta pode usar o cana
 
 Rollout seguro: conceda a cortesia a quem precisa **antes** de trocar para `entitlement`.
 
+**Número principal (Premium pelo Stripe):** o telefone informado no pagamento fica em `billing_subscriptions/{uid}.phone`. Só esse número usa o Premium no WhatsApp; outro número vinculado à mesma conta recebe `assinatura: "phone_mismatch"` e a mensagem para usar o número do pagamento ou trocá-lo em "Gerenciar assinatura". A cortesia do admin não depende do telefone.
+
+## Webhook do Stripe
+
+`POST /internal/stripe/webhook` (com a mesma `x-api-key`) recebe os eventos do Stripe repassados pelo n8n. O n8n é só o carteiro: ele precisa repassar o **corpo cru** e o cabeçalho `stripe-signature`, e a API confere a assinatura de novo (HMAC-SHA256, tolerância de 5 minutos) com `STRIPE_WEBHOOK_SECRET` (ou `STRIPE_WEBHOOK_SECRET_FILE`). Sem o segredo, a rota responde 503 e nada é gravado.
+
+| Evento | Efeito |
+| --- | --- |
+| `checkout.session.completed` | Liga cliente Stripe ↔ uid (vem de `client_reference_id`, que o Dashboard acrescenta ao link de pagamento) e grava o telefone do checkout. |
+| `customer.subscription.created/updated/deleted` | Atualiza status, fim do período e cancelamento. Se chegar antes do checkout, fica guardado e é aplicado depois. Evento atrasado de assinatura antiga não derruba a nova. |
+| `customer.updated` | Troca do telefone pelo portal do cliente atualiza o número principal. |
+
+Coleções (só o servidor grava): `billing_webhook_events` (idempotência), `billing_customers`, `billing_stripe_subscriptions` e `billing_subscriptions/{uid}` (o que o Dashboard e a API leem). Falha ao gravar responde 500 e libera o evento para o reenvio do Stripe.
+
 ## Rotas
 
 Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (conta do Chatwoot). `GET /health` não pede autenticação.
@@ -133,7 +147,8 @@ docker run -d --name financecontrol_whatsapp_api_dev --network <rede-do-n8n> \
 2. Gere `WHATSAPP_API_KEY` com `openssl rand -hex 32`. Use uma chave **nova**, sem reaproveitar a da API readonly.
 3. (Opcional) `WHATSAPP_PHONE_LINKS`: vínculos manuais de reserva. Novos usuários se vinculam pelo app.
 4. (Opcional) `WHATSAPP_ACCESS_MODE`: `open` (padrão) ou `entitlement` (exige assinatura ou cortesia).
-5. Forneça a service account com `FIREBASE_SERVICE_ACCOUNT_JSON` ou com um arquivo montado em `GOOGLE_APPLICATION_CREDENTIALS`.
+5. (Opcional) `STRIPE_WEBHOOK_SECRET_FILE`: segredo de assinatura do endpoint do webhook no Stripe (`whsec_...`), como secret do Portainer.
+6. Forneça a service account com `FIREBASE_SERVICE_ACCOUNT_JSON` ou com um arquivo montado em `GOOGLE_APPLICATION_CREDENTIALS`.
 
 Teste rápido:
 

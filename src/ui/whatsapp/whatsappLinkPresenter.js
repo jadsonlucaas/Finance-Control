@@ -41,13 +41,66 @@ const SUBSCRIPTION_LABELS = Object.freeze({
   past_due: 'Premium com pagamento pendente'
 });
 
-function accessLine(access) {
+function withCheckoutParams(base, account = {}) {
+  try {
+    const url = new URL(base);
+    if (account.uid) url.searchParams.set('client_reference_id', account.uid);
+    if (account.email) url.searchParams.set('prefilled_email', account.email);
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+function withEmail(base, email) {
+  try {
+    const url = new URL(base);
+    if (email) url.searchParams.set('prefilled_email', email);
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+const externalLink = (href, label, className, extra = '') => `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="${className} inline-block" ${extra}>${escapeHtml(label)}</a>`;
+
+function subscribeOffer(access, billing) {
+  const account = access.account || {};
+  const brl = billing.premiumLinkBrl ? withCheckoutParams(billing.premiumLinkBrl, account) : '';
+  const eur = billing.premiumLinkEur ? withCheckoutParams(billing.premiumLinkEur, account) : '';
+  if (!account.uid || (!brl && !eur)) return '';
+  return `<div class="flex gap-2 flex-wrap mt-2" data-premium-offer>
+      ${brl ? externalLink(brl, 'Assinar Premium · R$ 24,90/mês', BUTTON_PRIMARY, 'data-premium-checkout="brl"') : ''}
+      ${eur ? externalLink(eur, 'Assinar Premium · € 5,90/mês', BUTTON_PRIMARY, 'data-premium-checkout="eur"') : ''}
+    </div>
+    <p class="text-xs text-textSecondary mt-1">7 dias grátis. O telefone informado no pagamento vira o número principal do WhatsApp.</p>`;
+}
+
+function manageLink(access, billing) {
+  if (!billing.portalUrl || !access.hasCustomer) return '';
+  const href = withEmail(billing.portalUrl, access.account?.email);
+  return href ? externalLink(href, 'Gerenciar assinatura', BUTTON_SECONDARY, 'data-premium-portal') : '';
+}
+
+function accessLine(access, billing = {}) {
   if (!access) return '';
   if (access.source === 'comp') return '<p class="text-xs text-success mb-2" data-whatsapp-access="comp">Acesso cortesia liberado.</p>';
   if (access.allowed) {
-    return `<p class="text-xs text-success mb-2" data-whatsapp-access="stripe">${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.</p>`;
+    const ending = access.cancelAtPeriodEnd && access.periodEnd ? ` Cancelado: vale até ${escapeHtml(formatDate(access.periodEnd))}.` : '';
+    const principal = access.principalPhone ? `<p class="text-xs text-textSecondary">Número principal: <strong>${escapeHtml(access.principalPhone)}</strong></p>` : '';
+    const manage = manageLink(access, billing);
+    return `<div class="mb-2" data-whatsapp-access="stripe">
+        <p class="text-xs text-success">${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.${ending}</p>
+        ${principal}
+        ${manage ? `<div class="mt-2">${manage}</div>` : ''}
+      </div>`;
   }
-  return '<p class="text-xs text-warn mb-2" data-whatsapp-access="none">O assistente do WhatsApp faz parte do Premium. Sem assinatura ativa, o número vinculado não recebe respostas.</p>';
+  const manage = manageLink(access, billing);
+  return `<div class="mb-2" data-whatsapp-access="none">
+      <p class="text-xs text-warn">O assistente do WhatsApp faz parte do Premium. Sem assinatura ativa, o número vinculado não recebe respostas.</p>
+      ${subscribeOffer(access, billing)}
+      ${manage ? `<div class="mt-2">${manage}</div>` : ''}
+    </div>`;
 }
 
 function body(state, { botNumber } = {}) {
@@ -83,7 +136,7 @@ function body(state, { botNumber } = {}) {
   }
 }
 
-export function createWhatsAppLinkPresenter({ documentRef = document, botNumber = '' } = {}) {
+export function createWhatsAppLinkPresenter({ documentRef = document, botNumber = '', billing = {} } = {}) {
   const root = () => documentRef.getElementById('whatsapp-link-panel');
 
   function render(state = { view: 'loading' }) {
@@ -92,7 +145,7 @@ export function createWhatsAppLinkPresenter({ documentRef = document, botNumber 
     element.innerHTML = `
       <div class="bg-surface rounded-xl p-4 border border-surfaceLight mb-4" data-whatsapp-link-root>
         <h3 class="font-semibold text-sm mb-2">WhatsApp</h3>
-        ${state.view === 'loading' ? '' : accessLine(state.access)}
+        ${state.view === 'loading' ? '' : accessLine(state.access, billing)}
         <div data-whatsapp-link-state="${escapeHtml(state.view)}" aria-live="polite">${body(state, { botNumber })}</div>
       </div>`;
   }
