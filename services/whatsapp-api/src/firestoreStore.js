@@ -20,6 +20,21 @@ export function createFirestoreStore(db) {
   const inboundMessages = db.collection('whatsapp_inbound_messages');
   const billingCustomers = db.collection('billing_customers');
   const stripeSubscriptions = db.collection('billing_stripe_subscriptions');
+  // Reserva atomica com retomada: cria; se existe 'processing' com stampField < staleBeforeIso, assume.
+  const reserveOrReclaim = (ref, data, staleBeforeIso, stampField) => db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(ref);
+    if (!snapshot.exists) {
+      tx.create(ref, data);
+      return { created: true };
+    }
+    const existing = snapshot.data();
+    const stamp = String(existing?.[stampField] || '');
+    if (staleBeforeIso && existing?.status === 'processing' && stamp && stamp < staleBeforeIso) {
+      tx.update(ref, { [stampField]: data[stampField], attempts: Number(existing.attempts || 1) + 1 });
+      return { created: true, reclaimed: true };
+    }
+    return { created: false, existing };
+  });
   const readData = async (ref) => {
     const snapshot = await ref.get();
     return snapshot.exists ? snapshot.data() : null;
@@ -161,14 +176,15 @@ export function createFirestoreStore(db) {
     },
 
     // --- Cobranca (Stripe), gravada so pelo servidor ---
-    async reserveBillingEvent(eventId, data) {
-      try {
-        await billingEvents.doc(eventId).create(data);
-        return { created: true };
-      } catch (error) {
-        if (error?.code === 6 || error?.code === 'already-exists') return { created: false };
-        throw error;
-      }
+    /**
+     * Reserva o evento. Se ja existe uma reserva 'processing' mais antiga que staleBeforeIso
+     * (o processo caiu no meio), assume de novo. Resultado: { created, reclaimed?, existing? }.
+     */
+    async reserveBillingEvent(eventId, data, { staleBeforeIso = '' } = {}) {
+      return reserveOrReclaim(billingEvents.doc(eventId), data, staleBeforeIso, 'received_at');
+    },
+    async finishBillingEvent(eventId, patch) {
+      await billingEvents.doc(eventId).set(patch, { merge: true });
     },
     async releaseBillingEvent(eventId) {
       await billingEvents.doc(eventId).delete();
@@ -214,9 +230,14 @@ export function createFirestoreStore(db) {
       const snapshot = await records(uid).doc(id).get();
       return snapshot.exists ? { ...snapshot.data(), id: snapshot.id } : null;
     },
-    async createRecord(uid, data) {
-      const ref = records(uid).doc();
-      await ref.create({ ...data, owner_uid: uid });
+    // Com id fixo, criar de novo (retomada depois de queda) nao duplica o lancamento.
+    async createRecord(uid, data, { id = '' } = {}) {
+      const ref = id ? records(uid).doc(id) : records(uid).doc();
+      try {
+        await ref.create({ ...data, owner_uid: uid });
+      } catch (error) {
+        if (!(id && (error?.code === 6 || error?.code === 'already-exists'))) throw error;
+      }
       return ref.id;
     },
     async updateRecord(uid, id, patch) {
@@ -243,19 +264,8 @@ export function createFirestoreStore(db) {
     async updatePendingAction(uid, id, patch) {
       await pending(uid).doc(id).set(patch, { merge: true });
     },
-    async reserveReceipt(uid, id, data) {
-      const ref = receipts(uid).doc(id);
-      try {
-        await ref.create(data);
-        return { created: true };
-      } catch (error) {
-        // 6 = ALREADY_EXISTS: outra chamada ja reservou esta confirmacao.
-        if (error?.code === 6 || error?.code === 'already-exists') {
-          const existing = await ref.get();
-          return { created: false, existing: existing.exists ? existing.data() : null };
-        }
-        throw error;
-      }
+    async reserveReceipt(uid, id, data, { staleBeforeIso = '' } = {}) {
+      return reserveOrReclaim(receipts(uid).doc(id), data, staleBeforeIso, 'created_at');
     },
     async completeReceipt(uid, id, patch) {
       await receipts(uid).doc(id).set(patch, { merge: true });

@@ -25,6 +25,20 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
   });
 
+  function reserveOrReclaim(map, key, data, staleBeforeIso, stampField) {
+    if (!map.has(key)) {
+      map.set(key, clone(data));
+      return { created: true };
+    }
+    const existing = map.get(key);
+    const stamp = String(existing?.[stampField] || '');
+    if (staleBeforeIso && existing?.status === 'processing' && stamp && stamp < staleBeforeIso) {
+      map.set(key, { ...existing, [stampField]: data[stampField], attempts: Number(existing.attempts || 1) + 1 });
+      return { created: true, reclaimed: true };
+    }
+    return { created: false, existing: clone(existing) };
+  }
+
   return {
     async getWhatsAppAccess(uid) {
       return { comp: clone(compAccess.get(uid)) || null, subscription: clone(subscriptions.get(uid)) || null };
@@ -37,10 +51,14 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       if (data) subscriptions.set(uid, clone(data));
       else subscriptions.delete(uid);
     },
-    async reserveBillingEvent(eventId, data) {
-      if (billingEvents.has(eventId)) return { created: false };
-      billingEvents.set(eventId, clone(data));
-      return { created: true };
+    async reserveBillingEvent(eventId, data, { staleBeforeIso = '' } = {}) {
+      return reserveOrReclaim(billingEvents, eventId, data, staleBeforeIso, 'received_at');
+    },
+    async finishBillingEvent(eventId, patch) {
+      if (billingEvents.has(eventId)) billingEvents.set(eventId, { ...billingEvents.get(eventId), ...clone(patch) });
+    },
+    _getBillingEvent(eventId) {
+      return clone(billingEvents.get(eventId)) || null;
     },
     async releaseBillingEvent(eventId) {
       billingEvents.delete(eventId);
@@ -89,9 +107,9 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     async getRecord(uid, id) {
       return clone(bucket(uid).records.get(id)) || null;
     },
-    async createRecord(uid, data) {
-      const id = randomUUID();
-      bucket(uid).records.set(id, { ...clone(data), id, owner_uid: uid });
+    async createRecord(uid, data, { id: fixedId = '' } = {}) {
+      const id = fixedId || randomUUID();
+      if (!bucket(uid).records.has(id)) bucket(uid).records.set(id, { ...clone(data), id, owner_uid: uid });
       return id;
     },
     async updateRecord(uid, id, patch) {
@@ -119,11 +137,8 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       const current = bucket(uid).pending.get(id);
       if (current) bucket(uid).pending.set(id, { ...current, ...clone(patch) });
     },
-    async reserveReceipt(uid, id, data) {
-      const receipts = bucket(uid).receipts;
-      if (receipts.has(id)) return { created: false, existing: clone(receipts.get(id)) };
-      receipts.set(id, clone(data));
-      return { created: true };
+    async reserveReceipt(uid, id, data, { staleBeforeIso = '' } = {}) {
+      return reserveOrReclaim(bucket(uid).receipts, id, data, staleBeforeIso, 'created_at');
     },
     async completeReceipt(uid, id, patch) {
       const current = bucket(uid).receipts.get(id);
