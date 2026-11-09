@@ -6,6 +6,8 @@ import { buildOpcoes } from './references.js';
 import { createLinkService } from './links.js';
 import { accessMessage, createAccessPolicy } from './access.js';
 import { createBillingService, verifyStripeSignature } from './billing.js';
+import { createRateLimiter, hashKey } from './rateLimit.js';
+import { normalizePhone } from './phoneLinks.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -44,7 +46,8 @@ export function createApp({
   accountDeletion = null,
   now = () => new Date(),
   logger = console,
-  newId = () => randomUUID()
+  newId = () => randomUUID(),
+  rateLimiter = createRateLimiter()
 }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const access = createAccessPolicy({ store, mode: accessMode });
@@ -126,6 +129,9 @@ export function createApp({
       }
       if (route === BILLING_PATH || route === BILLING_CHECKOUT_PATH || route === BILLING_PORTAL_PATH) {
         if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
+        // Antes de conferir o token: cada chamada pode ir ao Firebase e ao Stripe.
+        rateLimiter.enforce('billingGlobal', 'all');
+        rateLimiter.enforce('billingToken', body?.idToken ? hashKey(body.idToken) : '');
         const deletion = route === BILLING_PATH ? ACCOUNT_DELETION_ACTIONS[String(body?.acao || '')] : '';
         if (deletion) {
           if (!accountDeletion?.configured) throw new ApiError(503, 'ACCOUNT_DELETION_NOT_CONFIGURED', 'Exclusao de conta indisponivel no momento.');
@@ -146,6 +152,10 @@ export function createApp({
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'INVALID_BODY', 'Corpo JSON obrigatorio.');
 
       const name = route.slice(PREFIX.length + 1);
+      // Por telefone antes de qualquer leitura no banco (o telefone vem verificado do Chatwoot).
+      const phoneKey = hashKey(normalizePhone(body.telefone) || String(body.telefone ?? ''));
+      rateLimiter.enforce('phone', phoneKey);
+      if (name === 'vinculo/confirmar') rateLimiter.enforce('linkConfirm', phoneKey);
       if (linkRoutes[name]) {
         const { phoneHash: hash, result } = await linkRoutes[name](body);
         phoneHash = hash;
@@ -157,6 +167,8 @@ export function createApp({
 
       const { uid, phoneHash: hash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
       phoneHash = hash;
+      rateLimiter.enforce('user', uid);
+      if (writeRoutes[name]) rateLimiter.enforce('userWrite', uid);
       await access.assert(uid, { phone: body.telefone });
       const result = await handler(uid, body);
       status = 200;
