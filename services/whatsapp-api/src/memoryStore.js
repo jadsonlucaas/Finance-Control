@@ -16,6 +16,7 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   const compAccess = new Map();
   const subscriptions = new Map();
   const billingEvents = new Map();
+  const inboundMessages = new Map();
   const billingCustomers = new Map();
   const stripeSubscriptions = new Map();
   const onboarding = new Map();
@@ -43,6 +44,14 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     },
     async releaseBillingEvent(eventId) {
       billingEvents.delete(eventId);
+    },
+    async reserveInboundMessage(messageKey, data) {
+      if (inboundMessages.has(messageKey)) return { created: false };
+      inboundMessages.set(messageKey, clone(data));
+      return { created: true };
+    },
+    _getInboundMessage(messageKey) {
+      return clone(inboundMessages.get(messageKey)) || null;
     },
     async getBillingCustomer(customerId) {
       return clone(billingCustomers.get(customerId)) || null;

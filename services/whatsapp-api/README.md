@@ -114,6 +114,14 @@ Contador em memória (`src/rateLimit.js`), janela fixa. Ao passar do limite a AP
 
 O webhook do Stripe não tem limite (é assinado e o Stripe reenvia). Com mais de uma réplica cada uma conta separado.
 
+## Mensagens repetidas (deduplicação)
+
+`POST /internal/whatsapp/mensagem/registrar` com `{ telefone, accountId, mensagemId }` (o `id` da mensagem do Chatwoot). Responde `{ duplicada: false }` na primeira vez e `{ duplicada: true }` nas repetidas. O n8n chama logo depois de conferir a assinatura do Chatwoot e para o fluxo quando `duplicada` é `true`.
+
+Grava `whatsapp_inbound_messages/{sha256(conta:id)}` com `create()` (atômico) e guarda só hashes e `expires_at` (+3 dias), nunca o texto. Para apagar sozinho: Firestore → TTL → coleção `whatsapp_inbound_messages`, campo `expires_at`.
+
+O webhook do Stripe já era idempotente (`billing_webhook_events/{eventId}`), e confirmar um lançamento duas vezes não grava duas vezes (`idempotency_receipts`).
+
 ## Rotas
 
 Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (conta do Chatwoot). `GET /health` não pede autenticação.

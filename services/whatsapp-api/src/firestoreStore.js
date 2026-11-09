@@ -17,6 +17,7 @@ export function createFirestoreStore(db) {
   const compAccess = db.collection('whatsapp_comp_access');
   const subscriptions = db.collection('billing_subscriptions');
   const billingEvents = db.collection('billing_webhook_events');
+  const inboundMessages = db.collection('whatsapp_inbound_messages');
   const billingCustomers = db.collection('billing_customers');
   const stripeSubscriptions = db.collection('billing_stripe_subscriptions');
   const readData = async (ref) => {
@@ -171,6 +172,16 @@ export function createFirestoreStore(db) {
     },
     async releaseBillingEvent(eventId) {
       await billingEvents.doc(eventId).delete();
+    },
+    // --- Mensagens recebidas do WhatsApp (deduplicacao), gravadas so pelo servidor ---
+    async reserveInboundMessage(messageKey, data) {
+      try {
+        await inboundMessages.doc(messageKey).create(data);
+        return { created: true };
+      } catch (error) {
+        if (error?.code === 6 || error?.code === 'already-exists') return { created: false };
+        throw error;
+      }
     },
     getBillingCustomer: (customerId) => readData(billingCustomers.doc(customerId)),
     async setBillingCustomer(customerId, data) {

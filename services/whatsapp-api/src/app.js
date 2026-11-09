@@ -7,6 +7,7 @@ import { createLinkService } from './links.js';
 import { accessMessage, createAccessPolicy } from './access.js';
 import { createBillingService, verifyStripeSignature } from './billing.js';
 import { createRateLimiter, hashKey } from './rateLimit.js';
+import { createInboundMessageService } from './inboundMessages.js';
 import { normalizePhone } from './phoneLinks.js';
 import {
   buildCategorias,
@@ -54,9 +55,15 @@ export function createApp({
   const actions = createActionService({ store, now, newId });
   const links = createLinkService({ store, now });
   const billing = stripeWebhookSecret ? createBillingService({ store, now, logger }) : null;
+  const inbound = typeof store.reserveInboundMessage === 'function' ? createInboundMessageService({ store, now }) : null;
 
   // Rotas sem usuario resolvido: o telefone ainda pode nao estar vinculado.
   const linkRoutes = {
+    // Chamada pelo n8n antes do agente: { duplicada: true } quando a mensagem ja foi recebida.
+    'mensagem/registrar': async (body) => {
+      if (!inbound) throw new ApiError(503, 'DEDUP_NOT_CONFIGURED', 'Deduplicacao indisponivel.');
+      return inbound.register(body);
+    },
     'vinculo/confirmar': async (body) => {
       const { phoneHash, ...result } = await links.confirm(body);
       return { phoneHash, result };

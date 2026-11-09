@@ -828,6 +828,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Deduplicacao das mensagens do WhatsApp: so o servidor (Admin SDK) grava e le.
+    match /whatsapp_inbound_messages/{messageKey} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
