@@ -99,6 +99,21 @@ Fora do alcance da API (apagar à mão se for o caso): conversas no Chatwoot/Wha
 
 Coleções (só o servidor grava): `billing_webhook_events` (idempotência), `billing_customers`, `billing_stripe_subscriptions` e `billing_subscriptions/{uid}` (o que o Dashboard e a API leem). Falha ao gravar responde 500 e libera o evento para o reenvio do Stripe.
 
+## Limite de requisições (rate limit)
+
+Contador em memória (`src/rateLimit.js`), janela fixa. Ao passar do limite a API responde `429 RATE_LIMITED` com `detalhes.limite` e `detalhes.tente_em_segundos`, antes de ler o banco ou chamar o Stripe.
+
+| Limite | Chave | Padrão |
+|---|---|---|
+| `phone` | telefone (normalizado) | 30 por minuto, qualquer rota do WhatsApp |
+| `user` | uid resolvido | 60 por minuto |
+| `userWrite` | uid | 20 por minuto em `acoes/preparar`, `acoes/confirmar` e `acoes/cancelar` |
+| `linkConfirm` | telefone | 10 a cada 10 min em `vinculo/confirmar` (soma ao bloqueio de 5 erros/hora) |
+| `billingToken` | hash do ID token | 10 por minuto em checkout/portal/exclusão |
+| `billingGlobal` | — | 120 por minuto no total das rotas de cobrança |
+
+O webhook do Stripe não tem limite (é assinado e o Stripe reenvia). Com mais de uma réplica cada uma conta separado.
+
 ## Rotas
 
 Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (conta do Chatwoot). `GET /health` não pede autenticação.
