@@ -61,7 +61,8 @@ function fakeDb() {
   const runTransaction = async (fn) => fn({
     get: (target) => target.get(),
     update: (ref, data) => ref.update(data),
-    set: (ref, data) => ref.set(data)
+    set: (ref, data) => ref.set(data),
+    create: (ref, data) => ref.create(data)
   });
   return { db: { collection: collectionRef, runTransaction }, docs, calls };
 }

@@ -229,3 +229,14 @@ Para desenvolvimento local sem Firebase, rode `WHATSAPP_API_STORE=memory npm run
 ## Próximo passo: cadastro do WhatsApp
 
 Quando o cadastro existir, troque `createPhoneResolver` por um resolvedor que lê o vínculo salvo pelo usuário. A interface é a mesma: `resolve({ telefone, accountId }) -> { uid }`. O vínculo precisa ficar fora de `finance_records`, porque o contrato proíbe telefone nos lançamentos.
+
+## Quedas e chamadas simultaneas
+
+- **Confirmar lancamento**: o recibo `whatsapp_{id}` e reservado como `processing`. Se o processo cair no meio,
+  uma nova confirmacao responde `409 ACTION_IN_PROGRESS` por 2 minutos e depois retoma. O lancamento criado usa o
+  id fixo `whatsapp_{id}`, entao a retomada nunca duplica; numa edicao ja gravada (mesmo `correlation_id`) a
+  retomada reconhece e conclui.
+- **Webhook do Stripe**: `billing_webhook_events/{id}` nasce `processing` e vira `done` no fim. Reenvio durante o
+  processamento recebe `409 EVENT_IN_PROGRESS` (o Stripe tenta de novo); reserva parada ha mais de 2 minutos e
+  assumida pelo proximo reenvio. Registros antigos sem `status` contam como concluidos.
+- Teste contra o emulador: `npx firebase emulators:exec --only firestore "npx vitest run --config vitest.rules.config.js tests/firestore/whatsapp-api-concurrency-emulator.test.js"`.

@@ -8,6 +8,8 @@ import { toPublicRecord } from './queries.js';
 import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory, resolvePaymentMethod } from './references.js';
 
 export const PENDING_ACTION_TTL_MS = 10 * 60 * 1000;
+// Uma confirmacao parada em processing por mais que isso (queda do processo) pode ser retomada.
+export const STALE_PROCESSING_MS = 2 * 60 * 1000;
 export const ACTIONS = Object.freeze(['registrar_despesa', 'registrar_receita', 'marcar_pago', 'editar', 'excluir']);
 const SOURCE_CHANNEL = 'future_integration';
 const CREATED_BY_ID = 'whatsapp-api';
@@ -305,6 +307,8 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     const nowIso = current.toISOString();
     const idempotencyKey = `whatsapp:${pending.id}`;
     const receiptId = `whatsapp_${pending.id}`;
+    // Uma reserva 'processing' antiga indica que o processo caiu no meio: pode ser retomada.
+    const staleBeforeIso = new Date(current.getTime() - STALE_PROCESSING_MS).toISOString();
     const reservation = await store.reserveReceipt(uid, receiptId, {
       owner_uid: uid,
       command_name: `whatsapp.${pending.acao}`,
@@ -315,7 +319,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
       correlation_id: pending.correlation_id,
       created_at: nowIso,
       schema_version: 1
-    });
+    }, { staleBeforeIso });
     if (!reservation.created) {
       if (reservation.existing?.status === 'completed') {
         const latest = await store.getPendingAction(uid, pending.id);
@@ -338,19 +342,27 @@ export function createActionService({ store, now = () => new Date(), newId = () 
           updated_at: nowIso,
           processed_at: nowIso
         };
-        recordId = await store.createRecord(uid, after);
-        after = { ...after, id: recordId };
+        // Id fixo: numa retomada o lancamento ja criado e reaproveitado, nunca duplicado.
+        recordId = await store.createRecord(uid, after, { id: receiptId });
+        const stored = reservation.reclaimed ? await store.getRecord(uid, recordId) : null;
+        after = { ...(stored || after), id: recordId };
       } else {
         before = await store.getRecord(uid, pending.record_id);
-        if (!before || before.archived === true) throw new ApiError(409, 'RECORD_CHANGED', 'O lancamento nao existe mais.');
-        if ((before.updated_at || '') !== (pending.base_updated_at || '')) {
-          throw new ApiError(409, 'RECORD_CHANGED', 'O lancamento mudou depois do resumo; prepare novamente.');
+        const alreadyApplied = reservation.reclaimed && before && before.correlation_id === pending.correlation_id;
+        if (alreadyApplied) {
+          // Retomada: a alteracao ja foi gravada antes da queda.
+          after = before;
+        } else {
+          if (!before || before.archived === true) throw new ApiError(409, 'RECORD_CHANGED', 'O lancamento nao existe mais.');
+          if ((before.updated_at || '') !== (pending.base_updated_at || '')) {
+            throw new ApiError(409, 'RECORD_CHANGED', 'O lancamento mudou depois do resumo; prepare novamente.');
+          }
+          const patch = { ...pending.patch, updated_at: nowIso, processed_at: nowIso, correlation_id: pending.correlation_id };
+          const { id: _id, ...rest } = before;
+          assertValidRecord({ ...rest, ...patch });
+          await store.updateRecord(uid, pending.record_id, patch);
+          after = { ...before, ...patch };
         }
-        const patch = { ...pending.patch, updated_at: nowIso, processed_at: nowIso, correlation_id: pending.correlation_id };
-        const { id: _id, ...rest } = before;
-        assertValidRecord({ ...rest, ...patch });
-        await store.updateRecord(uid, pending.record_id, patch);
-        after = { ...before, ...patch };
       }
     } catch (error) {
       const code = error instanceof ApiError ? error.code : 'INTERNAL_ERROR';

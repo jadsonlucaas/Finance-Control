@@ -16,6 +16,8 @@ import { normalizePhone } from './phoneLinks.js';
  * - billing_subscriptions/{uid}: o que o Dashboard e a whatsapp-api leem (status, telefone principal...).
  */
 export const SIGNATURE_TOLERANCE_SECONDS = 300;
+// Reserva 'processing' mais velha que isso = o processo caiu no meio; o reenvio do Stripe assume.
+export const STALE_EVENT_MS = 2 * 60 * 1000;
 export const HANDLED_EVENT_TYPES = Object.freeze([
   'checkout.session.completed',
   'customer.subscription.created',
@@ -82,7 +84,7 @@ function subscriptionSnapshot(subscription) {
 
 export function createBillingService({ store, now = () => new Date(), logger = console }) {
   const required = [
-    'reserveBillingEvent', 'releaseBillingEvent', 'getBillingCustomer', 'setBillingCustomer',
+    'reserveBillingEvent', 'finishBillingEvent', 'releaseBillingEvent', 'getBillingCustomer', 'setBillingCustomer',
     'getStripeSubscription', 'saveStripeSubscription', 'getBillingSubscription', 'mergeBillingSubscription', 'getUserProfile'
   ];
   const missing = required.filter((name) => typeof store?.[name] !== 'function');
@@ -162,10 +164,24 @@ export function createBillingService({ store, now = () => new Date(), logger = c
     if (!handlers[type]) return { recebido: true, resultado: 'ignored_type' };
 
     const nowIso = now().toISOString();
-    const reservation = await store.reserveBillingEvent(id, { type, received_at: nowIso, livemode: Boolean(event.livemode) });
-    if (!reservation.created) return { recebido: true, resultado: 'duplicate' };
+    const staleBeforeIso = new Date(now().getTime() - STALE_EVENT_MS).toISOString();
+    const reservation = await store.reserveBillingEvent(
+      id,
+      { type, status: 'processing', received_at: nowIso, livemode: Boolean(event.livemode) },
+      { staleBeforeIso }
+    );
+    if (!reservation.created) {
+      // Outro envio do mesmo evento ainda esta em andamento: responde erro para o Stripe tentar de novo
+      // (se aquele envio cair, a reserva fica velha e o proximo reenvio assume).
+      if (reservation.existing?.status === 'processing') {
+        throw new ApiError(409, 'EVENT_IN_PROGRESS', 'Evento do Stripe ainda em processamento.');
+      }
+      // Concluido (ou registro antigo, sem status): ja foi aplicado.
+      return { recebido: true, resultado: 'duplicate' };
+    }
     try {
       const outcome = await handlers[type](object, nowIso);
+      await store.finishBillingEvent(id, { status: 'done', outcome, finished_at: now().toISOString() });
       if (['unknown_user', 'missing_reference', 'unknown_customer'].includes(outcome)) {
         logger.warn(JSON.stringify({ level: 'warn', event: 'billing_event_unmatched', stripe_event: id, type, outcome }));
       }
