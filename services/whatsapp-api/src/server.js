@@ -47,7 +47,10 @@ async function createStore() {
     projectId: process.env.FIREBASE_PROJECT_ID || undefined
   });
   const { createFirestoreStore } = await import('./firestoreStore.js');
-  return createFirestoreStore(getFirestore());
+  const { withReadCache } = await import('./readCache.js');
+  // READ_CACHE_TTL_MS=0 desliga o cache.
+  const ttl = process.env.READ_CACHE_TTL_MS;
+  return withReadCache(createFirestoreStore(getFirestore()), ttl === undefined || ttl === '' ? {} : { ttlMs: Number(ttl) });
 }
 
 function readBody(req, limit) {

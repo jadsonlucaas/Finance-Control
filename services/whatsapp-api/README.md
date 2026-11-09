@@ -240,3 +240,10 @@ Quando o cadastro existir, troque `createPhoneResolver` por um resolvedor que l√
   processamento recebe `409 EVENT_IN_PROGRESS` (o Stripe tenta de novo); reserva parada ha mais de 2 minutos e
   assumida pelo proximo reenvio. Registros antigos sem `status` contam como concluidos.
 - Teste contra o emulador: `npx firebase emulators:exec --only firestore "npx vitest run --config vitest.rules.config.js tests/firestore/whatsapp-api-concurrency-emulator.test.js"`.
+
+## Cache de leituras
+
+Lancamentos e referencias de cada usuario ficam em cache por 30 s (`READ_CACHE_TTL_MS`, `0` desliga). Uma
+mensagem do WhatsApp chama varias ferramentas em sequencia; sem o cache cada uma lia todos os lancamentos no
+Firestore (e a cota gratuita do plano Spark estourou em 09/11/2026). Escritas da propria API limpam o cache do
+usuario; alteracoes feitas no Dashboard aparecem no WhatsApp em ate 30 s.
