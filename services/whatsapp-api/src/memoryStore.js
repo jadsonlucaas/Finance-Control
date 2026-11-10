@@ -40,6 +40,9 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   }
 
   return {
+    async ping() {
+      return true;
+    },
     async getWhatsAppAccess(uid) {
       return { comp: clone(compAccess.get(uid)) || null, subscription: clone(subscriptions.get(uid)) || null };
     },

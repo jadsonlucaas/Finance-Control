@@ -9,6 +9,7 @@ import { createBillingService, verifyStripeSignature } from './billing.js';
 import { createRateLimiter, hashKey } from './rateLimit.js';
 import { createInboundMessageService } from './inboundMessages.js';
 import { normalizePhone } from './phoneLinks.js';
+import { checkStoreHealth } from './health.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -30,6 +31,8 @@ export const BILLING_PORTAL_PATH = '/internal/billing/portal';
 // Rota unica para o relay do n8n: a acao vem no corpo ({ acao: 'checkout' | 'portal', idToken }).
 export const BILLING_PATH = '/internal/billing';
 const PREFIX = '/internal/whatsapp';
+// Saude com teste real do banco (usada pelo monitor do n8n a cada 5 min).
+export const HEALTH_DEEP_PATH = '/internal/health';
 // Exclusao de conta: mesma rota/relay do n8n, acao no corpo.
 export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOwnAccount', excluir_usuario: 'deleteUserAsAdmin' });
 
@@ -48,7 +51,8 @@ export function createApp({
   now = () => new Date(),
   logger = console,
   newId = () => randomUUID(),
-  rateLimiter = createRateLimiter()
+  rateLimiter = createRateLimiter(),
+  healthTimeoutMs = 5000
 }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const access = createAccessPolicy({ store, mode: accessMode });
@@ -127,6 +131,14 @@ export function createApp({
         return { status, body: { ok: true } };
       }
       if (!isAuthorized(headers, apiKey)) throw new ApiError(401, 'UNAUTHORIZED', 'Chave de API ausente ou invalida.');
+      if (method === 'GET' && route === HEALTH_DEEP_PATH) {
+        // Autenticada: cada chamada gasta uma leitura no Firestore.
+        rateLimiter.enforce('healthDeep', 'all');
+        const result = await checkStoreHealth(store, { timeoutMs: healthTimeoutMs });
+        code = result.ok ? 'OK' : 'STORE_UNAVAILABLE';
+        status = result.ok ? 200 : 503;
+        return { status, body: result };
+      }
       if (route === STRIPE_WEBHOOK_PATH) {
         if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
         const result = await handleStripeWebhook(headers, rawBody);

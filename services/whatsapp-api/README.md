@@ -124,7 +124,7 @@ O webhook do Stripe já era idempotente (`billing_webhook_events/{eventId}`), e 
 
 ## Rotas
 
-Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (conta do Chatwoot). `GET /health` não pede autenticação.
+Todas as rotas são `POST` com corpo JSON contendo `telefone` e `accountId` (conta do Chatwoot). `GET /health` não pede autenticação e não toca no banco. `GET /internal/health` (com `x-api-key`) faz uma leitura mínima no Firestore e responde 200 `{ ok: true, banco: 'ok' }` ou 503 com `motivo` (`COTA_ESGOTADA`, `TIMEOUT`, `INDISPONIVEL`, `ERRO`); é usada pelo monitor do n8n a cada 5 min (288 leituras/dia) e limitada a 10 chamadas/min.
 
 ### Leitura
 

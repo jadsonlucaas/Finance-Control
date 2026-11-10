@@ -81,6 +81,11 @@ export function createFirestoreStore(db) {
   }
 
   return {
+    // --- Saude (health.js): uma leitura de documento, mesmo que ele nao exista ---
+    async ping() {
+      await db.collection('_health').doc('ping').get();
+      return true;
+    },
     // --- Exclusao de conta (accountDeletion.js) ---
     async markAccountDeleting(uid, nowIso) {
       const snapshot = await userDoc(uid).get();
