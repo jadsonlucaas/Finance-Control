@@ -23,7 +23,9 @@ export const DEFAULT_RATE_LIMITS = Object.freeze({
   // Checkout/portal/exclusao pelo Dashboard, por ID token.
   billingToken: { limit: 10, windowMs: 60_000 },
   // Teto geral das rotas de cobranca (cada chamada pode bater no Stripe).
-  billingGlobal: { limit: 120, windowMs: 60_000 }
+  billingGlobal: { limit: 120, windowMs: 60_000 },
+  // Checagem profunda de saude (1 leitura no Firestore por chamada).
+  healthDeep: { limit: 10, windowMs: 60_000 }
 });
 
 const MAX_KEYS = 50_000;
