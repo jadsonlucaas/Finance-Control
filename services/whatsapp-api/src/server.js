@@ -5,6 +5,7 @@ import { readSetting } from './settings.js';
 import { normalizeAccessMode } from './access.js';
 import { createCheckoutService, createStripeClient } from './checkout.js';
 import { createAccountDeletionService } from './accountDeletion.js';
+import { startInboundCleanup } from './inboundMessages.js';
 
 function required(name) {
   const value = readSetting(name);
@@ -122,7 +123,17 @@ async function main() {
     console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret), billing_checkout: checkout.configured, account_deletion: accountDeletion.configured }));
   });
 
-  const shutdown = () => server.close(() => process.exit(0));
+  // Apaga os registros de deduplicacao vencidos. INBOUND_CLEANUP_INTERVAL_MS=0 desliga.
+  const cleanupInterval = process.env.INBOUND_CLEANUP_INTERVAL_MS;
+  const inboundCleanup = startInboundCleanup({
+    store,
+    ...(cleanupInterval === undefined || cleanupInterval === '' ? {} : { intervalMs: Number(cleanupInterval) })
+  });
+
+  const shutdown = () => {
+    inboundCleanup.stop();
+    server.close(() => process.exit(0));
+  };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 }
