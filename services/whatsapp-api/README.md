@@ -118,7 +118,7 @@ O webhook do Stripe não tem limite (é assinado e o Stripe reenvia). Com mais d
 
 `POST /internal/whatsapp/mensagem/registrar` com `{ telefone, accountId, mensagemId }` (o `id` da mensagem do Chatwoot). Responde `{ duplicada: false }` na primeira vez e `{ duplicada: true }` nas repetidas. O n8n chama logo depois de conferir a assinatura do Chatwoot e para o fluxo quando `duplicada` é `true`.
 
-Grava `whatsapp_inbound_messages/{sha256(conta:id)}` com `create()` (atômico) e guarda só hashes e `expires_at` (+3 dias), nunca o texto. Para apagar sozinho: Firestore → TTL → coleção `whatsapp_inbound_messages`, campo `expires_at`.
+Grava `whatsapp_inbound_messages/{sha256(conta:id)}` com `create()` (atômico) e guarda só hashes e `expires_at` (+3 dias), nunca o texto. A própria API apaga os vencidos: um minuto depois de subir e depois a cada 6 horas, até 2.000 por rodada (lotes de 200), lendo só os documentos vencidos. `INBOUND_CLEANUP_INTERVAL_MS` muda o intervalo (`0` desliga). Não depende do TTL do Firestore, que não existe no plano gratuito.
 
 O webhook do Stripe já era idempotente (`billing_webhook_events/{eventId}`), e confirmar um lançamento duas vezes não grava duas vezes (`idempotency_receipts`).
 

@@ -71,6 +71,18 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       inboundMessages.set(messageKey, clone(data));
       return { created: true };
     },
+    async purgeExpiredInboundMessages({ before, limit }) {
+      const cutoff = new Date(before).getTime();
+      let deleted = 0;
+      for (const [key, value] of inboundMessages) {
+        if (deleted >= limit) break;
+        if (new Date(value.expires_at).getTime() < cutoff) {
+          inboundMessages.delete(key);
+          deleted += 1;
+        }
+      }
+      return deleted;
+    },
     _getInboundMessage(messageKey) {
       return clone(inboundMessages.get(messageKey)) || null;
     },

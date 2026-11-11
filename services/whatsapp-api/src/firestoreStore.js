@@ -204,6 +204,12 @@ export function createFirestoreStore(db) {
         throw error;
       }
     },
+    // Limpeza feita pela API (sem TTL no plano gratuito): so os vencidos, em lote limitado.
+    async purgeExpiredInboundMessages({ before, limit }) {
+      const snapshot = await inboundMessages.where('expires_at', '<', before).limit(limit).get();
+      if (snapshot.empty || !snapshot.docs.length) return 0;
+      return deleteRefs(snapshot.docs.map((doc) => doc.ref));
+    },
     getBillingCustomer: (customerId) => readData(billingCustomers.doc(customerId)),
     async setBillingCustomer(customerId, data) {
       await billingCustomers.doc(customerId).set(data, { merge: true });
