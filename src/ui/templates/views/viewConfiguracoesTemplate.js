@@ -141,6 +141,7 @@
                             <p class="text-xs text-textSecondary max-w-md">Arquiva ou reabre lançamentos de \`entrada\` e \`saida\` com competência menor ou igual ao período informado. Os dados continuam salvos e consultáveis nas abas com filtro de histórico.</p>
                         </div>
                     </div>
+                    <div id="user-preferences-panel"></div>
                     <div id="whatsapp-link-panel"></div>
                     <div id="backup-restore-panel"></div>
                     <div id="account-deletion-panel"></div>
