@@ -309,11 +309,19 @@ async function loadChannelSettings(target = globalThis) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'account_deletion_ui' });
     accountDeletion = { installed: false, reason: 'ACCOUNT_DELETION_LOAD_FAILED' };
   }
+  let userPreferences;
   try {
-    return { whatsappLink: await loader(), accountDeletion };
+    const module = await (app.userPreferencesUiLoader || (() => import('./ui/account/userPreferencesUi.js')))();
+    userPreferences = module.installUserPreferencesUi(target);
+  } catch (error) {
+    target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'user_preferences_ui' });
+    userPreferences = { installed: false, reason: 'USER_PREFERENCES_LOAD_FAILED' };
+  }
+  try {
+    return { whatsappLink: await loader(), accountDeletion, userPreferences };
   } catch (error) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'channel_settings_ui' });
-    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion };
+    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion, userPreferences };
   }
 }
 
