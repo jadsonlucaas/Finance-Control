@@ -51,9 +51,11 @@ function subscribeOffer(access, billing, state) {
     <p class="text-xs text-textSecondary mt-1">R$ 24,90/mês no Brasil ou € 5,90/mês na Europa, conforme o país do cadastro. O WhatsApp do cadastro vira o número principal.</p>`;
 }
 
-function manageButton(access, billing, state) {
+function manageButton(access, billing, state, { pastDue = false } = {}) {
   if (!billing.enabled || !access.hasCustomer) return '';
   const busy = state.billingPending ? 'disabled aria-busy="true"' : '';
+  // Pagamento pendente: o mesmo portal do Stripe, mas chamando para trocar o cartao.
+  if (pastDue) return `<button type="button" data-premium-action="portal" class="${BUTTON_PRIMARY}" ${busy}>Atualizar cartão</button>`;
   return `<button type="button" data-premium-action="portal" class="${BUTTON_SECONDARY}" ${busy}>Gerenciar assinatura</button>`;
 }
 
@@ -65,11 +67,13 @@ function accessLine(access, billing = {}, state = {}) {
   if (!access) return '';
   if (access.source === 'comp') return '<p class="text-xs text-success mb-2" data-whatsapp-access="comp">Acesso cortesia liberado.</p>';
   if (access.allowed) {
+    const pastDue = access.status === 'past_due';
     const ending = access.cancelAtPeriodEnd && access.periodEnd ? ` Cancelado: vale até ${escapeHtml(formatDate(access.periodEnd))}.` : '';
+    const hint = pastDue ? ' Não conseguimos cobrar o cartão. Atualize a forma de pagamento para não perder o Premium.' : '';
     const principal = access.principalPhone ? `<p class="text-xs text-textSecondary">Número principal: <strong>${escapeHtml(access.principalPhone)}</strong></p>` : '';
-    const manage = manageButton(access, billing, state);
-    return `<div class="mb-2" data-whatsapp-access="stripe">
-        <p class="text-xs text-success">${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.${ending}</p>
+    const manage = manageButton(access, billing, state, { pastDue });
+    return `<div class="mb-2" data-whatsapp-access="${pastDue ? 'past_due' : 'stripe'}">
+        <p class="text-xs ${pastDue ? 'text-warn' : 'text-success'}"${pastDue ? ' role="status"' : ''}>${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.${ending}${hint}</p>
         ${principal}
         ${manage ? `<div class="mt-2">${manage}</div>` : ''}
         ${billingError(state)}
