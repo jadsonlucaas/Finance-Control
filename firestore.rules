@@ -803,10 +803,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Dados do cadastro para checkout e WhatsApp: so o proprio usuario grava; admin ativo le.
+    // Dados do cadastro para checkout e WhatsApp, mais preferencias opcionais de idioma/moeda/fuso:
+    // so o proprio usuario grava; admin ativo le.
     function isValidOnboardingDetails(uid) {
       let d = request.resource.data;
-      return d.keys().hasOnly(['uid', 'name', 'country', 'whatsapp_phone', 'whatsapp_consent', 'consent_at', 'updated_at'])
+      return d.keys().hasOnly(['uid', 'name', 'country', 'whatsapp_phone', 'whatsapp_consent', 'consent_at', 'updated_at',
+          'locale', 'currency', 'time_zone'])
         && d.keys().hasAll(['uid', 'name', 'country', 'whatsapp_phone', 'whatsapp_consent', 'updated_at'])
         && d.uid == uid
         && d.name is string && d.name.size() >= 2 && d.name.size() <= 80
@@ -814,7 +816,16 @@ service cloud.firestore {
         && d.whatsapp_phone is string && d.whatsapp_phone.matches('^[+][1-9][0-9]{9,14}$')
         && d.whatsapp_consent is bool
         && d.updated_at is string && d.updated_at.size() <= 40
-        && (!('consent_at' in d) || (d.consent_at is string && d.consent_at.size() <= 40));
+        && (!('consent_at' in d) || (d.consent_at is string && d.consent_at.size() <= 40))
+        && (!('locale' in d) || d.locale in ['pt-BR', 'es-ES'])
+        && (!('currency' in d) || d.currency in ['BRL', 'EUR'])
+        && (!('time_zone' in d) || d.time_zone in [
+          'America/Sao_Paulo', 'America/Bahia', 'America/Fortaleza', 'America/Recife', 'America/Belem',
+          'America/Maceio', 'America/Araguaina', 'America/Santarem', 'America/Noronha', 'America/Manaus',
+          'America/Cuiaba', 'America/Campo_Grande', 'America/Porto_Velho', 'America/Boa_Vista',
+          'America/Rio_Branco', 'America/Eirunepe',
+          'Europe/Madrid', 'Atlantic/Canary', 'Africa/Ceuta',
+          'Europe/Lisbon', 'Atlantic/Azores', 'Atlantic/Madeira']);
     }
 
     match /user_onboarding/{uid} {
