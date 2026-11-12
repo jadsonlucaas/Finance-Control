@@ -276,6 +276,25 @@ describe('whatsapp link: presenter', () => {
     expect(panel.innerHTML).toContain('&lt;b&gt;falhou&lt;/b&gt;');
   });
 
+  it('pagamento pendente aparece em amarelo, com botao para atualizar o cartao', () => {
+    const { panel, documentRef } = fakeDocument();
+    const presenter = createWhatsAppLinkPresenter({ documentRef, billing: { enabled: true } });
+    const account = { uid: 'alice' };
+
+    presenter.render({ view: 'linked', maskedPhone: '+55', access: { allowed: true, source: 'stripe', status: 'past_due', hasCustomer: true, account } });
+    expect(panel.innerHTML).toContain('data-whatsapp-access="past_due"');
+    expect(panel.innerHTML).toContain('text-warn');
+    expect(panel.innerHTML).not.toContain('text-success');
+    expect(panel.innerHTML).toContain('Atualizar cartão');
+    expect(panel.innerHTML).toContain('data-premium-action="portal"');
+    expect(panel.innerHTML).not.toContain('Gerenciar assinatura');
+
+    presenter.render({ view: 'linked', maskedPhone: '+55', access: { allowed: true, source: 'stripe', status: 'active', hasCustomer: true, account } });
+    expect(panel.innerHTML).toContain('text-success');
+    expect(panel.innerHTML).toContain('Gerenciar assinatura');
+    expect(panel.innerHTML).not.toContain('Atualizar cartão');
+  });
+
   it('sem checkout configurado nao mostra botoes de assinatura', () => {
     const { panel, documentRef } = fakeDocument();
     createWhatsAppLinkPresenter({ documentRef }).render({ view: 'unlinked', access: { allowed: false, source: 'none', status: 'none', account: { uid: 'alice' } } });
