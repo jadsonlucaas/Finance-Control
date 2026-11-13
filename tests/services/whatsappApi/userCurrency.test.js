@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApp } from '../../../services/whatsapp-api/src/app.js';
+import { createApp, whatsappLocaleForPhone } from '../../../services/whatsapp-api/src/app.js';
 import { createMemoryStore } from '../../../services/whatsapp-api/src/memoryStore.js';
 import { createPhoneResolver, parsePhoneLinks } from '../../../services/whatsapp-api/src/phoneLinks.js';
 import { formatMoney, parseAmount, runWithCurrency } from '../../../services/whatsapp-api/src/money.js';
@@ -30,11 +30,19 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect(res.body.preferencias).toEqual({ idioma: 'es-ES', moeda: 'EUR', fuso: 'Europe/Madrid' });
   });
 
-  it('conta no Brasil (ou sem cadastro) continua em reais', async () => {
+  it('conta sem cadastro continua em reais; o idioma segue o DDI do numero (+34 = espanhol)', async () => {
     const call = setup(null);
     const res = await call('lancamentos', { competencia: '2026-11' });
     expect(JSON.stringify(res.body)).toContain('R$ 1.234,50');
-    expect(res.body.preferencias).toEqual({ idioma: 'pt-BR', moeda: 'BRL', fuso: 'America/Sao_Paulo' });
+    expect(res.body.preferencias).toEqual({ idioma: 'es-ES', moeda: 'BRL', fuso: 'America/Sao_Paulo' });
+  });
+
+  it('idioma do WhatsApp vem do DDI, nao da escolha no Dashboard', async () => {
+    const call = setup({ country: 'ES', locale: 'pt-BR' });
+    expect((await call('resumo')).body.preferencias.idioma).toBe('es-ES');
+    expect(whatsappLocaleForPhone('+55 92 98132-7903')).toBe('pt-BR');
+    expect(whatsappLocaleForPhone('+351 912 345 678')).toBe('pt-BR');
+    expect(whatsappLocaleForPhone('')).toBe('pt-BR');
   });
 
   it('formatacao isolada por requisicao e leitura de valores em euro', async () => {
