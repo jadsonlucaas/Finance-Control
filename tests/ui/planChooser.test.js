@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createPlanChooserModel,
+  freePriceLabel,
   priceLabel,
   readCheckoutReturn,
   renderPlanChooser,
@@ -42,6 +43,9 @@ describe('escolha de plano', () => {
     expect(html).toContain('R$ 24,90/mês');
     expect(html).not.toContain('data-plan-details-form');
     expect(priceLabel('PT')).toBe('€ 5,90/mês');
+    expect(html).toContain('R$ 0');
+    expect(freePriceLabel('ES')).toBe('0 €');
+    expect(freePriceLabel(undefined)).toBe('R$ 0');
   });
 
   it('Premium leva direto ao checkout do Stripe quando o cadastro esta completo', async () => {
