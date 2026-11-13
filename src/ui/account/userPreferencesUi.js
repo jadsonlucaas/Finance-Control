@@ -12,7 +12,6 @@ import {
   resolveUserPreferences,
   SIGNUP_COUNTRIES,
   SUPPORTED_CURRENCIES,
-  SUPPORTED_LOCALES,
   SUPPORTED_TIME_ZONES
 } from '../../services/accountOnboarding.js';
 
@@ -107,7 +106,7 @@ export function renderUserPreferencesPanel({
       </div>
       <div class="min-w-0 flex-1">
         <h3 class="font-semibold text-sm">Idioma, moeda e região</h3>
-        <p class="text-xs text-textSecondary mt-1">Cada opção é independente. A moeda muda só a forma de mostrar os valores; nada é convertido.</p>
+        <p class="text-xs text-textSecondary mt-1">A moeda muda só a forma de mostrar os valores; nada é convertido.</p>
       </div>
     </div>`;
 
@@ -127,7 +126,8 @@ export function renderUserPreferencesPanel({
   const disabled = saving ? ' disabled' : '';
   const select = (id, name, options) => `<select id="${id}" name="${name}" class="w-full text-sm"${disabled}>${options}</select>`;
   const countryOptions = SIGNUP_COUNTRIES.map((item) => option(item.code, item.label, preferences.country)).join('');
-  const localeOptions = SUPPORTED_LOCALES.map((code) => option(code, LOCALE_LABELS[code] || code, preferences.locale)).join('');
+  // Idioma nao e escolha: segue o DDI do WhatsApp cadastrado (+34 espanhol; demais, portugues).
+  const localeInfo = `<p id="user-pref-locale" class="text-sm py-2" data-locale="${escapeHtml(preferences.locale)}">${escapeHtml(LOCALE_LABELS[preferences.locale] || preferences.locale)}</p>`;
   const currencyOptions = SUPPORTED_CURRENCIES.map((code) => option(code, CURRENCY_LABELS[code] || code, preferences.currency)).join('');
 
   const feedback = error
@@ -138,11 +138,11 @@ export function renderUserPreferencesPanel({
     <form data-user-preferences-form class="mt-3 space-y-3" autocomplete="off">
       <div class="grid gap-3 sm:grid-cols-2">
         ${field('user-pref-country', 'País', select('user-pref-country', 'country', countryOptions))}
-        ${field('user-pref-locale', 'Idioma', select('user-pref-locale', 'locale', localeOptions))}
+        ${field('user-pref-locale', 'Idioma', localeInfo)}
         ${field('user-pref-currency', 'Moeda', select('user-pref-currency', 'currency', currencyOptions))}
         ${field('user-pref-time-zone', 'Fuso horário', select('user-pref-time-zone', 'time_zone', timeZoneOptions(preferences.time_zone)))}
       </div>
-      <p class="text-xs text-textSecondary">O país também define a moeda da assinatura Premium.</p>
+      <p class="text-xs text-textSecondary">O idioma segue o número de WhatsApp cadastrado: +34 usa espanhol; os demais, português. O país também define a moeda da assinatura Premium.</p>
       ${feedback}
       <div>
         <button type="submit" data-user-preferences-action="save" class="${BUTTON} bg-accent hover:bg-accentDark text-bg"${disabled}>${saving ? 'Salvando...' : 'Salvar'}</button>
@@ -163,7 +163,6 @@ function readForm(documentRef) {
   const value = (id) => documentRef.getElementById(id)?.value || '';
   return {
     country: value('user-pref-country'),
-    locale: value('user-pref-locale'),
     currency: value('user-pref-currency'),
     time_zone: value('user-pref-time-zone')
   };

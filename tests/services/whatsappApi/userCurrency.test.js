@@ -30,11 +30,20 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect(res.body.preferencias).toEqual({ idioma: 'es-ES', moeda: 'EUR', fuso: 'Europe/Madrid' });
   });
 
-  it('conta no Brasil (ou sem cadastro) continua em reais', async () => {
+  it('conta sem cadastro continua em reais; o idioma segue o DDI do numero (+34 = espanhol)', async () => {
     const call = setup(null);
     const res = await call('lancamentos', { competencia: '2026-11' });
     expect(JSON.stringify(res.body)).toContain('R$ 1.234,50');
-    expect(res.body.preferencias).toEqual({ idioma: 'pt-BR', moeda: 'BRL', fuso: 'America/Sao_Paulo' });
+    expect(res.body.preferencias).toEqual({ idioma: 'es-ES', moeda: 'BRL', fuso: 'America/Sao_Paulo' });
+  });
+
+  it('idioma do WhatsApp vem do DDI do telefone cadastrado na conta, nunca de um idioma salvo', async () => {
+    // Conta com telefone +55 cadastrado: portugues, mesmo conversando de um numero +34 e com locale antigo es-ES.
+    const br = setup({ country: 'ES', locale: 'es-ES', whatsapp_phone: '+5592981327903' });
+    expect((await br('resumo')).body.preferencias.idioma).toBe('pt-BR');
+    // Conta +34 cadastrada: espanhol, mesmo com locale antigo pt-BR salvo.
+    const es = setup({ country: 'BR', locale: 'pt-BR', whatsapp_phone: '+34637210215' });
+    expect((await es('resumo')).body.preferencias.idioma).toBe('es-ES');
   });
 
   it('formatacao isolada por requisicao e leitura de valores em euro', async () => {

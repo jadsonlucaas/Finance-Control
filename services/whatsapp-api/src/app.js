@@ -43,6 +43,7 @@ export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOw
  * e devolve {status, body}. O servidor (server.js) so faz a ponte com node:http.
  */
 // O assistente (n8n) le daqui o idioma e a moeda para responder ao usuario.
+// Idioma = DDI do telefone cadastrado na conta (mesma regra do Dashboard, localeForPhone).
 function withPreferences(result, prefs) {
   if (!result || typeof result !== 'object' || Array.isArray(result)) return result;
   return { ...result, preferencias: { idioma: prefs.locale, moeda: prefs.currency, fuso: prefs.time_zone } };
@@ -200,7 +201,7 @@ export function createApp({
       if (writeRoutes[name]) rateLimiter.enforce('userWrite', uid);
       await access.assert(uid, { phone: body.telefone });
       // Fuso, idioma e moeda do usuario, escolhidos em Configuracoes no Dashboard.
-      const prefs = await preferences.forUser(uid);
+      const prefs = await preferences.forUser(uid, body.telefone);
       const result = await runWithCurrency(prefs.currency, () => handler(uid, body, prefs));
       status = 200;
       // /despesas e a rota legada com contrato fixo: fica sem o bloco de preferencias.
