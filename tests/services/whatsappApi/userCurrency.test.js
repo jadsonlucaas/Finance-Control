@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApp, whatsappLocaleForPhone } from '../../../services/whatsapp-api/src/app.js';
+import { createApp } from '../../../services/whatsapp-api/src/app.js';
 import { createMemoryStore } from '../../../services/whatsapp-api/src/memoryStore.js';
 import { createPhoneResolver, parsePhoneLinks } from '../../../services/whatsapp-api/src/phoneLinks.js';
 import { formatMoney, parseAmount, runWithCurrency } from '../../../services/whatsapp-api/src/money.js';
@@ -37,12 +37,13 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect(res.body.preferencias).toEqual({ idioma: 'es-ES', moeda: 'BRL', fuso: 'America/Sao_Paulo' });
   });
 
-  it('idioma do WhatsApp vem do DDI, nao da escolha no Dashboard', async () => {
-    const call = setup({ country: 'ES', locale: 'pt-BR' });
-    expect((await call('resumo')).body.preferencias.idioma).toBe('es-ES');
-    expect(whatsappLocaleForPhone('+55 92 98132-7903')).toBe('pt-BR');
-    expect(whatsappLocaleForPhone('+351 912 345 678')).toBe('pt-BR');
-    expect(whatsappLocaleForPhone('')).toBe('pt-BR');
+  it('idioma do WhatsApp vem do DDI do telefone cadastrado na conta, nunca de um idioma salvo', async () => {
+    // Conta com telefone +55 cadastrado: portugues, mesmo conversando de um numero +34 e com locale antigo es-ES.
+    const br = setup({ country: 'ES', locale: 'es-ES', whatsapp_phone: '+5592981327903' });
+    expect((await br('resumo')).body.preferencias.idioma).toBe('pt-BR');
+    // Conta +34 cadastrada: espanhol, mesmo com locale antigo pt-BR salvo.
+    const es = setup({ country: 'BR', locale: 'pt-BR', whatsapp_phone: '+34637210215' });
+    expect((await es('resumo')).body.preferencias.idioma).toBe('es-ES');
   });
 
   it('formatacao isolada por requisicao e leitura de valores em euro', async () => {

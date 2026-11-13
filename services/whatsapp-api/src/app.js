@@ -12,7 +12,6 @@ import { normalizePhone } from './phoneLinks.js';
 import { checkStoreHealth } from './health.js';
 import { createPreferenceResolver } from './preferences.js';
 import { runWithCurrency } from './money.js';
-import { defaultPreferencesForCountry, suggestPreferences } from '../../../src/core/userPreferences.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -43,16 +42,11 @@ export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOw
  * Nucleo HTTP independente de framework: recebe {method, path, headers, body}
  * e devolve {status, body}. O servidor (server.js) so faz a ponte com node:http.
  */
-// Idioma das respostas no WhatsApp: pelo DDI do numero vinculado (+34 espanhol, +55 portugues).
-// O idioma escolhido em Configuracoes vale para o Dashboard.
-export function whatsappLocaleForPhone(phone) {
-  return defaultPreferencesForCountry(suggestPreferences({ phone: String(phone || '') }).country).locale;
-}
-
 // O assistente (n8n) le daqui o idioma e a moeda para responder ao usuario.
-function withPreferences(result, prefs, phone) {
+// Idioma = DDI do telefone cadastrado na conta (mesma regra do Dashboard, localeForPhone).
+function withPreferences(result, prefs) {
   if (!result || typeof result !== 'object' || Array.isArray(result)) return result;
-  return { ...result, preferencias: { idioma: whatsappLocaleForPhone(phone), moeda: prefs.currency, fuso: prefs.time_zone } };
+  return { ...result, preferencias: { idioma: prefs.locale, moeda: prefs.currency, fuso: prefs.time_zone } };
 }
 
 export function createApp({
@@ -207,11 +201,11 @@ export function createApp({
       if (writeRoutes[name]) rateLimiter.enforce('userWrite', uid);
       await access.assert(uid, { phone: body.telefone });
       // Fuso, idioma e moeda do usuario, escolhidos em Configuracoes no Dashboard.
-      const prefs = await preferences.forUser(uid);
+      const prefs = await preferences.forUser(uid, body.telefone);
       const result = await runWithCurrency(prefs.currency, () => handler(uid, body, prefs));
       status = 200;
       // /despesas e a rota legada com contrato fixo: fica sem o bloco de preferencias.
-      return { status, body: name === 'despesas' ? result : withPreferences(result, prefs, body.telefone) };
+      return { status, body: name === 'despesas' ? result : withPreferences(result, prefs) };
     } catch (error) {
       if (error instanceof ApiError) {
         status = error.status;

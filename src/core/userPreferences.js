@@ -33,26 +33,38 @@ export function defaultPreferencesForCountry(country) {
 }
 
 /**
+ * Idioma do sistema inteiro (Dashboard e WhatsApp): sempre pelo DDI do telefone cadastrado.
+ * +34 = espanhol; +55, +351 e qualquer outro = portugues. Aceita o numero com ou sem "+".
+ */
+export function localeForPhone(phone) {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+  const match = [...SIGNUP_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length).find((item) => digits.startsWith(item.dial));
+  return defaultPreferencesForCountry(match?.code || 'BR').locale;
+}
+
+/**
  * Preferencias efetivas do usuario: o que ele escolheu, completado pelos padroes do pais
  * (contas antigas nao tem esses campos). Sem dados de cadastro, vale o padrao do Brasil.
+ * O idioma nao e escolha: vem do telefone cadastrado (whatsapp_phone); sem telefone na conta,
+ * usa fallbackPhone (ex.: o numero da conversa no WhatsApp).
  */
-export function resolveUserPreferences(details) {
+export function resolveUserPreferences(details, { fallbackPhone = '' } = {}) {
   const country = SIGNUP_COUNTRIES.some((item) => item.code === details?.country) ? details.country : 'BR';
   const defaults = defaultPreferencesForCountry(country);
   return {
     country,
-    locale: SUPPORTED_LOCALES.includes(details?.locale) ? details.locale : defaults.locale,
+    locale: localeForPhone(details?.whatsapp_phone || fallbackPhone),
     currency: SUPPORTED_CURRENCIES.includes(details?.currency) ? details.currency : defaults.currency,
     time_zone: SUPPORTED_TIME_ZONES.includes(details?.time_zone) ? details.time_zone : defaults.time_zone
   };
 }
 
-export function validatePreferences({ country = '', locale = '', currency = '', time_zone: timeZone = '' } = {}) {
+// O idioma nao entra: ele segue o telefone cadastrado (localeForPhone).
+export function validatePreferences({ country = '', currency = '', time_zone: timeZone = '' } = {}) {
   if (!SIGNUP_COUNTRIES.some((item) => item.code === country)) return { ok: false, error: 'Escolha o país.' };
-  if (!SUPPORTED_LOCALES.includes(locale)) return { ok: false, error: 'Escolha o idioma.' };
   if (!SUPPORTED_CURRENCIES.includes(currency)) return { ok: false, error: 'Escolha a moeda.' };
   if (!SUPPORTED_TIME_ZONES.includes(timeZone)) return { ok: false, error: 'Escolha o fuso horário.' };
-  return { ok: true, value: { country, locale, currency, time_zone: timeZone } };
+  return { ok: true, value: { country, currency, time_zone: timeZone } };
 }
 
 const COUNTRY_TIME_ZONES = Object.freeze({
@@ -108,7 +120,8 @@ export function suggestPreferences({ country = '', phone = '', languages = [], t
   const defaults = defaultPreferencesForCountry(resolvedCountry);
   return {
     country: resolvedCountry,
-    locale: localeFromLanguages(languages) || defaults.locale,
+    // Com telefone, o idioma segue o DDI (regra unica); sem telefone, o navegador sugere.
+    locale: countryFromPhone(phone) ? localeForPhone(phone) : (localeFromLanguages(languages) || defaults.locale),
     currency: defaults.currency,
     time_zone: SUPPORTED_TIME_ZONES.includes(timeZone) ? timeZone : defaults.time_zone
   };

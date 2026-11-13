@@ -52,14 +52,14 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('preferencias aplicadas no app', () => {
   it('ao entrar, aplica a moeda do usuario e redesenha a aba', async () => {
-    const target = fakeTarget({ getMyDetails: vi.fn(async () => ({ country: 'ES' })) });
+    const target = fakeTarget({ getMyDetails: vi.fn(async () => ({ country: 'ES', whatsapp_phone: '+34637210215' })) });
     installUserPreferencesRuntime(target);
     target.emit('authStateChanged', { uid: 'u1' });
     await flush();
     expect(getDisplayCurrency()).toBe('EUR');
     expect(target.financeApp.userPreferences).toMatchObject({ country: 'ES', currency: 'EUR' });
     expect(target.renderCurrentTab).toHaveBeenCalledTimes(1);
-    // O idioma da conta (es-ES) chega depois do dicionario e redesenha de novo.
+    // O idioma (es-ES, pelo +34 do telefone cadastrado) chega depois do dicionario e redesenha de novo.
     expect(getLocale()).toBe('es-ES');
     await vi.waitFor(() => expect(target.renderCurrentTab).toHaveBeenCalledTimes(2));
   });
