@@ -54,3 +54,75 @@ export function validatePreferences({ country = '', locale = '', currency = '', 
   if (!SUPPORTED_TIME_ZONES.includes(timeZone)) return { ok: false, error: 'Escolha o fuso horário.' };
   return { ok: true, value: { country, locale, currency, time_zone: timeZone } };
 }
+
+const COUNTRY_TIME_ZONES = Object.freeze({
+  BR: SUPPORTED_TIME_ZONES.filter((zone) => zone.startsWith('America/')),
+  ES: Object.freeze(['Europe/Madrid', 'Atlantic/Canary', 'Africa/Ceuta']),
+  PT: Object.freeze(['Europe/Lisbon', 'Atlantic/Azores', 'Atlantic/Madeira'])
+});
+
+function countryFromPhone(phone) {
+  const raw = String(phone ?? '').trim();
+  if (!raw.startsWith('+')) return '';
+  const digits = raw.replace(/\D/g, '');
+  // DDI mais longo primeiro (351 antes de 35...).
+  const match = [...SIGNUP_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length).find((item) => digits.startsWith(item.dial));
+  return match?.code || '';
+}
+
+function countryFromTimeZone(timeZone) {
+  return Object.keys(COUNTRY_TIME_ZONES).find((code) => COUNTRY_TIME_ZONES[code].includes(timeZone)) || '';
+}
+
+function localeFromLanguages(languages = []) {
+  for (const language of languages) {
+    const code = String(language || '').toLowerCase();
+    if (code.startsWith('es')) return 'es-ES';
+    if (code.startsWith('pt')) return 'pt-BR';
+  }
+  return '';
+}
+
+function countryFromLanguages(languages = []) {
+  for (const language of languages) {
+    const code = String(language || '').toLowerCase();
+    if (code.startsWith('es')) return 'ES';
+    if (code === 'pt-pt') return 'PT';
+    if (code.startsWith('pt')) return 'BR';
+  }
+  return '';
+}
+
+/**
+ * Sugestao inicial de pais, idioma, moeda e fuso a partir do navegador e do telefone.
+ * E so sugestao: o que o usuario escolher (ex.: o pais no cadastro) sempre vale mais.
+ *
+ * - country: escolhido > DDI do telefone (+55/+34/+351) > fuso do navegador > idioma > BR
+ * - locale: idioma do navegador (es*, pt*) > padrao do pais
+ * - time_zone: fuso do navegador, se for um dos aceitos > padrao do pais
+ * - currency: padrao do pais
+ */
+export function suggestPreferences({ country = '', phone = '', languages = [], timeZone = '' } = {}) {
+  const chosen = SIGNUP_COUNTRIES.some((item) => item.code === country) ? country : '';
+  const resolvedCountry = chosen || countryFromPhone(phone) || countryFromTimeZone(timeZone) || countryFromLanguages(languages) || 'BR';
+  const defaults = defaultPreferencesForCountry(resolvedCountry);
+  return {
+    country: resolvedCountry,
+    locale: localeFromLanguages(languages) || defaults.locale,
+    currency: defaults.currency,
+    time_zone: SUPPORTED_TIME_ZONES.includes(timeZone) ? timeZone : defaults.time_zone
+  };
+}
+
+/** Le idioma e fuso do navegador sem quebrar onde nao existirem. */
+export function browserLocaleContext(target = globalThis) {
+  let timeZone = '';
+  try {
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    timeZone = '';
+  }
+  const nav = target?.navigator || {};
+  const languages = Array.isArray(nav.languages) && nav.languages.length ? [...nav.languages] : [nav.language].filter(Boolean);
+  return { languages, timeZone };
+}

@@ -1,5 +1,12 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { resolveUserPreferences, SIGNUP_COUNTRIES, validatePreferences } from '../core/userPreferences.js';
+import {
+  resolveUserPreferences,
+  SIGNUP_COUNTRIES,
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_LOCALES,
+  SUPPORTED_TIME_ZONES,
+  validatePreferences
+} from '../core/userPreferences.js';
 
 /**
  * Dados do cadastro usados no checkout e no WhatsApp (user_onboarding/{uid}).
@@ -21,6 +28,8 @@ export {
   SUPPORTED_CURRENCIES,
   SUPPORTED_LOCALES,
   SUPPORTED_TIME_ZONES,
+  suggestPreferences,
+  browserLocaleContext,
   validatePreferences
 } from '../core/userPreferences.js';
 
@@ -43,6 +52,15 @@ export function validateSignupDetails({ name = '', country = '', phone = '', con
   return { ok: true, value: { name: cleanName, country, whatsapp_phone: whatsappPhone, whatsapp_consent: Boolean(consent) } };
 }
 
+// Idioma/moeda/fuso sugeridos no cadastro: so entram os valores aceitos pelas regras.
+function optionalPreferences(details = {}) {
+  const out = {};
+  if (SUPPORTED_LOCALES.includes(details?.locale)) out.locale = details.locale;
+  if (SUPPORTED_CURRENCIES.includes(details?.currency)) out.currency = details.currency;
+  if (SUPPORTED_TIME_ZONES.includes(details?.time_zone)) out.time_zone = details.time_zone;
+  return out;
+}
+
 export function createAccountOnboardingService(db, { now = () => new Date().toISOString() } = {}) {
   async function saveSignupDetails(uid, details) {
     if (!uid) throw new Error('ONBOARDING_UID_REQUIRED');
@@ -55,7 +73,7 @@ export function createAccountOnboardingService(db, { now = () => new Date().toIS
     });
     if (!checked.ok) throw new Error(checked.error);
     const timestamp = now();
-    const data = { uid, ...checked.value, updated_at: timestamp };
+    const data = { uid, ...checked.value, ...optionalPreferences(details), updated_at: timestamp };
     if (checked.value.whatsapp_consent) data.consent_at = timestamp;
     await setDoc(doc(db, COLLECTION, uid), data, { merge: true });
     return data;

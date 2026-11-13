@@ -7,6 +7,7 @@ import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
 import { createWhatsAppAccessService } from './whatsappAccess.js';
 import { installUserPreferencesRuntime } from './userPreferencesRuntime.js';
+import { browserLocaleContext, suggestPreferences } from '../core/userPreferences.js';
 import { createAccountOnboardingService, PLAN_CHOICE_STORAGE_KEY, validateSignupDetails } from './accountOnboarding.js';
 import { createBillingCheckoutService } from './billingCheckout.js';
 import { createProfileAccessService } from './profileAccess.js';
@@ -84,7 +85,10 @@ export function installFirebaseServices({ target = window, config } = {}) {
         }
         if (details && credential?.user?.uid) {
           try {
-            await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, details);
+            // Idioma e fuso sugeridos pelo navegador (o pais e o que a pessoa escolheu).
+            // Ela pode trocar tudo depois em Configuracoes.
+            const suggested = suggestPreferences({ ...browserLocaleContext(target), country: details.country, phone: details.whatsapp_phone });
+            await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, { ...suggested, ...details });
           } catch (error) {
             captureError(error, { operation: 'auth.sign_up.onboarding_details' });
           }

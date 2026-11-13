@@ -24,4 +24,14 @@ describe('cadastro grava pais e WhatsApp', () => {
     expect(saved).toMatchObject({ whatsapp_phone: '+34637210215', whatsapp_consent: false });
     expect(saved.consent_at).toBeUndefined();
   });
+
+  it('grava idioma/moeda/fuso sugeridos no cadastro e ignora valores fora da lista', async () => {
+    const service = createAccountOnboardingService({});
+    const checked = validateSignupDetails({ name: 'Ana', country: 'BR', phone: '92 98132-7903', consent: true });
+    const saved = await service.saveSignupDetails('uid-3', { locale: 'pt-BR', currency: 'BRL', time_zone: 'America/Manaus', ...checked.value });
+    expect(saved).toMatchObject({ country: 'BR', locale: 'pt-BR', currency: 'BRL', time_zone: 'America/Manaus' });
+    const ignored = await service.saveSignupDetails('uid-4', { ...checked.value, locale: 'en-US', time_zone: 'UTC' });
+    expect(ignored).not.toHaveProperty('locale');
+    expect(ignored).not.toHaveProperty('time_zone');
+  });
 });
