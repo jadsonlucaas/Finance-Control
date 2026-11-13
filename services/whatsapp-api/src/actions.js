@@ -3,7 +3,7 @@ import { validateFinanceRecord, FINANCE_RECORD_SCHEMA_VERSION } from '../../../s
 import { summarizeFinanceRecord } from '../../../src/domain/audit/financeRecordAudit.js';
 import { ApiError, badRequest } from './errors.js';
 import { DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
-import { formatBRL, parseAmount } from './money.js';
+import { formatMoney, parseAmount } from './money.js';
 import { toPublicRecord } from './queries.js';
 import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory, resolvePaymentMethod } from './references.js';
 
@@ -253,7 +253,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
         pending.patch = buildEditPatch(record, dados.alteracoes, today, lookups);
         const changes = Object.entries(pending.patch)
           .filter(([field]) => field !== 'paid_at' && field !== 'liquido')
-          .map(([field, value]) => `${field}: ${field === 'amount' ? formatBRL(value) : value || '(vazio)'}`);
+          .map(([field, value]) => `${field}: ${field === 'amount' ? formatMoney(value) : value || '(vazio)'}`);
         resumo = `Editar ${describe(record)} -> ${changes.join(', ')}.`;
       } else {
         pending.patch = { archived: true, archived_at: nowIso };

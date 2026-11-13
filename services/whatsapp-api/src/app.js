@@ -11,6 +11,7 @@ import { createInboundMessageService } from './inboundMessages.js';
 import { normalizePhone } from './phoneLinks.js';
 import { checkStoreHealth } from './health.js';
 import { createPreferenceResolver } from './preferences.js';
+import { runWithCurrency } from './money.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -41,6 +42,12 @@ export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOw
  * Nucleo HTTP independente de framework: recebe {method, path, headers, body}
  * e devolve {status, body}. O servidor (server.js) so faz a ponte com node:http.
  */
+// O assistente (n8n) le daqui o idioma e a moeda para responder ao usuario.
+function withPreferences(result, prefs) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return result;
+  return { ...result, preferencias: { idioma: prefs.locale, moeda: prefs.currency, fuso: prefs.time_zone } };
+}
+
 export function createApp({
   store,
   resolver,
@@ -192,11 +199,12 @@ export function createApp({
       rateLimiter.enforce('user', uid);
       if (writeRoutes[name]) rateLimiter.enforce('userWrite', uid);
       await access.assert(uid, { phone: body.telefone });
-      // Fuso (e depois idioma/moeda) do usuario, escolhido em Configuracoes no Dashboard.
+      // Fuso, idioma e moeda do usuario, escolhidos em Configuracoes no Dashboard.
       const prefs = await preferences.forUser(uid);
-      const result = await handler(uid, body, prefs);
+      const result = await runWithCurrency(prefs.currency, () => handler(uid, body, prefs));
       status = 200;
-      return { status, body: result };
+      // /despesas e a rota legada com contrato fixo: fica sem o bloco de preferencias.
+      return { status, body: name === 'despesas' ? result : withPreferences(result, prefs) };
     } catch (error) {
       if (error instanceof ApiError) {
         status = error.status;

@@ -2,7 +2,7 @@ import { getRecordCompetence } from '../../../src/application/selectors/dashboar
 import { getConsolidatedEntryAmount } from '../../../src/application/selectors/financialSelectors.js';
 import { badRequest } from './errors.js';
 import { addDays, currentCompetence, DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
-import { formatBRL, roundCurrency } from './money.js';
+import { formatMoney, roundCurrency } from './money.js';
 
 export const EXPENSE_OPEN_STATUSES = Object.freeze(['Em aberto', 'Vencido', '']);
 export const MAX_LIST_LIMIT = 50;
@@ -99,7 +99,7 @@ export function toPublicRecord(record) {
     tipo: record.type === 'entrada' ? 'receita' : 'despesa',
     descricao: record.description || record.purchase_name || record.category_name || '',
     valor: recordAmount(record),
-    valor_formatado: formatBRL(recordAmount(record)),
+    valor_formatado: formatMoney(recordAmount(record)),
     status: record.status || '',
     categoria: record.category_name || record.subcategory || '',
     macro_categoria: record.macro_category || '',
@@ -181,7 +181,7 @@ function summarizeRecords(monthRecords) {
 }
 
 function formatValues(values) {
-  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, formatBRL(value)]));
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, formatMoney(value)]));
 }
 
 const RESUMO_RULES = Object.freeze({
@@ -209,9 +209,9 @@ export function buildResumo(records, competenceOrPeriod) {
       total_receitas: month.total_receitas,
       saldo_previsto: month.saldo_previsto,
       formatado: {
-        total_despesas: formatBRL(month.total_despesas),
-        total_receitas: formatBRL(month.total_receitas),
-        saldo_previsto: formatBRL(month.saldo_previsto)
+        total_despesas: formatMoney(month.total_despesas),
+        total_receitas: formatMoney(month.total_receitas),
+        saldo_previsto: formatMoney(month.saldo_previsto)
       }
     };
   });
@@ -296,7 +296,7 @@ export function buildLancamentos(records, filters) {
     quantidade_encontrada: list.length,
     quantidade_retornada: items.length,
     valor_total: total,
-    valor_total_formatado: formatBRL(total),
+    valor_total_formatado: formatMoney(total),
     truncado: list.length > items.length,
     lancamentos: items
   };
@@ -325,10 +325,10 @@ export function buildCategorias(records, competenceOrPeriod) {
     .sort((a, b) => b.total - a.total)
     .map((group) => ({
       ...group,
-      total_formatado: formatBRL(group.total),
+      total_formatado: formatMoney(group.total),
       percentual: total > 0 ? Math.round((group.total / total) * 1000) / 10 : 0
     }));
-  const base = { total_despesas: total, total_despesas_formatado: formatBRL(total), categorias };
+  const base = { total_despesas: total, total_despesas_formatado: formatMoney(total), categorias };
   return isPeriod(period) ? { periodo: periodInfo(period), ...base } : { competencia: period.inicio, ...base };
 }
 
@@ -350,7 +350,7 @@ export function buildVencimentos(records, body = {}, now, timeZone = DEFAULT_TIM
   return {
     hoje: today,
     ate: limitDate,
-    atrasadas: { quantidade: atrasadas.length, total: sum(atrasadas, expenseAmount), total_formatado: formatBRL(sum(atrasadas, expenseAmount)), itens: map(atrasadas).slice(0, MAX_LIST_LIMIT) },
-    a_vencer: { quantidade: aVencer.length, total: sum(aVencer, expenseAmount), total_formatado: formatBRL(sum(aVencer, expenseAmount)), itens: map(aVencer).slice(0, MAX_LIST_LIMIT) }
+    atrasadas: { quantidade: atrasadas.length, total: sum(atrasadas, expenseAmount), total_formatado: formatMoney(sum(atrasadas, expenseAmount)), itens: map(atrasadas).slice(0, MAX_LIST_LIMIT) },
+    a_vencer: { quantidade: aVencer.length, total: sum(aVencer, expenseAmount), total_formatado: formatMoney(sum(aVencer, expenseAmount)), itens: map(aVencer).slice(0, MAX_LIST_LIMIT) }
   };
 }
