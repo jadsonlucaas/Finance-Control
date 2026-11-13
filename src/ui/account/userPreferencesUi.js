@@ -16,7 +16,9 @@ import {
   SUPPORTED_TIME_ZONES
 } from '../../services/accountOnboarding.js';
 
-export const PREFERENCES_CHANGED_EVENT = 'financeUserPreferencesChanged';
+import { PREFERENCES_CHANGED_EVENT } from '../../services/userPreferencesRuntime.js';
+
+export { PREFERENCES_CHANGED_EVENT };
 
 const BUTTON = 'text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
 

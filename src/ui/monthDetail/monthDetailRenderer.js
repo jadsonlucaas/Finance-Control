@@ -242,12 +242,12 @@ export function renderMonthlyDetailTab(renderToken = ++monthlyDetailRenderToken,
       </div>
       <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
         <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Maior saida paga</p>
-        <p class="mt-2 text-base font-bold text-danger">${topExpense ? fmt(topExpense.amount, target) : 'R$ 0,00'}</p>
+        <p class="mt-2 text-base font-bold text-danger">${topExpense ? fmt(topExpense.amount, target) : fmt(0, target)}</p>
         <p class="mt-1 text-xs text-textSecondary">${topExpense ? escapeHtml(topExpense.description || topExpense.subcategory || topExpense.macro_category || 'Sem descricao') : 'Sem saidas pagas no mes.'}</p>
       </div>
       <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
         <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Maior entrada</p>
-        <p class="mt-2 text-base font-bold text-success">${topEntry ? fmt(entryValue, target) : 'R$ 0,00'}</p>
+        <p class="mt-2 text-base font-bold text-success">${topEntry ? fmt(entryValue, target) : fmt(0, target)}</p>
         <p class="mt-1 text-xs text-textSecondary">${escapeHtml(entryLabel)}</p>
       </div>
     `;
