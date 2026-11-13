@@ -13,11 +13,11 @@ const MAX_ENTRIES = 1000;
 export function createPreferenceResolver({ store, ttlMs = DEFAULT_PREFERENCES_TTL_MS, nowMs = () => Date.now(), logger = console } = {}) {
   const entries = new Map();
 
-  // fallbackPhone (numero da conversa) so define o idioma se a conta nao tiver telefone cadastrado.
-  async function load(uid, fallbackPhone) {
-    if (!uid || typeof store?.getOnboarding !== 'function') return resolveUserPreferences(null, { fallbackPhone });
+  // linkedPhone = numero da conversa, ja resolvido em whatsapp_links: e o numero vinculado e define o idioma.
+  async function load(uid, linkedPhone) {
+    if (!uid || typeof store?.getOnboarding !== 'function') return resolveUserPreferences(null, { linkedPhone });
     try {
-      return resolveUserPreferences(await store.getOnboarding(uid), { fallbackPhone });
+      return resolveUserPreferences(await store.getOnboarding(uid), { linkedPhone });
     } catch {
       logger.warn?.(JSON.stringify({ level: 'warn', event: 'user_preferences_read_failed' }));
       return null;
@@ -25,15 +25,16 @@ export function createPreferenceResolver({ store, ttlMs = DEFAULT_PREFERENCES_TT
   }
 
   return {
-    async forUser(uid, fallbackPhone = '') {
+    async forUser(uid, linkedPhone = '') {
       const current = nowMs();
-      const hit = entries.get(uid);
+      const key = `${uid}|${linkedPhone}`;
+      const hit = entries.get(key);
       if (hit && hit.expiresAt > current) return hit.value;
-      const value = await load(uid, fallbackPhone);
+      const value = await load(uid, linkedPhone);
       // Falha de leitura: usa o padrao agora, sem guardar no cache.
-      if (!value) return resolveUserPreferences(null, { fallbackPhone });
+      if (!value) return resolveUserPreferences(null, { linkedPhone });
       if (entries.size >= MAX_ENTRIES) entries.clear();
-      entries.set(uid, { value, expiresAt: current + ttlMs });
+      entries.set(key, { value, expiresAt: current + ttlMs });
       return value;
     }
   };

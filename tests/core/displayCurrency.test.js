@@ -51,6 +51,25 @@ function fakeTarget(service) {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('preferencias aplicadas no app', () => {
+  it('idioma segue o numero vinculado, mesmo com outro telefone no cadastro', async () => {
+    const target = fakeTarget({ getMyDetails: vi.fn(async () => ({ country: 'ES', whatsapp_phone: '+5592981327903' })) });
+    target.whatsappLinkSdk = { getStatus: vi.fn(async () => ({ linked: true, phoneId: '+34637210215' })) };
+    installUserPreferencesRuntime(target);
+    target.emit('authStateChanged', { uid: 'u1' });
+    await flush();
+    expect(target.financeApp.userPreferences).toMatchObject({ locale: 'es-ES' });
+    expect(target.whatsappLinkSdk.getStatus).toHaveBeenCalledWith('u1');
+  });
+
+  it('falha ao ler o vinculo usa o telefone do cadastro', async () => {
+    const target = fakeTarget({ getMyDetails: vi.fn(async () => ({ country: 'BR', whatsapp_phone: '+34637210215' })) });
+    target.whatsappLinkSdk = { getStatus: vi.fn(async () => { throw new Error('x'); }) };
+    installUserPreferencesRuntime(target);
+    target.emit('authStateChanged', { uid: 'u1' });
+    await flush();
+    expect(target.financeApp.userPreferences).toMatchObject({ locale: 'es-ES' });
+  });
+
   it('ao entrar, aplica a moeda do usuario e redesenha a aba', async () => {
     const target = fakeTarget({ getMyDetails: vi.fn(async () => ({ country: 'ES', whatsapp_phone: '+34637210215' })) });
     installUserPreferencesRuntime(target);

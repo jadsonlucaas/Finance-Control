@@ -14,6 +14,21 @@ import { rememberLocale } from '../ui/i18n/installLocale.js';
 
 export const PREFERENCES_CHANGED_EVENT = 'financeUserPreferencesChanged';
 
+/**
+ * Le o cadastro e o numero de WhatsApp vinculado e resolve as preferencias.
+ * O idioma segue o numero vinculado (ou o do cadastro). Falha ao ler o vinculo nao bloqueia.
+ */
+export async function loadAccountPreferences(target, uid, service = target?.accountOnboardingSdk) {
+  const [details, linkedPhone] = await Promise.all([
+    service.getMyDetails(uid),
+    Promise.resolve()
+      .then(() => target?.whatsappLinkSdk?.getStatus?.(uid))
+      .then((status) => (status?.linked ? status.phoneId || '' : ''))
+      .catch(() => '')
+  ]);
+  return { details, preferences: resolveUserPreferences(details, { linkedPhone }) };
+}
+
 export function installUserPreferencesRuntime(target = globalThis, options = {}) {
   if (!target?.addEventListener) return null;
   if (target.financeApp?.userPreferencesRuntime?.installed) return target.financeApp.userPreferencesRuntime;
@@ -46,8 +61,8 @@ export function installUserPreferencesRuntime(target = globalThis, options = {})
       return;
     }
     try {
-      const details = await service().getMyDetails(uid);
-      if (token === loadToken) apply({ ...resolveUserPreferences(details), fromAccount: Boolean(details) });
+      const { details, preferences } = await loadAccountPreferences(target, uid, service());
+      if (token === loadToken) apply({ ...preferences, fromAccount: Boolean(details) });
     } catch (error) {
       target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'user_preferences.runtime_load' });
     }

@@ -55,6 +55,9 @@ describe('perfil: idioma, moeda, pais e fuso', () => {
     // Sem telefone na conta, usa o numero alternativo (ex.: o da conversa no WhatsApp).
     expect(resolveUserPreferences(null, { fallbackPhone: '+34637210215' }).locale).toBe('es-ES');
     expect(resolveUserPreferences({ whatsapp_phone: '+5511999998888' }, { fallbackPhone: '+34637210215' }).locale).toBe('pt-BR');
+    // O numero de WhatsApp vinculado vale mais que o telefone do cadastro.
+    expect(resolveUserPreferences({ whatsapp_phone: '+5511999998888' }, { linkedPhone: '+34637210215' }).locale).toBe('es-ES');
+    expect(resolveUserPreferences({ whatsapp_phone: '+34637210215' }, { linkedPhone: '5592981327903' }).locale).toBe('pt-BR');
   });
 
   it('valida cada campo da preferencia (idioma nao e campo)', () => {

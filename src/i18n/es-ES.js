@@ -77,13 +77,13 @@ const messages = {
 
   // --- Configuracoes: idioma, moeda e regiao ---
   'Idioma, moeda e região': 'Idioma, moneda y región',
-  'Cada opção é independente. A moeda muda só a forma de mostrar os valores; nada é convertido.': 'Cada opción es independiente. La moneda solo cambia cómo se muestran los importes; no se convierte nada.',
+  'A moeda muda só a forma de mostrar os valores; nada é convertido.': 'La moneda solo cambia cómo se muestran los importes; no se convierte nada.',
   'Idioma': 'Idioma',
   'Moeda': 'Moneda',
   'Fuso horário': 'Zona horaria',
   'Real (R$)': 'Real (R$)',
   'Euro (€)': 'Euro (€)',
-  'O país também define a moeda da assinatura Premium.': 'El país también define la moneda de la suscripción Premium.',
+  'O idioma segue o número de WhatsApp vinculado (ou o do cadastro): +34 usa espanhol; os demais, português. O país também define a moeda da assinatura Premium.': 'El idioma sigue el número de WhatsApp vinculado (o el del registro): +34 usa español; los demás, portugués. El país también define la moneda de la suscripción Premium.',
   'Salvar': 'Guardar',
   'Salvando...': 'Guardando...',
   'Preferências salvas.': 'Preferencias guardadas.',
