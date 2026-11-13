@@ -25,6 +25,10 @@ export function priceLabel(country) {
   return `${PLAN_PRICES.BR} no Brasil ou ${PLAN_PRICES.EUR} na Europa`;
 }
 
+export function freePriceLabel(country) {
+  return country === 'ES' || country === 'PT' ? '0 €' : 'R$ 0';
+}
+
 export function hasCheckoutDetails(details) {
   return Boolean(details?.country && details?.whatsapp_phone);
 }
@@ -111,7 +115,7 @@ export function renderPlanChooser(state = {}) {
       <div class="grid gap-3 mt-4 sm:grid-cols-2">
         <div class="rounded-xl border border-surfaceLight p-4 flex flex-col" data-plan="free">
           <h3 class="font-semibold text-textPrimary">Gratuito</h3>
-          <p class="text-xl font-bold text-textPrimary mt-1">R$ 0</p>
+          <p class="text-xl font-bold text-textPrimary mt-1">${freePriceLabel(state.details?.country)}</p>
           <ul class="text-xs text-textSecondary mt-2 space-y-1 flex-1">
             <li>Lançar entradas e saídas</li>
             <li>Ver o dashboard</li>

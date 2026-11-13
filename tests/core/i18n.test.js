@@ -2,32 +2,32 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { getLocale, onLocaleChange, setLocale, translateText } from '../../src/core/i18n.js';
 import { ES_ES } from '../../src/i18n/es-ES.js';
 
-afterEach(() => setLocale('pt-BR'));
+afterEach(async () => { await setLocale('pt-BR'); });
 
 describe('idioma da interface', () => {
-  it('pt-BR e o padrao e nao traduz nada', () => {
+  it('pt-BR e o padrao e nao traduz nada', async () => {
     expect(getLocale()).toBe('pt-BR');
     expect(translateText('Criar conta')).toBe('Criar conta');
   });
 
-  it('es-ES traduz frases conhecidas, mantem espacos e deixa o resto como esta', () => {
-    setLocale('es-ES');
+  it('es-ES traduz frases conhecidas, mantem espacos e deixa o resto como esta', async () => {
+    await setLocale('es-ES');
     expect(translateText('Criar conta')).toBe('Crear cuenta');
     expect(translateText('\n   Voltar para o login  ')).toBe('\n   Volver al inicio de sesión  ');
     expect(translateText('Mercado do mês')).toBe('Mercado do mês');
     expect(translateText('   ')).toBe('   ');
   });
 
-  it('idioma desconhecido volta para pt-BR e avisa quem esta ouvindo', () => {
+  it('idioma desconhecido volta para pt-BR e avisa quem esta ouvindo', async () => {
     const seen = [];
     const off = onLocaleChange((locale) => seen.push(locale));
-    setLocale('es-ES');
-    setLocale('en-US');
+    await setLocale('es-ES');
+    await setLocale('en-US');
     off();
     expect(seen).toEqual(['es-ES', 'pt-BR']);
   });
 
-  it('nenhuma traducao vazia e nenhuma traducao que tambem seja chave (evita traduzir duas vezes)', () => {
+  it('nenhuma traducao vazia e nenhuma traducao que tambem seja chave (evita traduzir duas vezes)', async () => {
     const keys = new Set(Object.keys(ES_ES.messages));
     for (const [source, translated] of Object.entries(ES_ES.messages)) {
       expect(translated.trim(), source).not.toBe('');
@@ -35,8 +35,8 @@ describe('idioma da interface', () => {
     }
   });
 
-  it('ignora quebras de linha do HTML e traduz frases com mes e numeros', () => {
-    setLocale('es-ES');
+  it('ignora quebras de linha do HTML e traduz frases com mes e numeros', async () => {
+    await setLocale('es-ES');
     expect(translateText('Conta / Meio de\n        Pagamento')).toBe('Cuenta / medio de pago');
     expect(translateText('De fev/2026')).toBe('Desde feb/2026');
     expect(translateText('Até dez/2026')).toBe('Hasta dic/2026');
@@ -44,5 +44,14 @@ describe('idioma da interface', () => {
     expect(translateText('Gastos Diários (set/2026)')).toBe('Gastos diarios (sep/2026)');
     expect(translateText('3 dia(s) com movimento')).toBe('3 día(s) con movimientos');
     expect(translateText('De acordo')).toBe('De acordo');
+  });
+
+  it('traduz avisos de plano e WhatsApp com partes variaveis', async () => {
+    await setLocale('es-ES');
+    expect(translateText('O controle de parcelamentos é do Premium')).toBe('El control de compras a plazos es parte de Premium');
+    expect(translateText(' Cancelado: vale até 07/12/2026.')).toBe(' Cancelada: válida hasta el 07/12/2026.');
+    expect(translateText('Válido até 14:30. Só funciona uma vez e só para esta conta. Não compartilhe.'))
+      .toBe('Válido hasta las 14:30. Solo funciona una vez y solo para esta cuenta. No lo compartas.');
+    expect(translateText('Saída salva!')).toBe('¡Gasto guardado!');
   });
 });

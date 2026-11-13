@@ -4,9 +4,11 @@
  * Frases com numeros ou nomes no meio vao em `patterns`.
  */
 import { SCREEN_MESSAGES, SCREEN_PATTERNS } from './es-ES-screens.js';
+import { MESSAGE_MESSAGES, MESSAGE_PATTERNS } from './es-ES-messages.js';
 
 const messages = {
   ...SCREEN_MESSAGES,
+  ...MESSAGE_MESSAGES,
   // --- Login e cadastro ---
   'Acesso Seguro': 'Acceso seguro',
   'Entrar': 'Iniciar sesión',
@@ -95,6 +97,6 @@ const messages = {
   'Açores': 'Azores'
 };
 
-const patterns = [...SCREEN_PATTERNS];
+const patterns = [...SCREEN_PATTERNS, ...MESSAGE_PATTERNS];
 
 export const ES_ES = Object.freeze({ messages: Object.freeze(messages), patterns: Object.freeze(patterns) });

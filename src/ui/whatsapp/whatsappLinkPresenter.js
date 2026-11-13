@@ -68,12 +68,13 @@ function accessLine(access, billing = {}, state = {}) {
   if (access.source === 'comp') return '<p class="text-xs text-success mb-2" data-whatsapp-access="comp">Acesso cortesia liberado.</p>';
   if (access.allowed) {
     const pastDue = access.status === 'past_due';
-    const ending = access.cancelAtPeriodEnd && access.periodEnd ? ` Cancelado: vale até ${escapeHtml(formatDate(access.periodEnd))}.` : '';
-    const hint = pastDue ? ' Não conseguimos cobrar o cartão. Atualize a forma de pagamento para não perder o Premium.' : '';
+    // Cada frase em um <span> proprio: o tradutor da tela troca frase inteira.
+    const ending = access.cancelAtPeriodEnd && access.periodEnd ? `<span> Cancelado: vale até ${escapeHtml(formatDate(access.periodEnd))}.</span>` : '';
+    const hint = pastDue ? '<span> Não conseguimos cobrar o cartão. Atualize a forma de pagamento para não perder o Premium.</span>' : '';
     const principal = access.principalPhone ? `<p class="text-xs text-textSecondary">Número principal: <strong>${escapeHtml(access.principalPhone)}</strong></p>` : '';
     const manage = manageButton(access, billing, state, { pastDue });
     return `<div class="mb-2" data-whatsapp-access="${pastDue ? 'past_due' : 'stripe'}">
-        <p class="text-xs ${pastDue ? 'text-warn' : 'text-success'}"${pastDue ? ' role="status"' : ''}>${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.${ending}${hint}</p>
+        <p class="text-xs ${pastDue ? 'text-warn' : 'text-success'}"${pastDue ? ' role="status"' : ''}><span>${escapeHtml(SUBSCRIPTION_LABELS[access.status] || 'Premium ativo')}.</span>${ending}${hint}</p>
         ${principal}
         ${manage ? `<div class="mt-2">${manage}</div>` : ''}
         ${billingError(state)}
