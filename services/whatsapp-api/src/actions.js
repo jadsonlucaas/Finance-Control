@@ -4,6 +4,7 @@ import { summarizeFinanceRecord } from '../../../src/domain/audit/financeRecordA
 import { ApiError, badRequest } from './errors.js';
 import { DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
 import { formatMoney, parseAmount } from './money.js';
+import { registrationConfirmation } from './confirmationText.js';
 import { toPublicRecord } from './queries.js';
 import { autoExpenseCategory, autoPaymentMethod, buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory } from './references.js';
 
@@ -278,7 +279,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
       expira_em: pending.expires_at,
       // Cadastro e automatico (o usuario corrige depois, se quiser); pagar/editar/excluir pedem "sim".
       instrucao: acao.startsWith('registrar_')
-        ? 'Cadastro automatico: chame confirmar agora, sem perguntar ao usuario, e depois informe o que foi registrado.'
+        ? 'Cadastro automatico: chame confirmar agora, sem perguntar ao usuario, e responda exatamente com o campo resposta_usuario do confirmar.'
         : 'Mostre o resumo ao usuario e so chame confirmar apos um "sim" explicito.'
     };
   }
@@ -298,7 +299,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     return pending;
   }
 
-  async function confirm(uid, body = {}) {
+  async function confirm(uid, body = {}, prefs = {}) {
     const pending = await loadPending(uid, body);
     if (pending.status === 'executed') return { status: 'ja_executado', replay: true, ...pending.result };
     if (pending.status === 'cancelled') throw new ApiError(409, 'PENDING_ACTION_CANCELLED', 'Esta acao foi cancelada.');
@@ -377,11 +378,14 @@ export function createActionService({ store, now = () => new Date(), newId = () 
       throw error;
     }
 
+    const lancamento = toPublicRecord(after);
     const result = {
       acao: pending.acao,
-      lancamento: toPublicRecord(after),
+      lancamento,
       mensagem: pending.acao === 'excluir' ? 'Lancamento arquivado.' : 'Acao concluida.'
     };
+    // Cadastro automatico: frase pronta no idioma do numero; o agente so repassa.
+    if (pending.record) result.resposta_usuario = registrationConfirmation(lancamento, prefs.locale);
     await store.completeReceipt(uid, receiptId, {
       status: 'completed',
       completed_at: now().toISOString(),

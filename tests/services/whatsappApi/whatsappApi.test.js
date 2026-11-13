@@ -193,6 +193,7 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const confirmed = await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id });
     expect(confirmed.status).toBe(200);
     expect(confirmed.body.status).toBe('executado');
+    expect(confirmed.body.resposta_usuario).toBe('Apuntado: R$ 1.234,56 en Farmacia (Cuidado personal). Pago: Cartão Nubank. Vence el 20/11/2026.');
     const created = store._dump(UID).records.find((record) => record.description === 'Farmacia');
     expect(created).toMatchObject({
       type: 'saida', amount: 1234.56, status: 'Em aberto', competence: '2026-11', due_date: '2026-11-20',
