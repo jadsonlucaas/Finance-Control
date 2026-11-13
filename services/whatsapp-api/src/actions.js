@@ -5,7 +5,7 @@ import { ApiError, badRequest } from './errors.js';
 import { DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
 import { formatMoney, parseAmount } from './money.js';
 import { toPublicRecord } from './queries.js';
-import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory, resolvePaymentMethod } from './references.js';
+import { autoExpenseCategory, autoPaymentMethod, buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory } from './references.js';
 
 export const PENDING_ACTION_TTL_MS = 10 * 60 * 1000;
 // Uma confirmacao parada em processing por mais que isso (queda do processo) pode ser retomada.
@@ -90,8 +90,9 @@ function buildNewRecord(action, dados, today, nowIso, lookups = null) {
   let macroCategory = cleanText(dados.macro_categoria, 'macro_categoria') || undefined;
   let paymentMethod = type === 'saida' ? (cleanText(dados.forma_pagamento, 'forma_pagamento') || undefined) : undefined;
   if (type === 'saida' && lookups) {
-    ({ category_name: categoryName, macro_category: macroCategory } = resolveExpenseCategory(lookups.catalog, categoryName, macroCategory));
-    paymentMethod = resolvePaymentMethod(lookups.paymentMethods, paymentMethod);
+    // Cadastro automatico: categoria, macro e pagamento deduzidos, sem perguntas ao usuario.
+    ({ category_name: categoryName, macro_category: macroCategory } = autoExpenseCategory(lookups.catalog, { descricao, categoria: categoryName, macro: macroCategory }));
+    paymentMethod = autoPaymentMethod(lookups.paymentMethods, { descricao, forma_pagamento: paymentMethod });
   }
 
   const record = stripUndefined({
@@ -275,7 +276,10 @@ export function createActionService({ store, now = () => new Date(), newId = () 
       acao,
       resumo,
       expira_em: pending.expires_at,
-      instrucao: 'Mostre o resumo ao usuario e so chame confirmar apos um "sim" explicito.'
+      // Cadastro e automatico (o usuario corrige depois, se quiser); pagar/editar/excluir pedem "sim".
+      instrucao: acao.startsWith('registrar_')
+        ? 'Cadastro automatico: chame confirmar agora, sem perguntar ao usuario, e depois informe o que foi registrado.'
+        : 'Mostre o resumo ao usuario e so chame confirmar apos um "sim" explicito.'
     };
   }
 

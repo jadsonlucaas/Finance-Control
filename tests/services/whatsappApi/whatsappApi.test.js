@@ -310,56 +310,51 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     expect((await call('acoes/confirmar', {})).status).toBe(404);
   });
 
-  it('guia o cadastro de despesa: macro, categoria e forma de pagamento com opcoes clicaveis', async () => {
+  it('cadastro automatico: deduz categoria, macro e pagamento sem perguntar', async () => {
     const { call } = setup();
     const prep = (dados) => call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, ...dados } });
 
+    // Sem nada: categoria pela descricao (almoco = Alimentacao) e pagamento mais usado.
     const semNada = await prep({});
-    expect(semNada.status).toBe(400);
-    expect(semNada.body.erro.codigo).toBe('MACRO_REQUIRED');
-    expect(semNada.body.erro.detalhes.opcoes.slice(0, 3)).toEqual(['FIXO', 'VARIAVEL', 'RESERVA']);
-    expect(semNada.body.erro.mensagem).toContain('[opcoes: FIXO | VARIAVEL | RESERVA');
+    expect(semNada.status).toBe(200);
+    expect(semNada.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
+    expect(semNada.body.resumo).toContain('pagamento Cartão Nubank');
+    expect(semNada.body.instrucao).toContain('confirmar agora');
 
-    const soMacro = await prep({ macro_categoria: 'variavel' });
-    expect(soMacro.body.erro.codigo).toBe('CATEGORY_REQUIRED');
-    expect(soMacro.body.erro.detalhes.opcoes).toContain('Lazer');
-    expect(soMacro.body.erro.detalhes.opcoes).not.toContain('Transporte');
+    // Espanhol, sem pista conhecida: "Outros".
+    const desconhecido = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Regalo', valor: 5 } });
+    expect(desconhecido.body.resumo).toContain('categoria Outros (VARIAVEL)');
 
-    const inexistente = await prep({ categoria: 'Inexistente' });
-    expect(inexistente.body.erro.codigo).toBe('CATEGORY_NOT_FOUND');
-    expect(inexistente.body.erro.detalhes.opcoes.slice(0, 3)).toEqual(['FIXO', 'VARIAVEL', 'RESERVA']);
+    const cafe = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Café', valor: 12.5 } });
+    expect(cafe.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
+    const guardado = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Resguardado', valor: 12.5 } });
+    expect(guardado.body.resumo).toContain('categoria Reserva de emergência (RESERVA)');
 
-    const errada = await prep({ categoria: 'Lazer', macro_categoria: 'FIXO' });
-    expect(errada.body.erro.codigo).toBe('CATEGORY_MACRO_MISMATCH');
-    expect(errada.body.erro.detalhes.opcoes).toContain('Transporte');
+    // So a macro: categoria dentro dela.
+    const soMacro = await prep({ macro_categoria: 'fixo', descricao: 'Uber' });
+    expect(soMacro.body.resumo).toContain('categoria Transporte (FIXO)');
 
-    const semPagamento = await prep({ categoria: 'lazer' });
-    expect(semPagamento.body.erro.codigo).toBe('PAYMENT_REQUIRED');
-    expect(semPagamento.body.erro.detalhes.opcoes).toEqual(['Cartão Nubank', 'Outra']);
+    // Categoria inexistente ou macro errada: decide sozinho em vez de perguntar.
+    expect((await prep({ categoria: 'Inexistente' })).body.resumo).toContain('categoria Alimentação (VARIAVEL)');
+    expect((await prep({ categoria: 'Lazer', macro_categoria: 'FIXO', descricao: 'Cinema' })).status).toBe(200);
 
-    const outra = await prep({ categoria: 'lazer', forma_pagamento: 'Outra' });
-    expect(outra.body.erro.codigo).toBe('PAYMENT_REQUIRED');
-    expect(outra.body.erro.detalhes.opcoes).toEqual([]);
-
+    // Pagamento citado na descricao e escolhas validas continuam valendo.
+    expect((await prep({ descricao: 'Almoco no nubank' })).body.resumo).toContain('pagamento Cartão Nubank');
     const cortado = await prep({ categoria: 'Reserva de emergênc…', forma_pagamento: 'Cartão Nu…' });
-    expect(cortado.status).toBe(200);
     expect(cortado.body.resumo).toContain('categoria Reserva de emergência (RESERVA)');
     expect(cortado.body.resumo).toContain('pagamento Cartão Nubank');
-
     const ok = await prep({ categoria: 'lazer', forma_pagamento: 'Pix' });
-    expect(ok.status).toBe(200);
     expect(ok.body.resumo).toContain('categoria Lazer (VARIAVEL)');
     expect(ok.body.resumo).toContain('pagamento Pix');
     const receita = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 50 } });
     expect(receita.status).toBe(200);
   });
 
-  it('pergunta a macro quando a categoria existe em mais de uma', async () => {
+  it('categoria em mais de uma macro: usa a primeira sem perguntar; com macro, respeita', async () => {
     const extra = [{ id: 'c_dup', type: 'categoria', category_name: 'Alimentação', macro_category: 'FIXO' }];
     const { call } = setup({ extraShared: extra });
     const dup = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', forma_pagamento: 'Pix' } });
-    expect(dup.body.erro.codigo).toBe('MACRO_REQUIRED');
-    expect(dup.body.erro.detalhes.opcoes).toEqual(['FIXO', 'VARIAVEL']);
+    expect(dup.status).toBe(200);
     const ok = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', macro_categoria: 'VARIAVEL', forma_pagamento: 'Pix' } });
     expect(ok.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
   });

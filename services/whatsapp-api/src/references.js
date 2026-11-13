@@ -195,3 +195,73 @@ export function canonicalPaymentMethod(paymentMethods, value) {
   if (!key) return undefined;
   return paymentMethods.find((item) => sameOption(item, value)) || String(value).trim();
 }
+
+/*
+ * Cadastro automatico pelo WhatsApp ("gastei 12,50 no cafe", "12,5 guardado"):
+ * nada de perguntas. A categoria sai do que o usuario disse; se nao der, das palavras
+ * da descricao; se nao der, "Outros". A forma de pagamento sai da descricao ou e a mais usada.
+ * Palavras em portugues e espanhol, comparadas sem acento e caixa.
+ */
+const CATEGORY_KEYWORDS = Object.freeze([
+  ['Reserva de emergência', ['reserva', 'resguard', 'guardei', 'guardado', 'guardar', 'guarde', 'poupanca', 'poupei', 'ahorr', 'emergencia']],
+  ['Investimentos', ['investi', 'inverti', 'inversion', 'acoes', 'acciones', 'cripto', 'bitcoin', 'tesouro', 'cdb', 'fondo']],
+  ['Alimentação', ['mercado', 'supermercado', 'super', 'cafe', 'almoco', 'janta', 'jantar', 'restaurante', 'lanche', 'comida',
+    'ifood', 'padaria', 'pao', 'cena', 'desayuno', 'almuerzo', 'pizza', 'bar', 'cerveja', 'cerveza', 'panaderia', 'acougue',
+    'feira', 'hamburguer', 'sushi', 'merienda', 'tapas', 'mercadona', 'carrefour', 'lidl']],
+  ['Transporte', ['uber', 'taxi', 'cabify', 'gasolina', 'combustivel', 'combustible', 'onibus', 'autobus', 'metro', 'bus',
+    'estacionamento', 'parking', 'aparcamiento', 'peaje', 'pedagio', 'tren', 'renfe', 'passagem', 'billete', 'bolt']],
+  ['Habitação', ['aluguel', 'alquiler', 'luz', 'agua', 'internet', 'condominio', 'gas', 'energia', 'comunidad', 'hipoteca', 'iptu', 'ibi']],
+  ['Assinaturas', ['netflix', 'spotify', 'assinatura', 'suscripcion', 'prime', 'youtube', 'icloud', 'disney', 'hbo', 'max', 'chatgpt']],
+  ['Lazer', ['cinema', 'cine', 'show', 'concierto', 'viagem', 'viaje', 'passeio', 'juego', 'jogo', 'teatro', 'museu', 'museo', 'fiesta', 'festa']],
+  ['Vestuário', ['roupa', 'ropa', 'sapato', 'zapato', 'tenis', 'camisa', 'camiseta', 'zara', 'calca', 'pantalon', 'vestido']],
+  ['Cuidados pessoais', ['farmacia', 'remedio', 'medicamento', 'salao', 'peluqueria', 'barbeiro', 'barberia', 'academia',
+    'gimnasio', 'gym', 'cabelo', 'pelo', 'dentista', 'medico', 'consulta']],
+  ['Educação', ['curso', 'escola', 'colegio', 'faculdade', 'universidad', 'livro', 'libro', 'mensalidade', 'matricula']]
+]);
+const FALLBACK_CATEGORY = 'Outros';
+const PAYMENT_STOPWORDS = new Set(['cartao', 'tarjeta', 'credito', 'debito', 'de', 'do', 'da', 'del', 'bank', 'banco', 'conta', 'cuenta']);
+
+function words(text) {
+  return normalizeKey(text).split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+function keywordCategory(text) {
+  const tokens = words(text);
+  for (const [name, keys] of CATEGORY_KEYWORDS) {
+    if (tokens.some((token) => keys.some((key) => token === key || (key.length >= 5 && token.startsWith(key))))) return name;
+  }
+  return '';
+}
+
+function findCategory(catalog, name, macro = '') {
+  return catalog.categorias.find((item) => sameOption(item.nome, name) && (!macro || normalizeKey(item.macro) === normalizeKey(macro)));
+}
+
+export function autoExpenseCategory(catalog, { descricao = '', categoria = '', macro = '' } = {}) {
+  try {
+    return resolveExpenseCategory(catalog, categoria, macro);
+  } catch {
+    // Escolha invalida ou incompleta: decide sozinho, sem perguntar.
+  }
+  const macroName = normalizeKey(macro) ? catalog.macros.find((item) => sameOption(item, macro)) || '' : '';
+  const guess = keywordCategory(`${categoria} ${descricao}`);
+  const candidates = [
+    guess && findCategory(catalog, guess, macroName),
+    findCategory(catalog, FALLBACK_CATEGORY, macroName),
+    macroName && catalog.categorias.find((item) => normalizeKey(item.macro) === normalizeKey(macroName)),
+    guess && findCategory(catalog, guess),
+    findCategory(catalog, FALLBACK_CATEGORY),
+    catalog.categorias.find((item) => normalizeKey(item.macro) === 'variavel'),
+    catalog.categorias[0]
+  ];
+  const found = candidates.find(Boolean);
+  return found ? { category_name: found.nome, macro_category: found.macro } : { category_name: undefined, macro_category: macroName || undefined };
+}
+
+export function autoPaymentMethod(paymentMethods, { descricao = '', forma_pagamento: value = '' } = {}) {
+  const raw = String(value ?? '').trim();
+  if (normalizeKey(raw) && normalizeKey(raw) !== 'outra') return canonicalPaymentMethod(paymentMethods, raw);
+  const tokens = new Set(words(descricao));
+  const mentioned = paymentMethods.find((item) => words(item).some((word) => word.length >= 3 && !PAYMENT_STOPWORDS.has(word) && tokens.has(word)));
+  return mentioned || paymentMethods[0] || undefined;
+}
