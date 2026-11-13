@@ -94,3 +94,22 @@ export function translateText(text, locale = currentLocale) {
 }
 
 export const t = (text) => translateText(text);
+
+const MONTH_ABBREVIATIONS = Object.freeze({
+  'pt-BR': Object.freeze(['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']),
+  'es-ES': Object.freeze(['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'])
+});
+
+/** Abreviacoes dos meses no idioma (usadas em "nov/2026" nos graficos, listas e titulos). */
+export function monthAbbreviations(locale = currentLocale) {
+  return MONTH_ABBREVIATIONS[locale] || MONTH_ABBREVIATIONS[DEFAULT_LOCALE];
+}
+
+/** "2026-02" -> "fev/2026" (pt-BR) ou "feb/2026" (es-ES). */
+export function formatCompetenceLabel(competence, locale = currentLocale) {
+  if (!competence) return '';
+  const [year, month] = String(competence).split('-');
+  const index = Number.parseInt(month, 10) - 1;
+  if (!year || !(index >= 0 && index < 12)) return String(competence);
+  return `${monthAbbreviations(locale)[index]}/${year}`;
+}

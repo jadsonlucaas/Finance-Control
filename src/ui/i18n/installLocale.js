@@ -3,9 +3,10 @@
  * ou o sugerido pelo navegador. Depois do login vale a preferencia da conta
  * (userPreferencesRuntime chama rememberLocale).
  */
-import { setLocale } from '../../core/i18n.js';
+import { formatCompetenceLabel, getLocale, monthAbbreviations, setLocale, translateText } from '../../core/i18n.js';
 import { browserLocaleContext, suggestPreferences } from '../../core/userPreferences.js';
 import { installDomTranslator } from './domTranslator.js';
+import { registerChartTranslation, translatePdfDocument } from './chartAndPdfTranslation.js';
 
 export const LOCALE_STORAGE_KEY = 'fc.locale';
 
@@ -29,5 +30,14 @@ export function initialLocale(target = globalThis) {
 
 export function installLocale(target = globalThis) {
   setLocale(initialLocale(target));
+  // Ponte para os scripts antigos (src/legacy), que nao importam modulos.
+  target.financeI18n = Object.freeze({
+    getLocale,
+    translate: (text) => translateText(text),
+    monthAbbreviations: () => monthAbbreviations(),
+    formatCompetence: (competence) => formatCompetenceLabel(competence),
+    translatePdf: (doc) => translatePdfDocument(doc),
+    registerChart: (Chart) => registerChartTranslation(Chart)
+  });
   return installDomTranslator(target);
 }

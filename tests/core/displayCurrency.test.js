@@ -7,8 +7,12 @@ import {
   setDisplayCurrency
 } from '../../src/core/formatters.js';
 import { installUserPreferencesRuntime, PREFERENCES_CHANGED_EVENT } from '../../src/services/userPreferencesRuntime.js';
+import { getLocale, setLocale } from '../../src/core/i18n.js';
 
-afterEach(() => setDisplayCurrency('BRL'));
+afterEach(async () => {
+  setDisplayCurrency('BRL');
+  await setLocale('pt-BR');
+});
 
 describe('moeda de exibicao', () => {
   it('BRL continua no formato de sempre', () => {
@@ -55,6 +59,9 @@ describe('preferencias aplicadas no app', () => {
     expect(getDisplayCurrency()).toBe('EUR');
     expect(target.financeApp.userPreferences).toMatchObject({ country: 'ES', currency: 'EUR' });
     expect(target.renderCurrentTab).toHaveBeenCalledTimes(1);
+    // O idioma da conta (es-ES) chega depois do dicionario e redesenha de novo.
+    expect(getLocale()).toBe('es-ES');
+    await vi.waitFor(() => expect(target.renderCurrentTab).toHaveBeenCalledTimes(2));
   });
 
   it('salvar em Configuracoes reaplica; mesma moeda nao redesenha; sair volta para BRL', async () => {

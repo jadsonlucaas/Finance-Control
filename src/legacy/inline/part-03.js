@@ -2581,7 +2581,7 @@
             if (!comp) return '';
             const parts = comp.split('-');
             if (parts.length !== 2) return comp;
-            const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            const months = window.financeI18n?.monthAbbreviations?.() || ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
             const m = parseInt(parts[1], 10) - 1;
             return `${months[m]}/${parts[0]}`;
         }
@@ -4644,7 +4644,7 @@
             if (!window.jspdf?.jsPDF) { showToast('Biblioteca de PDF não carregada', true); return; }
 
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'pt', 'a4');
+            const doc = window.financeI18n?.translatePdf?.(new jsPDF('l', 'pt', 'a4')) || new jsPDF('l', 'pt', 'a4');
             const autoTable = doc.autoTable || window.jspdf.autoTable;
             if (!autoTable) { showToast('Tabela do PDF não está disponível', true); return; }
 
