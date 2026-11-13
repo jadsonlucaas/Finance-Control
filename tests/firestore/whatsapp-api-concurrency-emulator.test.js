@@ -37,7 +37,7 @@ describe('whatsapp-api no Firestore: concorrencia e retomada', () => {
     let clock = Date.parse('2026-11-09T15:00:00Z');
     let n = 0;
     const actions = createActionService({ store, now: () => new Date(clock), newId: () => `p${++n}`, logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } });
-    const prepared = await actions.prepare(UID, { acao: 'registrar_receita', dados: { descricao: 'Bonus', valor: 300 } });
+    const prepared = await actions.prepare(UID, { duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Bonus', valor: 300 } });
     const results = await Promise.allSettled(Array.from({ length: 10 }, () => actions.confirm(UID, { confirmation_id: prepared.confirmation_id })));
     const ok = results.filter((r) => r.status === 'fulfilled');
     expect(ok.filter((r) => r.value.status === 'executado')).toHaveLength(1);

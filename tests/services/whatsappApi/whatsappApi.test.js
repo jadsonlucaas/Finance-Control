@@ -184,7 +184,7 @@ describe('whatsapp-api: leitura', () => {
 describe('whatsapp-api: escrita com confirmacao', () => {
   it('registra despesa somente apos confirmar e com metadados de integracao', async () => {
     const { call, store } = setup();
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Farmacia', valor: '1.234,56', categoria: 'cuidados pessoais', forma_pagamento: 'cartao nubank', vencimento: '2026-11-20' } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Farmacia', valor: '1.234,56', categoria: 'cuidados pessoais', forma_pagamento: 'cartao nubank', vencimento: '2026-11-20' } });
     expect(prepared.status).toBe(200);
     expect(prepared.body.status).toBe('aguardando_confirmacao');
     expect(prepared.body.resumo).toContain('R$ 1.234,56');
@@ -210,7 +210,7 @@ describe('whatsapp-api: escrita com confirmacao', () => {
 
   it('e idempotente: confirmar duas vezes cria um unico lancamento', async () => {
     const { call, store } = setup();
-    const prepared = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Bonus', valor: 300 } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Bonus', valor: 300 } });
     const first = await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id });
     const second = await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id });
     expect(first.body.status).toBe('executado');
@@ -249,7 +249,7 @@ describe('whatsapp-api: escrita com confirmacao', () => {
   it('nao confirma acao preparada por outro usuario', async () => {
     const links = JSON.stringify([{ telefone: PHONE, uid: UID }, { telefone: '+5511988887777', uid: OTHER_UID }]);
     const { call } = setup({ links });
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Teste', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Teste', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
     const res = await call('acoes/confirmar', { telefone: '+5511988887777', confirmation_id: prepared.body.confirmation_id });
     expect(res.status).toBe(404);
   });
@@ -273,12 +273,12 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const app = createApp({ store, resolver, apiKey: API_KEY, now: () => current, logger: { info() {}, error() {}, warn() {} } });
     const call = (route, body) => app.handle({ method: 'POST', path: `/internal/whatsapp/${route}`, headers: { 'x-api-key': API_KEY }, body: { telefone: PHONE, ...body } });
 
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Velha', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Velha', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
     current = new Date(NOW.getTime() + 11 * 60 * 1000);
     expect((await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id })).status).toBe(410);
 
     current = NOW;
-    const other = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cancelar', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    const other = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Cancelar', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
     expect((await call('acoes/cancelar', { confirmation_id: other.body.confirmation_id })).body.status).toBe('cancelado');
     expect((await call('acoes/confirmar', { confirmation_id: other.body.confirmation_id })).status).toBe(409);
     expect(store._dump(UID).records.some((record) => record.description === 'Cancelar')).toBe(false);
@@ -287,9 +287,9 @@ describe('whatsapp-api: escrita com confirmacao', () => {
   it('valida entradas da IA antes de preparar', async () => {
     const { call } = setup();
     expect((await call('acoes/preparar', { acao: 'apagar_tudo' })).status).toBe(400);
-    expect((await call('acoes/preparar', { acao: 'registrar_despesa', dados: { valor: 10 } })).body.erro.codigo).toBe('DESCRIPTION_REQUIRED');
-    expect((await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: -5 } })).body.erro.codigo).toBe('INVALID_AMOUNT');
-    expect((await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5, vencimento: '2026-02-30' } })).body.erro.codigo).toBe('INVALID_DATE');
+    expect((await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { valor: 10 } })).body.erro.codigo).toBe('DESCRIPTION_REQUIRED');
+    expect((await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'X', valor: -5 } })).body.erro.codigo).toBe('INVALID_AMOUNT');
+    expect((await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'X', valor: 5, vencimento: '2026-02-30' } })).body.erro.codigo).toBe('INVALID_DATE');
     expect((await call('acoes/preparar', { acao: 'editar', dados: { lancamento_id: 'r3', alteracoes: { owner_uid: 'hack' } } })).body.erro.codigo).toBe('FIELD_NOT_EDITABLE');
     expect((await call('acoes/preparar', { acao: 'editar', dados: { lancamento_id: 'r3', alteracoes: { status: 'Qualquer' } } })).status).toBe(422);
     expect((await call('acoes/preparar', { acao: 'marcar_pago', dados: { lancamento_id: 'r1' } })).body.erro.codigo).toBe('ALREADY_PAID');
@@ -297,38 +297,43 @@ describe('whatsapp-api: escrita com confirmacao', () => {
 
   it('confirma a acao pendente mais recente quando nao recebe confirmation_id', async () => {
     const { call, store } = setup();
-    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
-    const second = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Primeira', valor: 10, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    const second = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Segunda', valor: 20, categoria: 'Outros', forma_pagamento: 'Pix' } });
     const confirmed = await call('acoes/confirmar', {});
     expect(confirmed.status).toBe(200);
     expect(confirmed.body.lancamento.descricao).toBe('Segunda');
     expect(store._dump(UID).pending.find((item) => item.id === second.body.confirmation_id).status).toBe('executed');
     expect(store._dump(UID).records.some((record) => record.description === 'Primeira')).toBe(false);
     expect(store._dump(UID).pending.find((item) => item.status === 'cancelled')).toBeTruthy();
-    await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30, categoria: 'Outros', forma_pagamento: 'Pix' } });
+    await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Terceira', valor: 30, categoria: 'Outros', forma_pagamento: 'Pix' } });
     const cancelled = await call('acoes/cancelar', { confirmation_id: 'ultima' });
     expect(cancelled.body.status).toBe('cancelado');
-    expect((await call('acoes/confirmar', {})).status).toBe(404);
+    // Sem nada pendente: resposta tranquila (o cadastro automatico ja foi gravado), nao erro.
+    const nothing = await call('acoes/confirmar', {});
+    expect(nothing.status).toBe(200);
+    expect(nothing.body.status).toBe('sem_acao_pendente');
+    // Com id explicito inexistente continua 404.
+    expect((await call('acoes/confirmar', { confirmation_id: 'nao-existe' })).status).toBe(404);
   });
 
   it('cadastro automatico: deduz categoria, macro e pagamento sem perguntar', async () => {
     const { call } = setup();
-    const prep = (dados) => call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, ...dados } });
+    const prep = (dados) => call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, ...dados } });
 
     // Sem nada: categoria pela descricao (almoco = Alimentacao) e sem forma de pagamento (nao inventa).
     const semNada = await prep({});
     expect(semNada.status).toBe(200);
     expect(semNada.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
     expect(semNada.body.resumo).not.toContain('pagamento');
-    expect(semNada.body.instrucao).toContain('confirmar agora');
+    expect(semNada.body.status).toBe('aguardando_confirmacao');
 
     // Espanhol, sem pista conhecida: "Outros".
-    const desconhecido = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Regalo', valor: 5 } });
+    const desconhecido = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Regalo', valor: 5 } });
     expect(desconhecido.body.resumo).toContain('categoria Outros (VARIAVEL)');
 
-    const cafe = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Café', valor: 12.5 } });
+    const cafe = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Café', valor: 12.5 } });
     expect(cafe.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
-    const guardado = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Resguardado', valor: 12.5 } });
+    const guardado = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Resguardado', valor: 12.5 } });
     expect(guardado.body.resumo).toContain('categoria Reserva de emergência (RESERVA)');
 
     // So a macro: categoria dentro dela.
@@ -347,18 +352,18 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const ok = await prep({ categoria: 'lazer', forma_pagamento: 'Pix' });
     expect(ok.body.resumo).toContain('categoria Lazer (VARIAVEL)');
     expect(ok.body.resumo).toContain('pagamento Pix');
-    const receita = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 50 } });
+    const receita = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 50 } });
     expect(receita.status).toBe(200);
   });
 
   it('categoria em mais de uma macro: prefere VARIAVEL sem perguntar; com macro, respeita', async () => {
     const extra = [{ id: 'c_dup', type: 'categoria', category_name: 'Alimentação', macro_category: 'FIXO' }];
     const { call } = setup({ extraShared: extra });
-    const dup = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', forma_pagamento: 'Pix' } });
+    const dup = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', forma_pagamento: 'Pix' } });
     expect(dup.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
-    const semCategoria = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almuerzo', valor: 20 } });
+    const semCategoria = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Almuerzo', valor: 20 } });
     expect(semCategoria.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
-    const ok = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', macro_categoria: 'VARIAVEL', forma_pagamento: 'Pix' } });
+    const ok = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', macro_categoria: 'VARIAVEL', forma_pagamento: 'Pix' } });
     expect(ok.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
   });
 

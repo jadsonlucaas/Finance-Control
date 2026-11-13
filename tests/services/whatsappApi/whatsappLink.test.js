@@ -158,7 +158,7 @@ describe('whatsapp-api: codigo de vinculo', () => {
     const { store, call, issueCode } = setup();
     issueCode(ALICE, 'K7QM3XPA');
     await call('vinculo/confirmar', { telefone: PHONE_A, codigo: 'K7QM3XPA' });
-    const prepared = await call('acoes/preparar', { telefone: PHONE_A, acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 10 } });
+    const prepared = await call('acoes/preparar', { telefone: PHONE_A, duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Venda', valor: 10 } });
     expect(prepared.status).toBe(200);
 
     store._revokeLink(PHONE_A);
