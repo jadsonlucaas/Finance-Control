@@ -1,0 +1,7 @@
+project_id = "finance-control-migration-sandbox"
+
+[db]
+major_version = 15
+
+[auth]
+enabled = true
