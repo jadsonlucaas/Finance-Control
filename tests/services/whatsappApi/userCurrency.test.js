@@ -46,15 +46,23 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect((await es('resumo')).body.preferencias.idioma).toBe('es-ES');
   });
 
-  it('cadastro automatico devolve a frase de confirmacao pronta no idioma do numero', async () => {
+  it('cadastro automatico grava numa chamada so e devolve apenas a frase pronta no idioma do numero', async () => {
     const call = setup({ country: 'ES' });
-    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almuerzo', valor: '20' } });
-    const confirmed = await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id });
-    expect(confirmed.body.resposta_usuario).toMatch(/^Apuntado: 20,00 € en Almuerzo/);
-    expect(confirmed.body.resposta_usuario).not.toMatch(/Em aberto|Pago:|despesa/i);
+    const res = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almuerzo', valor: '20' } });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('registrado');
+    expect(res.body.lancamento_id).toBeTruthy();
+    expect(res.body.resposta_usuario).toMatch(/^Apuntado: 20,00 € en Almuerzo/);
+    expect(res.body.resposta_usuario).not.toMatch(/Em aberto|Pago:|despesa/i);
+    // Sem detalhes do lancamento: o agente nao tem o que listar.
+    expect(res.body.lancamento).toBeUndefined();
+    expect(res.body.resumo).toBeUndefined();
+    // Se o agente ainda chamar confirmar, nao recebe erro.
+    const again = await call('acoes/confirmar', { confirmation_id: 'ultima' });
+    expect(again.status).toBe(200);
+    expect(again.body.status).toBe('sem_acao_pendente');
     const due = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cena', valor: '50', forma_pagamento: 'Tarjeta', vencimento: '2026-12-05' } });
-    const dueConfirmed = await call('acoes/confirmar', { confirmation_id: due.body.confirmation_id });
-    expect(dueConfirmed.body.resposta_usuario).toContain('Vence el 05/12/2026.');
+    expect(due.body.resposta_usuario).toContain('Vence el 05/12/2026.');
   });
 
   it('formatacao isolada por requisicao e leitura de valores em euro', async () => {

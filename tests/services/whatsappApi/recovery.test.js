@@ -57,7 +57,7 @@ async function crashAfterWrite(store, pendingId, write) {
 describe('whatsapp-api: confirmacoes simultaneas e retomada depois de queda', () => {
   it('5 confirmacoes ao mesmo tempo criam um unico lancamento', async () => {
     const { call, store } = setup();
-    const prepared = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Farmacia', valor: 50 } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Farmacia', valor: 50 } });
     const results = await Promise.all(Array.from({ length: 5 }, () => call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id })));
     expect(results.filter((r) => r.body.status === 'executado')).toHaveLength(1);
     results.forEach((r) => expect([200, 409]).toContain(r.status));
@@ -66,7 +66,7 @@ describe('whatsapp-api: confirmacoes simultaneas e retomada depois de queda', ()
 
   it('queda depois de criar: logo em seguida responde "em andamento"; depois de 2 min retoma sem duplicar', async () => {
     const { call, store, clock } = setup();
-    const prepared = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Farmacia', valor: 50 } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Farmacia', valor: 50 } });
     await crashAfterWrite(store, prepared.body.confirmation_id, (pending, receiptId) =>
       store.createRecord(UID, { ...pending.record, correlation_id: pending.correlation_id }, { id: receiptId }));
 
@@ -86,7 +86,7 @@ describe('whatsapp-api: confirmacoes simultaneas e retomada depois de queda', ()
 
   it('queda antes de criar: a retomada cria o lancamento uma vez', async () => {
     const { call, store, clock } = setup();
-    const prepared = await call('acoes/preparar', { acao: 'registrar_receita', dados: { descricao: 'Bonus', valor: 300 } });
+    const prepared = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_receita', dados: { descricao: 'Bonus', valor: 300 } });
     await crashAfterWrite(store, prepared.body.confirmation_id, async () => {});
     clock.ms += 3 * 60_000;
     expect((await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id })).body.status).toBe('executado');

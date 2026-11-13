@@ -58,6 +58,16 @@ function assertValidRecord(record) {
   }
 }
 
+export function compactRegistration(result) {
+  return {
+    status: result.status === 'ja_executado' ? 'ja_executado' : 'registrado',
+    ...(result.replay ? { replay: true } : {}),
+    lancamento_id: result.lancamento?.id || '',
+    resposta_usuario: result.resposta_usuario,
+    instrucao: 'Ja foi registrado. Responda ao usuario somente com o texto de resposta_usuario, sem acrescentar nada.'
+  };
+}
+
 function describe(record) {
   const publicRecord = toPublicRecord(record);
   const parts = [
@@ -217,7 +227,8 @@ export function createActionService({ store, now = () => new Date(), newId = () 
   }
 
   // timeZone: fuso do usuario; define a data de "hoje" do lancamento e do pagamento.
-  async function prepare(uid, body = {}, { timeZone = DEFAULT_TIME_ZONE } = {}) {
+  async function prepare(uid, body = {}, prefs = {}) {
+    const timeZone = prefs.timeZone || prefs.time_zone || DEFAULT_TIME_ZONE;
     const acao = String(body.acao || '');
     if (!ACTIONS.includes(acao)) throw badRequest('INVALID_ACTION', `Acao deve ser uma de: ${ACTIONS.join(', ')}.`);
     const dados = body.dados && typeof body.dados === 'object' ? body.dados : {};
@@ -271,6 +282,12 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     // so pode confirmar o ultimo resumo que ele viu.
     await store.cancelPendingActions(uid, nowIso);
     await store.savePendingAction(uid, pending.id, pending);
+    // Cadastro automatico: grava na hora, numa chamada so, e devolve apenas a frase pronta.
+    // Sem detalhes do lancamento para o agente nao montar lista nem pedir confirmacao.
+    // duas_etapas: true mantem preparar + confirmar (usado nos testes do motor de confirmacao).
+    if (acao.startsWith('registrar_') && body.duas_etapas !== true) {
+      return compactRegistration(await confirm(uid, { confirmation_id: pending.id }, prefs));
+    }
     return {
       status: 'aguardando_confirmacao',
       confirmation_id: pending.id,
@@ -278,9 +295,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
       resumo,
       expira_em: pending.expires_at,
       // Cadastro e automatico (o usuario corrige depois, se quiser); pagar/editar/excluir pedem "sim".
-      instrucao: acao.startsWith('registrar_')
-        ? 'Cadastro automatico: chame confirmar agora, sem perguntar ao usuario, e responda exatamente com o campo resposta_usuario do confirmar.'
-        : 'Mostre o resumo ao usuario e so chame confirmar apos um "sim" explicito.'
+      instrucao: 'Mostre o resumo ao usuario e so chame confirmar apos um "sim" explicito.'
     };
   }
 
@@ -290,7 +305,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     // Permite ao agente confirmar sem guardar o id entre mensagens.
     if (!id || id === 'ultima') {
       const latest = await store.getLatestPendingAction(uid);
-      if (!latest || latest.owner_uid !== uid) throw new ApiError(404, 'PENDING_ACTION_NOT_FOUND', 'Nenhuma acao aguardando confirmacao.');
+      if (!latest || latest.owner_uid !== uid) throw new ApiError(404, 'PENDING_ACTION_NOT_FOUND', 'Nenhuma acao aguardando confirmacao. Cadastros ja sao gravados direto pelo preparar.');
       return latest;
     }
     if (id.length > 128 || id.includes('/')) throw badRequest('CONFIRMATION_ID_REQUIRED', 'Informe confirmation_id valido.');
@@ -300,7 +315,15 @@ export function createActionService({ store, now = () => new Date(), newId = () 
   }
 
   async function confirm(uid, body = {}, prefs = {}) {
-    const pending = await loadPending(uid, body);
+    const pending = await loadPending(uid, body).catch((error) => {
+      // O agente as vezes chama confirmar depois de um cadastro, que ja foi gravado: nao e erro.
+      const latestRequested = !String(body.confirmation_id || '').trim() || String(body.confirmation_id).trim() === 'ultima';
+      if (latestRequested && error?.code === 'PENDING_ACTION_NOT_FOUND') return null;
+      throw error;
+    });
+    if (!pending) {
+      return { status: 'sem_acao_pendente', instrucao: 'Nada aguardando confirmacao. Se o usuario acabou de cadastrar algo, ja esta gravado: responda so com a resposta_usuario do preparar_acao.' };
+    }
     if (pending.status === 'executed') return { status: 'ja_executado', replay: true, ...pending.result };
     if (pending.status === 'cancelled') throw new ApiError(409, 'PENDING_ACTION_CANCELLED', 'Esta acao foi cancelada.');
     if (pending.status === 'failed') throw new ApiError(409, 'PENDING_ACTION_FAILED', 'Esta acao falhou; prepare novamente.');
