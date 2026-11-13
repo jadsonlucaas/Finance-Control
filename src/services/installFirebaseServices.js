@@ -6,6 +6,7 @@ import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
 import { createWhatsAppAccessService } from './whatsappAccess.js';
+import { installUserPreferencesRuntime } from './userPreferencesRuntime.js';
 import { createAccountOnboardingService, PLAN_CHOICE_STORAGE_KEY, validateSignupDetails } from './accountOnboarding.js';
 import { createBillingCheckoutService } from './billingCheckout.js';
 import { createProfileAccessService } from './profileAccess.js';
@@ -63,6 +64,8 @@ export function installFirebaseServices({ target = window, config } = {}) {
     userAdminService: target.userAdminSdk
   });
   target.accountOnboardingSdk = createAccountOnboardingService(db);
+  // Moeda (e depois idioma/fuso) do usuario: aplicada a cada login, antes do primeiro render.
+  installUserPreferencesRuntime(target);
   target.authSdk = {
     ...authService,
     validateSignupDetails,

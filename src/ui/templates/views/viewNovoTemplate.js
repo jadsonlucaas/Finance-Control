@@ -113,7 +113,7 @@ export function viewNovoTemplate() {
                                     <input id="form-installments" type="number" min="2" max="72" value="2" class="w-full text-sm">
                                 </div>
                                 <div>
-                                    <label class="text-xs text-textSecondary mb-1 block">Valor da Parcela (R$)</label>
+                                    <label class="text-xs text-textSecondary mb-1 block">Valor da Parcela</label>
                                     <input id="form-installment-value" type="number" step="0.01" readonly placeholder="0,00" class="w-full text-sm bg-surfaceLight/60">
                                 </div>
                             </div>

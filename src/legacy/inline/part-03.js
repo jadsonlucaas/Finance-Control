@@ -339,7 +339,7 @@
         }
 
         const formatPreviewCurrency = function(value = 0) {
-            return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            return window.fmt(value);
         };
 
         const recurrenceFrequencyLabel = function(value = '') {
@@ -360,7 +360,7 @@
                 if (countEl) countEl.textContent = '-';
                 if (firstEl) firstEl.textContent = '-';
                 if (lastEl) lastEl.textContent = '-';
-                if (totalEl) totalEl.textContent = 'R$ 0,00';
+                if (totalEl) totalEl.textContent = fmt(0);
             };
             if (!recurrence) {
                 reset();
@@ -1575,12 +1575,12 @@
                     </div>
                     <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
                         <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Maior saída paga</p>
-                        <p class="mt-2 text-base font-bold text-danger">${topExpense ? fmt(topExpense.amount) : 'R$ 0,00'}</p>
+                        <p class="mt-2 text-base font-bold text-danger">${topExpense ? fmt(topExpense.amount) : fmt(0)}</p>
                         <p class="mt-1 text-xs text-textSecondary">${topExpense ? escapeHtml(topExpense.description || topExpense.subcategory || topExpense.macro_category || 'Sem descrição') : 'Sem saídas pagas no mês.'}</p>
                     </div>
                     <div class="rounded-xl border border-surfaceLight bg-surfaceLight/25 p-4">
                         <p class="text-xs uppercase tracking-[0.14em] text-textSecondary">Maior entrada</p>
-                        <p class="mt-2 text-base font-bold text-success">${topEntry ? fmt(window.financeMonthlyDetailSelectors.getMonthlyDetailEntradaValue(topEntry)) : 'R$ 0,00'}</p>
+                        <p class="mt-2 text-base font-bold text-success">${topEntry ? fmt(window.financeMonthlyDetailSelectors.getMonthlyDetailEntradaValue(topEntry)) : fmt(0)}</p>
                         <p class="mt-1 text-xs text-textSecondary">${topEntry ? escapeHtml(window.financeMonthlyDetailSelectors.getMonthlyDetailEntradaLabel(topEntry)) : 'Sem entradas financeiras no mês.'}</p>
                     </div>
                 `;
@@ -3903,7 +3903,7 @@
                 : '<p class="text-xs text-textSecondary">Nenhum lançamento de hora extra no período.</p>';
             const descontos = detail.descontoDetalhes.length
                 ? detail.descontoDetalhes.map((item) => `<div><span>${escapeHtml(item.label)}</span><strong class="text-danger">-${fmt(item.valor)}</strong></div>`).join('')
-                : '<div><span>Sem descontos adicionais</span><strong>R$ 0,00</strong></div>';
+                : `<div><span>Sem descontos adicionais</span><strong>${fmt(0)}</strong></div>`;
 
             document.getElementById('entry-detail-title').textContent = `Detalhe da Entrada • ${person}`;
             document.getElementById('entry-detail-subtitle').textContent = formatCompetence(competence);

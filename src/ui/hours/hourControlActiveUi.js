@@ -1,3 +1,4 @@
+import { formatCurrency as formatDisplayCurrency } from '../../core/formatters.js';
 import { roundCurrency } from '../../core/money.js';
 import { createMemoryMutationAttemptStore } from '../records/mutationAttemptStore.js';
 import { createHourControlController } from './hourControlController.js';
@@ -30,7 +31,7 @@ function getEngine(target) {
 
 function fmt(target, value = 0) {
   if (typeof target.fmt === 'function') return target.fmt(value);
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
+  return formatDisplayCurrency(value);
 }
 
 function formatCompetence(target, competence = '') {

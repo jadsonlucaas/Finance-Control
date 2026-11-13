@@ -1,3 +1,4 @@
+import { formatCurrency as formatDisplayCurrency } from '../core/formatters.js';
 import {
   CommitImportBatch,
   IMPORT_TYPES,
@@ -75,10 +76,7 @@ function normalizeText(value = '') {
 }
 
 function safeCurrency(value = 0) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(Number(value || 0));
+  return formatDisplayCurrency(value);
 }
 
 function formatDate(date = '') {

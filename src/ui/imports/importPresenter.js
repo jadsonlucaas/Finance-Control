@@ -1,3 +1,4 @@
+import { formatCurrency as formatDisplayCurrency } from '../../core/formatters.js';
 const STATUS_LABELS = Object.freeze({
   ready: 'Prontas',
   invalid: 'Invalidas',
@@ -16,7 +17,7 @@ function escapeHtml(value = '') {
 }
 
 function money(value = 0) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
+  return formatDisplayCurrency(value);
 }
 
 function byId(root, id) {
