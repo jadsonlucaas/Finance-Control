@@ -54,7 +54,7 @@ describe('painel "Idioma, moeda e região"', () => {
     expect(html).toContain('<option value="ES" selected>');
     expect(html).toContain('data-locale="es-ES"');
     expect(html).not.toContain('name="locale"');
-    expect(html).toContain('O idioma segue o número de WhatsApp cadastrado');
+    expect(html).toContain('O idioma segue o número de WhatsApp vinculado');
     expect(html).toContain('<option value="EUR" selected>');
     expect(html).toContain('<option value="Atlantic/Canary" selected>');
     expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');

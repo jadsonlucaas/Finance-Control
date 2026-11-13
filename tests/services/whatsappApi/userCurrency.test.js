@@ -37,10 +37,10 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect(res.body.preferencias).toEqual({ idioma: 'es-ES', moeda: 'BRL', fuso: 'America/Sao_Paulo' });
   });
 
-  it('idioma do WhatsApp vem do DDI do telefone cadastrado na conta, nunca de um idioma salvo', async () => {
-    // Conta com telefone +55 cadastrado: portugues, mesmo conversando de um numero +34 e com locale antigo es-ES.
-    const br = setup({ country: 'ES', locale: 'es-ES', whatsapp_phone: '+5592981327903' });
-    expect((await br('resumo')).body.preferencias.idioma).toBe('pt-BR');
+  it('idioma do WhatsApp vem do DDI do numero vinculado, nunca de um idioma salvo', async () => {
+    // Numero vinculado +34 vale mais que o +55 do cadastro e que um locale antigo salvo.
+    const linked = setup({ country: 'BR', locale: 'pt-BR', whatsapp_phone: '+5592981327903' });
+    expect((await linked('resumo')).body.preferencias.idioma).toBe('es-ES');
     // Conta +34 cadastrada: espanhol, mesmo com locale antigo pt-BR salvo.
     const es = setup({ country: 'BR', locale: 'pt-BR', whatsapp_phone: '+34637210215' });
     expect((await es('resumo')).body.preferencias.idioma).toBe('es-ES');

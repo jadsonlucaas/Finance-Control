@@ -45,15 +45,15 @@ export function localeForPhone(phone) {
 /**
  * Preferencias efetivas do usuario: o que ele escolheu, completado pelos padroes do pais
  * (contas antigas nao tem esses campos). Sem dados de cadastro, vale o padrao do Brasil.
- * O idioma nao e escolha: vem do telefone cadastrado (whatsapp_phone); sem telefone na conta,
- * usa fallbackPhone (ex.: o numero da conversa no WhatsApp).
+ * O idioma nao e escolha: vem do telefone da conta. Ordem: numero de WhatsApp vinculado
+ * (linkedPhone) > telefone do cadastro (whatsapp_phone) > fallbackPhone.
  */
-export function resolveUserPreferences(details, { fallbackPhone = '' } = {}) {
+export function resolveUserPreferences(details, { linkedPhone = '', fallbackPhone = '' } = {}) {
   const country = SIGNUP_COUNTRIES.some((item) => item.code === details?.country) ? details.country : 'BR';
   const defaults = defaultPreferencesForCountry(country);
   return {
     country,
-    locale: localeForPhone(details?.whatsapp_phone || fallbackPhone),
+    locale: localeForPhone(linkedPhone || details?.whatsapp_phone || fallbackPhone),
     currency: SUPPORTED_CURRENCIES.includes(details?.currency) ? details.currency : defaults.currency,
     time_zone: SUPPORTED_TIME_ZONES.includes(details?.time_zone) ? details.time_zone : defaults.time_zone
   };

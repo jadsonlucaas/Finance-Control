@@ -15,7 +15,7 @@ import {
   SUPPORTED_TIME_ZONES
 } from '../../services/accountOnboarding.js';
 
-import { PREFERENCES_CHANGED_EVENT } from '../../services/userPreferencesRuntime.js';
+import { loadAccountPreferences, PREFERENCES_CHANGED_EVENT } from '../../services/userPreferencesRuntime.js';
 
 export { PREFERENCES_CHANGED_EVENT };
 
@@ -142,7 +142,7 @@ export function renderUserPreferencesPanel({
         ${field('user-pref-currency', 'Moeda', select('user-pref-currency', 'currency', currencyOptions))}
         ${field('user-pref-time-zone', 'Fuso horário', select('user-pref-time-zone', 'time_zone', timeZoneOptions(preferences.time_zone)))}
       </div>
-      <p class="text-xs text-textSecondary">O idioma segue o número de WhatsApp cadastrado: +34 usa espanhol; os demais, português. O país também define a moeda da assinatura Premium.</p>
+      <p class="text-xs text-textSecondary">O idioma segue o número de WhatsApp vinculado (ou o do cadastro): +34 usa espanhol; os demais, português. O país também define a moeda da assinatura Premium.</p>
       ${feedback}
       <div>
         <button type="submit" data-user-preferences-action="save" class="${BUTTON} bg-accent hover:bg-accentDark text-bg"${disabled}>${saving ? 'Salvando...' : 'Salvar'}</button>
@@ -221,8 +221,7 @@ export function installUserPreferencesUi(target = globalThis, options = {}) {
     }
     setState({ loading: true, error: '', notice: '' });
     try {
-      const details = await service.getMyDetails(uid);
-      const preferences = resolveUserPreferences(details);
+      const { details, preferences } = await loadAccountPreferences(target, uid, service);
       setState({ loading: false, needsSignup: !details, preferences });
       publish(preferences);
     } catch (error) {
@@ -237,7 +236,8 @@ export function installUserPreferencesUi(target = globalThis, options = {}) {
     const draft = readForm(documentRef);
     setState({ saving: true, error: '', notice: '', preferences: { ...state.preferences, ...draft } });
     try {
-      const preferences = await service.saveMyPreferences(uid, draft);
+      // O idioma nao muda ao salvar: continua o do numero vinculado/cadastrado.
+      const preferences = { ...(await service.saveMyPreferences(uid, draft)), locale: state.preferences.locale };
       setState({ saving: false, preferences, notice: 'Preferências salvas.' });
       publish(preferences);
     } catch (error) {
