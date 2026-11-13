@@ -3,7 +3,10 @@
  * Para adicionar uma tela: copie o texto em portugues como esta no codigo e escreva a traducao.
  * Frases com numeros ou nomes no meio vao em `patterns`.
  */
+import { SCREEN_MESSAGES, SCREEN_PATTERNS } from './es-ES-screens.js';
+
 const messages = {
+  ...SCREEN_MESSAGES,
   // --- Login e cadastro ---
   'Acesso Seguro': 'Acceso seguro',
   'Entrar': 'Iniciar sesión',
@@ -92,6 +95,6 @@ const messages = {
   'Açores': 'Azores'
 };
 
-const patterns = [];
+const patterns = [...SCREEN_PATTERNS];
 
 export const ES_ES = Object.freeze({ messages: Object.freeze(messages), patterns: Object.freeze(patterns) });

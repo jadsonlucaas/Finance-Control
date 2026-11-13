@@ -51,16 +51,18 @@ export function translateText(text, locale = currentLocale) {
   if (!catalog || typeof text !== 'string') return text;
   const trimmed = text.trim();
   if (!trimmed) return text;
-  let translated = catalog.messages[trimmed];
+  // Quebras de linha e espacos repetidos do HTML nao fazem parte da chave.
+  const key = trimmed.replace(/\s+/g, ' ');
+  let translated = catalog.messages[key];
   if (translated === undefined) {
     for (const [pattern, replacement] of catalog.patterns) {
-      if (pattern.test(trimmed)) {
-        translated = trimmed.replace(pattern, replacement);
+      if (pattern.test(key)) {
+        translated = key.replace(pattern, replacement);
         break;
       }
     }
   }
-  if (translated === undefined || translated === trimmed) return text;
+  if (translated === undefined || translated === key) return text;
   const start = text.slice(0, text.indexOf(trimmed));
   const end = text.slice(text.indexOf(trimmed) + trimmed.length);
   return `${start}${translated}${end}`;

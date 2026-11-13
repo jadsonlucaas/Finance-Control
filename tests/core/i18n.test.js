@@ -34,4 +34,15 @@ describe('idioma da interface', () => {
       if (translated !== source) expect(keys.has(translated), `${source} -> ${translated}`).toBe(false);
     }
   });
+
+  it('ignora quebras de linha do HTML e traduz frases com mes e numeros', () => {
+    setLocale('es-ES');
+    expect(translateText('Conta / Meio de\n        Pagamento')).toBe('Cuenta / medio de pago');
+    expect(translateText('De fev/2026')).toBe('Desde feb/2026');
+    expect(translateText('Até dez/2026')).toBe('Hasta dic/2026');
+    expect(translateText('Período: out/2026')).toBe('Periodo: oct/2026');
+    expect(translateText('Gastos Diários (set/2026)')).toBe('Gastos diarios (sep/2026)');
+    expect(translateText('3 dia(s) com movimento')).toBe('3 día(s) con movimientos');
+    expect(translateText('De acordo')).toBe('De acordo');
+  });
 });
