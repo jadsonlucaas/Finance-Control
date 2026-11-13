@@ -4,11 +4,13 @@
  * - Ao entrar: le user_onboarding pelo accountOnboardingSdk e aplica.
  * - Ao salvar em Configuracoes: o painel dispara PREFERENCES_CHANGED_EVENT e reaplica.
  * - Ao sair: volta aos padroes (BRL).
- * Hoje aplica so a moeda de exibicao; idioma e fuso entram nas proximas etapas.
+ * Aplica a moeda de exibicao e o idioma da interface (o fuso e usado pela whatsapp-api).
  * Falha ao ler nunca bloqueia o app: fica no padrao.
  */
 import { getDisplayCurrency, setDisplayCurrency } from '../core/formatters.js';
 import { resolveUserPreferences } from './accountOnboarding.js';
+import { setLocale } from '../core/i18n.js';
+import { rememberLocale } from '../ui/i18n/installLocale.js';
 
 export const PREFERENCES_CHANGED_EVENT = 'financeUserPreferencesChanged';
 
@@ -22,6 +24,11 @@ export function installUserPreferencesRuntime(target = globalThis, options = {})
     const app = target.financeApp || {};
     target.financeApp = app;
     app.userPreferences = preferences;
+    // Idioma: so troca com uma conta logada (preferencia salva); sem conta fica o do navegador.
+    if (preferences?.fromAccount) {
+      setLocale(preferences.locale);
+      rememberLocale(target, preferences.locale);
+    }
     const previous = getDisplayCurrency();
     const next = setDisplayCurrency(preferences?.currency);
     // Redesenha a aba atual so quando a moeda mudou de fato.
@@ -36,7 +43,7 @@ export function installUserPreferencesRuntime(target = globalThis, options = {})
     }
     try {
       const details = await service().getMyDetails(uid);
-      if (token === loadToken) apply(resolveUserPreferences(details));
+      if (token === loadToken) apply({ ...resolveUserPreferences(details), fromAccount: Boolean(details) });
     } catch (error) {
       target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'user_preferences.runtime_load' });
     }
@@ -44,7 +51,7 @@ export function installUserPreferencesRuntime(target = globalThis, options = {})
 
   target.addEventListener('authStateChanged', (event) => loadFor(event?.detail?.uid || ''));
   target.addEventListener(PREFERENCES_CHANGED_EVENT, (event) => {
-    if (event?.detail) apply(event.detail);
+    if (event?.detail) apply({ ...event.detail, fromAccount: true });
   });
 
   const app = target.financeApp || {};

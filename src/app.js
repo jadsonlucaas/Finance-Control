@@ -1,6 +1,7 @@
 import '../styles/app.css';
 import '../styles/style.css';
 import { installSignupSuggestions } from './ui/auth/signupSuggestions.js';
+import { installLocale } from './ui/i18n/installLocale.js';
 import { installFinancialSelectorGlobals } from './application/selectors/financialSelectors.js';
 import { createApplicationDependencies } from './application/dependencies/createApplicationDependencies.js';
 import { createDefaultApplicationGateway } from './application/gateway/defaultApplicationGateway.js';
@@ -79,6 +80,7 @@ export function bootstrapApp() {
   markBootstrap('finance-bridge-install-start');
   installInitialTemplates(document);
   installSignupSuggestions(globalThis);
+  installLocale(globalThis);
   installLocalVisualLibraries(globalThis);
   installAppStateGlobals(globalThis, appState);
   FinanceRepository.setTarget(globalThis);
