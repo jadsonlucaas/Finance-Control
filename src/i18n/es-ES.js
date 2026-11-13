@@ -6,6 +6,7 @@
 import { SCREEN_MESSAGES, SCREEN_PATTERNS } from './es-ES-screens.js';
 import { MESSAGE_MESSAGES, MESSAGE_PATTERNS } from './es-ES-messages.js';
 import { DASHBOARD_MESSAGES, DASHBOARD_PATTERNS } from './es-ES-dashboard.js';
+import { PDF_INSIGHT_PATTERNS } from './es-ES-pdfInsights.js';
 
 const messages = {
   ...SCREEN_MESSAGES,
@@ -99,6 +100,6 @@ const messages = {
   'Açores': 'Azores'
 };
 
-const patterns = [...SCREEN_PATTERNS, ...MESSAGE_PATTERNS, ...DASHBOARD_PATTERNS];
+const patterns = [...SCREEN_PATTERNS, ...MESSAGE_PATTERNS, ...DASHBOARD_PATTERNS, ...PDF_INSIGHT_PATTERNS];
 
 export const ES_ES = Object.freeze({ messages: Object.freeze(messages), patterns: Object.freeze(patterns) });
