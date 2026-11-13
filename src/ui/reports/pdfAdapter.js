@@ -1,4 +1,5 @@
 import { formatCurrency as formatDisplayCurrency } from '../../core/formatters.js';
+import { translatePdfDocument } from '../i18n/chartAndPdfTranslation.js';
 function formatCurrency(value = 0) {
   return formatDisplayCurrency(value);
 }
@@ -24,7 +25,7 @@ export async function createPdfReport(reportModel, {
   if (!target.jspdf?.jsPDF) throw new Error('PDF_LIBRARY_NOT_READY');
 
   const { jsPDF } = target.jspdf;
-  const doc = new jsPDF('l', 'pt', 'a4');
+  const doc = translatePdfDocument(new jsPDF('l', 'pt', 'a4'));
   const autoTable = getAutoTable(doc, target.jspdf);
   if (!autoTable) throw new Error('PDF_AUTOTABLE_NOT_READY');
 

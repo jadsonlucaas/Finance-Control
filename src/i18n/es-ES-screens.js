@@ -14,7 +14,8 @@ export function translateMonthLabel(text = '') {
   return String(text).replace(/\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\/(\d{4})\b/g, (_, month, year) => `${MONTHS[month]}/${year}`);
 }
 
-const MONTH = '((?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\\/\\d{4})';
+// Meses em portugues e (ja formatados pelo app) em espanhol.
+const MONTH = '((?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|ene|feb|may|sep|oct|dic)\\/\\d{4})';
 
 export const SCREEN_PATTERNS = Object.freeze([
   [new RegExp(`^De ${MONTH}$`), (_, month) => `Desde ${translateMonthLabel(month)}`],

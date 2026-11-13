@@ -82,6 +82,7 @@ export function bootstrapApp() {
   installSignupSuggestions(globalThis);
   installLocale(globalThis);
   installLocalVisualLibraries(globalThis);
+  globalThis.financeI18n?.registerChart?.(globalThis.Chart);
   installAppStateGlobals(globalThis, appState);
   FinanceRepository.setTarget(globalThis);
   installGlobalBridge(globalThis);

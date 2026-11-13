@@ -9,7 +9,7 @@
  */
 import { getDisplayCurrency, setDisplayCurrency } from '../core/formatters.js';
 import { resolveUserPreferences } from './accountOnboarding.js';
-import { setLocale } from '../core/i18n.js';
+import { getLocale, setLocale } from '../core/i18n.js';
 import { rememberLocale } from '../ui/i18n/installLocale.js';
 
 export const PREFERENCES_CHANGED_EVENT = 'financeUserPreferencesChanged';
@@ -26,8 +26,12 @@ export function installUserPreferencesRuntime(target = globalThis, options = {})
     app.userPreferences = preferences;
     // Idioma: so troca com uma conta logada (preferencia salva); sem conta fica o do navegador.
     if (preferences?.fromAccount) {
-      setLocale(preferences.locale);
+      const localeBefore = getLocale();
       rememberLocale(target, preferences.locale);
+      // Graficos e textos montados pelo codigo (meses, PDF) precisam ser redesenhados.
+      Promise.resolve(setLocale(preferences.locale)).then((locale) => {
+        if (locale !== localeBefore) target.renderCurrentTab?.();
+      });
     }
     const previous = getDisplayCurrency();
     const next = setDisplayCurrency(preferences?.currency);
