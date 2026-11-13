@@ -10,6 +10,7 @@ import { createRateLimiter, hashKey } from './rateLimit.js';
 import { createInboundMessageService } from './inboundMessages.js';
 import { normalizePhone } from './phoneLinks.js';
 import { checkStoreHealth } from './health.js';
+import { createPreferenceResolver } from './preferences.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -52,11 +53,13 @@ export function createApp({
   logger = console,
   newId = () => randomUUID(),
   rateLimiter = createRateLimiter(),
-  healthTimeoutMs = 5000
+  healthTimeoutMs = 5000,
+  preferenceResolver = null
 }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const access = createAccessPolicy({ store, mode: accessMode });
   const actions = createActionService({ store, now, newId });
+  const preferences = preferenceResolver || createPreferenceResolver({ store, logger });
   const links = createLinkService({ store, now });
   const billing = stripeWebhookSecret ? createBillingService({ store, now, logger }) : null;
   const inbound = typeof store.reserveInboundMessage === 'function' ? createInboundMessageService({ store, now }) : null;
@@ -91,14 +94,14 @@ export function createApp({
   };
 
   const readRoutes = {
-    despesas: async (uid, body) => buildLegacyDespesas(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now())),
-    resumo: async (uid, body) => buildResumo(await store.listFinanceRecords(uid), resolvePeriod(body, now())),
-    lancamentos: async (uid, body) => {
-      const filters = parseListFilters(body, now());
+    despesas: async (uid, body, prefs) => buildLegacyDespesas(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now(), prefs.time_zone)),
+    resumo: async (uid, body, prefs) => buildResumo(await store.listFinanceRecords(uid), resolvePeriod(body, now(), prefs.time_zone)),
+    lancamentos: async (uid, body, prefs) => {
+      const filters = parseListFilters(body, now(), prefs.time_zone);
       return buildLancamentos(await store.listFinanceRecords(uid), filters);
     },
-    categorias: async (uid, body) => buildCategorias(await store.listFinanceRecords(uid), resolvePeriod(body, now())),
-    vencimentos: async (uid, body) => buildVencimentos(await store.listFinanceRecords(uid), body, now()),
+    categorias: async (uid, body, prefs) => buildCategorias(await store.listFinanceRecords(uid), resolvePeriod(body, now(), prefs.time_zone)),
+    vencimentos: async (uid, body, prefs) => buildVencimentos(await store.listFinanceRecords(uid), body, now(), prefs.time_zone),
     opcoes: async (uid, body) => {
       const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid)]);
       return buildOpcoes(references, records, body);
@@ -106,7 +109,7 @@ export function createApp({
   };
 
   const writeRoutes = {
-    'acoes/preparar': (uid, body) => actions.prepare(uid, body),
+    'acoes/preparar': (uid, body, prefs) => actions.prepare(uid, body, { timeZone: prefs.time_zone }),
     'acoes/confirmar': (uid, body) => actions.confirm(uid, body),
     'acoes/cancelar': (uid, body) => actions.cancel(uid, body)
   };
@@ -189,7 +192,9 @@ export function createApp({
       rateLimiter.enforce('user', uid);
       if (writeRoutes[name]) rateLimiter.enforce('userWrite', uid);
       await access.assert(uid, { phone: body.telefone });
-      const result = await handler(uid, body);
+      // Fuso (e depois idioma/moeda) do usuario, escolhido em Configuracoes no Dashboard.
+      const prefs = await preferences.forUser(uid);
+      const result = await handler(uid, body, prefs);
       status = 200;
       return { status, body: result };
     } catch (error) {

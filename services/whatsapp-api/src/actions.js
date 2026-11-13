@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { validateFinanceRecord, FINANCE_RECORD_SCHEMA_VERSION } from '../../../src/domain/records/index.js';
 import { summarizeFinanceRecord } from '../../../src/domain/audit/financeRecordAudit.js';
 import { ApiError, badRequest } from './errors.js';
-import { isCompetence, isDate, todayIn } from './dates.js';
+import { DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
 import { formatBRL, parseAmount } from './money.js';
 import { toPublicRecord } from './queries.js';
 import { buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory, resolvePaymentMethod } from './references.js';
@@ -214,12 +214,13 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     return { catalog: buildReferenceCatalog(references), paymentMethods: buildPaymentMethods(records) };
   }
 
-  async function prepare(uid, body = {}) {
+  // timeZone: fuso do usuario; define a data de "hoje" do lancamento e do pagamento.
+  async function prepare(uid, body = {}, { timeZone = DEFAULT_TIME_ZONE } = {}) {
     const acao = String(body.acao || '');
     if (!ACTIONS.includes(acao)) throw badRequest('INVALID_ACTION', `Acao deve ser uma de: ${ACTIONS.join(', ')}.`);
     const dados = body.dados && typeof body.dados === 'object' ? body.dados : {};
     const current = now();
-    const today = todayIn(current);
+    const today = todayIn(current, timeZone);
     const nowIso = current.toISOString();
     const pending = {
       id: newId(),

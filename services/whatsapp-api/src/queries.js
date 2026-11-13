@@ -1,7 +1,7 @@
 import { getRecordCompetence } from '../../../src/application/selectors/dashboardFilters.js';
 import { getConsolidatedEntryAmount } from '../../../src/application/selectors/financialSelectors.js';
 import { badRequest } from './errors.js';
-import { addDays, currentCompetence, isCompetence, isDate, todayIn } from './dates.js';
+import { addDays, currentCompetence, DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
 import { formatBRL, roundCurrency } from './money.js';
 
 export const EXPENSE_OPEN_STATUSES = Object.freeze(['Em aberto', 'Vencido', '']);
@@ -30,8 +30,9 @@ function normalizeText(value) {
     .trim();
 }
 
-export function resolveCompetence(value, now) {
-  if (value === undefined || value === null || value === '') return currentCompetence(now);
+// timeZone: fuso do usuario (preferencia); define "este mes" e "hoje".
+export function resolveCompetence(value, now, timeZone = DEFAULT_TIME_ZONE) {
+  if (value === undefined || value === null || value === '') return currentCompetence(now, timeZone);
   if (!isCompetence(value)) throw badRequest('INVALID_COMPETENCE', 'Competencia deve usar o formato YYYY-MM.');
   return String(value);
 }
@@ -53,15 +54,15 @@ function competenceFromIndex(index) {
  * Resolve um mes (competencia) ou um periodo (competencia_inicio..competencia_fim).
  * Devolve { inicio, fim, meses: [YYYY-MM...] }. Periodo maximo de 24 meses.
  */
-export function resolvePeriod(body = {}, now) {
+export function resolvePeriod(body = {}, now, timeZone = DEFAULT_TIME_ZONE) {
   const hasStart = body.competencia_inicio !== undefined && body.competencia_inicio !== null && body.competencia_inicio !== '';
   const hasEnd = body.competencia_fim !== undefined && body.competencia_fim !== null && body.competencia_fim !== '';
   if (!hasStart && !hasEnd) {
-    const competence = resolveCompetence(body.competencia, now);
+    const competence = resolveCompetence(body.competencia, now, timeZone);
     return { inicio: competence, fim: competence, meses: [competence] };
   }
-  const inicio = resolveCompetence(hasStart ? body.competencia_inicio : body.competencia_fim, now);
-  const fim = resolveCompetence(hasEnd ? body.competencia_fim : currentCompetence(now), now);
+  const inicio = resolveCompetence(hasStart ? body.competencia_inicio : body.competencia_fim, now, timeZone);
+  const fim = resolveCompetence(hasEnd ? body.competencia_fim : currentCompetence(now, timeZone), now, timeZone);
   const start = competenceIndex(inicio);
   const end = competenceIndex(fim);
   if (start > end) throw badRequest('INVALID_PERIOD', 'competencia_inicio deve ser anterior ou igual a competencia_fim.');
@@ -225,10 +226,10 @@ export function buildResumo(records, competenceOrPeriod) {
   };
 }
 
-export function parseListFilters(body = {}, now) {
+export function parseListFilters(body = {}, now, timeZone = DEFAULT_TIME_ZONE) {
   const filters = {};
   if (body.competencia !== undefined && body.competencia !== null && body.competencia !== '') {
-    filters.competencia = resolveCompetence(body.competencia, now);
+    filters.competencia = resolveCompetence(body.competencia, now, timeZone);
   }
   if (body.tipo) {
     const type = TYPE_ALIASES[normalizeText(body.tipo)];
@@ -331,10 +332,10 @@ export function buildCategorias(records, competenceOrPeriod) {
   return isPeriod(period) ? { periodo: periodInfo(period), ...base } : { competencia: period.inicio, ...base };
 }
 
-export function buildVencimentos(records, body = {}, now) {
+export function buildVencimentos(records, body = {}, now, timeZone = DEFAULT_TIME_ZONE) {
   const days = body.dias === undefined ? 7 : Number(body.dias);
   if (!Number.isInteger(days) || days < 0 || days > 90) throw badRequest('INVALID_DAYS', 'Dias deve ser inteiro entre 0 e 90.');
-  const today = todayIn(now);
+  const today = todayIn(now, timeZone);
   const limitDate = addDays(today, days);
   const open = activeFinanceRecords(records).filter((record) =>
     record.type === 'saida' &&
