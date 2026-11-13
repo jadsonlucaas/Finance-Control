@@ -199,7 +199,7 @@ export function canonicalPaymentMethod(paymentMethods, value) {
 /*
  * Cadastro automatico pelo WhatsApp ("gastei 12,50 no cafe", "12,5 guardado"):
  * nada de perguntas. A categoria sai do que o usuario disse; se nao der, das palavras
- * da descricao; se nao der, "Outros". A forma de pagamento sai da descricao ou e a mais usada.
+ * da descricao; se nao der, "Outros". A forma de pagamento so entra se o usuario citar.
  * Palavras em portugues e espanhol, comparadas sem acento e caixa.
  */
 const CATEGORY_KEYWORDS = Object.freeze([
@@ -234,7 +234,9 @@ function keywordCategory(text) {
 }
 
 function findCategory(catalog, name, macro = '') {
-  return catalog.categorias.find((item) => sameOption(item.nome, name) && (!macro || normalizeKey(item.macro) === normalizeKey(macro)));
+  const matches = catalog.categorias.filter((item) => sameOption(item.nome, name) && (!macro || normalizeKey(item.macro) === normalizeKey(macro)));
+  // Mesma categoria em mais de uma macro: gasto do dia a dia vai para VARIAVEL.
+  return matches.find((item) => normalizeKey(item.macro) === 'variavel') || matches[0];
 }
 
 export function autoExpenseCategory(catalog, { descricao = '', categoria = '', macro = '' } = {}) {
@@ -263,5 +265,6 @@ export function autoPaymentMethod(paymentMethods, { descricao = '', forma_pagame
   if (normalizeKey(raw) && normalizeKey(raw) !== 'outra') return canonicalPaymentMethod(paymentMethods, raw);
   const tokens = new Set(words(descricao));
   const mentioned = paymentMethods.find((item) => words(item).some((word) => word.length >= 3 && !PAYMENT_STOPWORDS.has(word) && tokens.has(word)));
-  return mentioned || paymentMethods[0] || undefined;
+  // Sem pagamento citado: fica sem forma de pagamento (nada de chutar a mais usada).
+  return mentioned || undefined;
 }

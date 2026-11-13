@@ -314,11 +314,11 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const { call } = setup();
     const prep = (dados) => call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, ...dados } });
 
-    // Sem nada: categoria pela descricao (almoco = Alimentacao) e pagamento mais usado.
+    // Sem nada: categoria pela descricao (almoco = Alimentacao) e sem forma de pagamento (nao inventa).
     const semNada = await prep({});
     expect(semNada.status).toBe(200);
     expect(semNada.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
-    expect(semNada.body.resumo).toContain('pagamento Cartão Nubank');
+    expect(semNada.body.resumo).not.toContain('pagamento');
     expect(semNada.body.instrucao).toContain('confirmar agora');
 
     // Espanhol, sem pista conhecida: "Outros".
@@ -350,11 +350,13 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     expect(receita.status).toBe(200);
   });
 
-  it('categoria em mais de uma macro: usa a primeira sem perguntar; com macro, respeita', async () => {
+  it('categoria em mais de uma macro: prefere VARIAVEL sem perguntar; com macro, respeita', async () => {
     const extra = [{ id: 'c_dup', type: 'categoria', category_name: 'Alimentação', macro_category: 'FIXO' }];
     const { call } = setup({ extraShared: extra });
     const dup = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', forma_pagamento: 'Pix' } });
-    expect(dup.status).toBe(200);
+    expect(dup.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
+    const semCategoria = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almuerzo', valor: 20 } });
+    expect(semCategoria.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
     const ok = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almoco', valor: 20, categoria: 'alimentacao', macro_categoria: 'VARIAVEL', forma_pagamento: 'Pix' } });
     expect(ok.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
   });
