@@ -46,6 +46,17 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect((await es('resumo')).body.preferencias.idioma).toBe('es-ES');
   });
 
+  it('cadastro automatico devolve a frase de confirmacao pronta no idioma do numero', async () => {
+    const call = setup({ country: 'ES' });
+    const prepared = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Almuerzo', valor: '20' } });
+    const confirmed = await call('acoes/confirmar', { confirmation_id: prepared.body.confirmation_id });
+    expect(confirmed.body.resposta_usuario).toMatch(/^Apuntado: 20,00 € en Almuerzo/);
+    expect(confirmed.body.resposta_usuario).not.toMatch(/Em aberto|Pago:|despesa/i);
+    const due = await call('acoes/preparar', { acao: 'registrar_despesa', dados: { descricao: 'Cena', valor: '50', forma_pagamento: 'Tarjeta', vencimento: '2026-12-05' } });
+    const dueConfirmed = await call('acoes/confirmar', { confirmation_id: due.body.confirmation_id });
+    expect(dueConfirmed.body.resposta_usuario).toContain('Vence el 05/12/2026.');
+  });
+
   it('formatacao isolada por requisicao e leitura de valores em euro', async () => {
     const [eur, brl] = await Promise.all([
       runWithCurrency('EUR', async () => { await new Promise((r) => setTimeout(r, 5)); return formatMoney(10); }),
@@ -56,5 +67,15 @@ describe('whatsapp-api: moeda e idioma do usuario', () => {
     expect(formatMoney(10)).toBe('R$ 10,00');
     expect(parseAmount('12,50 €')).toBe(12.5);
     expect(parseAmount('EUR 7')).toBe(7);
+  });
+});
+
+describe('whatsapp-api: frase de confirmacao em portugues', () => {
+  it('numero +55 recebe a frase em portugues, sem status nem pagamento inventado', async () => {
+    const { registrationConfirmation } = await import('../../../services/whatsapp-api/src/confirmationText.js');
+    expect(registrationConfirmation({ tipo: 'despesa', descricao: 'Almoço', valor_formatado: 'R$ 20,00', categoria: 'Alimentação', status: 'Em aberto' }, 'pt-BR'))
+      .toBe('Anotado: R$ 20,00 em Almoço (Alimentação).');
+    expect(registrationConfirmation({ tipo: 'receita', descricao: 'Salário', valor_formatado: 'R$ 3.000,00', categoria: '', forma_pagamento: 'bank:mercado_pago', vencimento: '2026-12-05' }, 'pt-BR'))
+      .toBe('Anotado: receita de R$ 3.000,00 em Salário. Pagamento: Mercado pago. Vence em 05/12/2026.');
   });
 });

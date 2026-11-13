@@ -118,7 +118,7 @@ export function createApp({
 
   const writeRoutes = {
     'acoes/preparar': (uid, body, prefs) => actions.prepare(uid, body, { timeZone: prefs.time_zone }),
-    'acoes/confirmar': (uid, body) => actions.confirm(uid, body),
+    'acoes/confirmar': (uid, body, prefs) => actions.confirm(uid, body, prefs),
     'acoes/cancelar': (uid, body) => actions.cancel(uid, body)
   };
 
