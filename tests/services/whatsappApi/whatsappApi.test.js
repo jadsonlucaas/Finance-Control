@@ -331,6 +331,9 @@ describe('whatsapp-api: escrita com confirmacao', () => {
     const desconhecido = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Regalo', valor: 5 } });
     expect(desconhecido.body.resumo).toContain('categoria Outros (VARIAVEL)');
 
+    // Plural: "ropas"/"roupas" = Vestuario.
+    const ropas = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'ropas', valor: 300 } });
+    expect(ropas.body.resumo).toContain('categoria Vestuário (VARIAVEL)');
     const cafe = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Café', valor: 12.5 } });
     expect(cafe.body.resumo).toContain('categoria Alimentação (VARIAVEL)');
     const guardado = await call('acoes/preparar', { duas_etapas: true, acao: 'registrar_despesa', dados: { descricao: 'Resguardado', valor: 12.5 } });
