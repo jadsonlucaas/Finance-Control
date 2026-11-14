@@ -231,6 +231,16 @@ export function createFirestoreStore(db) {
       const snapshot = await db.collection('users').doc(uid).collection('budgets').get();
       return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     },
+    /** Le e grava o orcamento numa transacao: o Dashboard pode estar mudando o mesmo documento. */
+    async saveBudget(uid, id, update) {
+      const ref = db.collection('users').doc(uid).collection('budgets').doc(id);
+      return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const next = update(snap.exists ? { ...snap.data(), id } : null);
+        tx.set(ref, next);
+        return next;
+      });
+    },
     async listReferenceRecords(uid) {
       // Referencias globais (shared_macros/shared_categories) + pessoais do proprio usuario.
       const [macros, categories, personal] = await Promise.all([

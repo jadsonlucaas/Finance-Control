@@ -118,6 +118,13 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     async listBudgets(uid) {
       return [...bucket(uid).budgets.entries()].map(([id, budget]) => ({ ...clone(budget), id }));
     },
+    async saveBudget(uid, id, update) {
+      const budgets = bucket(uid).budgets;
+      const current = budgets.has(id) ? { ...clone(budgets.get(id)), id } : null;
+      const next = update(current);
+      budgets.set(id, clone(next));
+      return clone(next);
+    },
     _setBudget(uid, id, data) {
       if (data) bucket(uid).budgets.set(id, clone(data));
       else bucket(uid).budgets.delete(id);

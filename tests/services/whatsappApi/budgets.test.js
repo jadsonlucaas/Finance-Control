@@ -39,7 +39,8 @@ function setup({ cache = false } = {}) {
   ])));
   const app = createApp({ store, resolver, apiKey: API_KEY, now: () => NOW, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } });
   const call = (body, phone = PHONE_BR) => app.handle({ method: 'POST', path: '/internal/whatsapp/orcamento', headers: { 'x-api-key': API_KEY }, body: { telefone: phone, accountId: 3, ...body } });
-  return { base, call };
+  const define = (body, phone = PHONE_BR) => app.handle({ method: 'POST', path: '/internal/whatsapp/orcamento/definir', headers: { 'x-api-key': API_KEY }, body: { telefone: phone, accountId: 3, ...body } });
+  return { base, call, define };
 }
 
 describe('whatsapp-api: consulta de orcamento', () => {
@@ -105,5 +106,62 @@ describe('whatsapp-api: consulta de orcamento', () => {
     expect((await call({ categoria: 'alimentação' })).body.categoria_consultada.limite).toBe(500);
     base._setBudget(UID, 'cat_alimentacao', { scope: 'category', category_name: 'Alimentação', limits: { '2026-11': 800 } });
     expect((await call({ categoria: 'alimentação' })).body.categoria_consultada).toMatchObject({ limite: 800, disponivel: 400 });
+  });
+});
+
+describe('whatsapp-api: definir orcamento pelo chat', () => {
+  it('cria limite de categoria a partir do mes pedido e a consulta enxerga na hora', async () => {
+    const { define, call, base } = setup({ cache: true });
+    const response = await define({ categoria: 'saúde', valor: 357, competencia: '2026-11' });
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ status: 'orcamento_definido', orcamento_id: 'cat_saude', limite: 357 });
+    expect(response.body.resposta_usuario).toBe('Pronto: limite de Saúde em R$ 357,00 a partir de 11/2026 (vale também para os meses seguintes). Este mês você já usou R$ 45,00 (12,6%).');
+    const saved = (await base.listBudgets(UID)).find((item) => item.id === 'cat_saude');
+    expect(saved).toMatchObject({ scope: 'category', category_name: 'Saúde', owner_uid: UID, limits: { '2026-11': 357 }, schema_version: 1 });
+    expect(saved.updated_at).toBe(NOW.toISOString());
+    expect((await call({ categoria: 'saude' })).body.categoria_consultada).toMatchObject({ limite: 357 });
+  });
+
+  it('altera limite existente sem apagar meses anteriores e entende palavra do dia a dia', async () => {
+    const { define, base } = setup();
+    const response = await define({ categoria: 'uber', valor: '120,50', competencia: '2026-11' });
+    expect(response.body.orcamento_id).toBe('cat_transporte');
+    const saved = (await base.listBudgets(UID)).find((item) => item.id === 'cat_transporte');
+    expect(saved.limits).toEqual({ '2026-10': 50, '2026-11': 120.5 });
+  });
+
+  it('total do mes quando nao ha categoria ou o usuario diz "total"', async () => {
+    const { define, base } = setup();
+    expect((await define({ valor: 2000 })).body.orcamento_id).toBe('total');
+    expect((await define({ categoria: 'geral', valor: 2500, competencia: '2026-12' })).body.orcamento_id).toBe('total');
+    const total = (await base.listBudgets(UID)).find((item) => item.id === 'total');
+    expect(total).toMatchObject({ scope: 'total', limits: { '2026-11': 2000, '2026-12': 2500 } });
+    expect(total.category_name).toBeUndefined();
+  });
+
+  it('nao inventa categoria nem lanca despesa quando nao reconhece o nome', async () => {
+    const { define, base } = setup();
+    const before = await base.listFinanceRecords(UID);
+    const response = await define({ categoria: 'Meta de gasto xyz', valor: 357 });
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('categoria_nao_encontrada');
+    expect(response.body.resposta_usuario).toMatch(/^Não encontrei a categoria "Meta de gasto xyz"\. Me diga uma destas: /);
+    expect((await base.listBudgets(UID)).map((item) => item.id).sort()).toEqual(['cat_alimentacao', 'cat_transporte', 'total']);
+    expect(await base.listFinanceRecords(UID)).toHaveLength(before.length);
+  });
+
+  it('responde em espanhol e euro para +34 e grava so na conta dele', async () => {
+    const { define, base } = setup();
+    const response = await define({ categoria: 'transporte', valor: 357, competencia: '2026-11' }, PHONE_ES);
+    expect(response.body.resposta_usuario).toBe('Listo: límite de Transporte en 357,00 € desde 11/2026 (sigue igual en los meses siguientes).');
+    expect((await base.listBudgets(UID_ES)).map((item) => item.id).sort()).toEqual(['cat_alimentacao', 'cat_transporte']);
+    expect((await base.listBudgets(UID)).find((item) => item.id === 'cat_transporte').limits).toEqual({ '2026-10': 50 });
+  });
+
+  it('recusa valor invalido e mes fora do formato', async () => {
+    const { define } = setup();
+    expect((await define({ categoria: 'transporte', valor: 0 })).status).toBe(400);
+    expect((await define({ categoria: 'transporte', valor: 'abc' })).status).toBe(400);
+    expect((await define({ categoria: 'transporte', valor: 10, competencia: 'novembro' })).status).toBe(400);
   });
 });
