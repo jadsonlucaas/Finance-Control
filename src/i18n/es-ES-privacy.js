@@ -43,7 +43,9 @@ export const PRIVACY_MESSAGES = Object.freeze({
   'Para apagar a conta e todos os dados, use "Excluir minha conta" no fim desta página. Os prazos de guarda de cada dado estão na': 'Para borrar la cuenta y todos los datos, usa "Eliminar mi cuenta" al final de esta página. Los plazos de conservación de cada dato están en la',
   'Aceite registrado.': 'Aceptación registrada.',
   'Arquivos baixados.': 'Archivos descargados.',
-  'Não foi possível exportar agora. Tente de novo.': 'No se pudo exportar ahora. Inténtalo de nuevo.'
+  'Não foi possível exportar agora. Tente de novo.': 'No se pudo exportar ahora. Inténtalo de nuevo.',
+  'Você já exportou várias vezes agora. Tente de novo em alguns minutos.': 'Ya has exportado varias veces. Inténtalo de nuevo en unos minutos.',
+  'Exportação indisponível no momento.': 'La exportación no está disponible ahora.'
 });
 
 export const PRIVACY_PATTERNS = Object.freeze([

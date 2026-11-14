@@ -13,6 +13,8 @@ import { createBillingCheckoutService } from './billingCheckout.js';
 import { createBudgetService } from './budgets.js';
 import { createNotificationSettingsService } from './notificationSettings.js';
 import { createLegalConsentService } from './legalConsent.js';
+import { createDataExportService } from './dataExport.js';
+import { getLocale } from '../core/i18n.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -62,6 +64,12 @@ export function installFirebaseServices({ target = window, config } = {}) {
     endpoint: String(import.meta.env?.VITE_BILLING_API_URL || '').trim(),
     getIdToken: (forceRefresh = false) => (auth.currentUser ? auth.currentUser.getIdToken(forceRefresh) : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' }))),
     reauthenticate: (password) => reauthenticateWithPassword(auth, password)
+  });
+  target.dataExportSdk = createDataExportService({
+    endpoint: String(import.meta.env?.VITE_BILLING_API_URL || '').trim(),
+    getIdToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' }))),
+    getLocale,
+    documentRef: target.document
   });
   const profileAccessService = createProfileAccessService({
     authService,
