@@ -106,6 +106,7 @@ export const MESSAGE_MESSAGES = Object.freeze({
   'Faça login novamente para continuar.': 'Vuelve a iniciar sesión para continuar.',
   'A exclusão não terminou. Tente de novo.': 'La eliminación no ha terminado. Inténtalo de nuevo.',
   'Não foi possível cancelar a assinatura agora. A conta foi bloqueada; tente de novo mais tarde.': 'No se pudo cancelar la suscripción ahora. La cuenta se ha bloqueado; inténtalo más tarde.',
+  'Não foi possível apagar as conversas do WhatsApp agora. A conta foi bloqueada; tente de novo mais tarde.': 'No se pudieron borrar las conversaciones de WhatsApp ahora. La cuenta se ha bloqueado; inténtalo más tarde.',
 
   // --- Erros gerais ---
   'A operacao demorou demais. Tente novamente com segurança quando disponivel.': 'La operación ha tardado demasiado. Inténtalo de nuevo cuando esté disponible.',

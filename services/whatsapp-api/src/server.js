@@ -5,6 +5,8 @@ import { readSetting } from './settings.js';
 import { normalizeAccessMode } from './access.js';
 import { createCheckoutService, createStripeClient } from './checkout.js';
 import { createAccountDeletionService } from './accountDeletion.js';
+import { createChatwootClient } from './chatwoot.js';
+import { createDataExportService } from './dataExport.js';
 import { startInboundCleanup } from './inboundMessages.js';
 import { parseNotificationTemplates } from './notificationService.js';
 
@@ -97,10 +99,17 @@ async function main() {
     prices: { brl: readSetting('STRIPE_PRICE_BRL'), eur: readSetting('STRIPE_PRICE_EUR') },
     appUrl: readSetting('APP_URL')
   });
-  const accountDeletion = createAccountDeletionService({ store, verifyIdToken, auth: await createAuthAdmin(), stripe });
+  // Opcional: sem ele, exclusao e exportacao nao tocam o Chatwoot (e dizem isso no resultado).
+  const chatwoot = createChatwootClient({
+    baseUrl: readSetting('CHATWOOT_API_URL'),
+    accountId: readSetting('CHATWOOT_ACCOUNT_ID'),
+    token: readSetting('CHATWOOT_API_TOKEN')
+  });
+  const accountDeletion = createAccountDeletionService({ store, verifyIdToken, auth: await createAuthAdmin(), stripe, chatwoot });
+  const dataExport = createDataExportService({ store, verifyIdToken, chatwoot });
   // Opcional: templates aprovados na Meta para alertas fora da janela de 24h (JSON por tipo e idioma).
   const notificationTemplates = parseNotificationTemplates(readSetting('NOTIFICATION_TEMPLATES'));
-  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout, accountDeletion, notificationTemplates });
+  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout, accountDeletion, dataExport, notificationTemplates });
   const port = Number(process.env.PORT || 3000);
 
   const server = http.createServer(async (req, res) => {
@@ -123,7 +132,7 @@ async function main() {
   });
 
   server.listen(port, () => {
-    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret), billing_checkout: checkout.configured, account_deletion: accountDeletion.configured, notification_templates: Object.keys(notificationTemplates).length }));
+    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret), billing_checkout: checkout.configured, account_deletion: accountDeletion.configured, data_export: dataExport.configured, chatwoot: Boolean(chatwoot), notification_templates: Object.keys(notificationTemplates).length }));
   });
 
   // Apaga os registros de deduplicacao vencidos. INBOUND_CLEANUP_INTERVAL_MS=0 desliga.

@@ -938,6 +938,58 @@ service cloud.firestore {
       }
     }
 
+    // Aceite dos Termos de Uso e da Politica de Privacidade (ver src/core/legalConsent.js).
+    // O dono grava o aceite da versao atual; no mesmo lote, um registro imutavel em events
+    // com as mesmas versoes e o horario do servidor. Ninguem apaga pelo app (so a exclusao de conta).
+    function legalTermsVersions() {
+      return ['termos-2026-11-v1'];
+    }
+
+    function legalPrivacyVersions() {
+      return ['privacidade-2026-11-v1'];
+    }
+
+    function isValidLegalConsent(uid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['uid', 'schema_version', 'terms_version', 'privacy_version', 'source', 'locale', 'accepted_at', 'last_event_id'])
+        && d.keys().hasAll(['uid', 'schema_version', 'terms_version', 'privacy_version', 'source', 'locale', 'accepted_at', 'last_event_id'])
+        && d.uid == uid
+        && d.schema_version == 1
+        && d.terms_version in legalTermsVersions()
+        && d.privacy_version in legalPrivacyVersions()
+        && d.source in ['signup', 'dashboard']
+        && d.locale in ['pt-BR', 'es-ES']
+        && d.accepted_at == request.time
+        && d.last_event_id is string
+        && d.last_event_id.size() > 0
+        && d.last_event_id.size() <= 64
+        && existsAfter(/databases/$(database)/documents/legal_consents/$(uid)/events/$(d.last_event_id))
+        && getAfter(/databases/$(database)/documents/legal_consents/$(uid)/events/$(d.last_event_id)).data.at == request.time;
+    }
+
+    match /legal_consents/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || (isAdmin() && isActiveUser()));
+      allow create, update: if isSignedIn() && request.auth.uid == uid && isValidLegalConsent(uid);
+      allow delete: if false;
+
+      match /events/{eventId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || (isAdmin() && isActiveUser()));
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['uid', 'terms_version', 'privacy_version', 'source', 'locale', 'at'])
+          && request.resource.data.keys().hasAll(['uid', 'terms_version', 'privacy_version', 'source', 'locale', 'at'])
+          && request.resource.data.uid == uid
+          && request.resource.data.terms_version in legalTermsVersions()
+          && request.resource.data.privacy_version in legalPrivacyVersions()
+          && request.resource.data.source in ['signup', 'dashboard']
+          && request.resource.data.locale in ['pt-BR', 'es-ES']
+          && request.resource.data.at == request.time
+          && getAfter(/databases/$(database)/documents/legal_consents/$(uid)).data.last_event_id == eventId
+          && getAfter(/databases/$(database)/documents/legal_consents/$(uid)).data.terms_version == request.resource.data.terms_version
+          && getAfter(/databases/$(database)/documents/legal_consents/$(uid)).data.privacy_version == request.resource.data.privacy_version;
+        allow update, delete: if false;
+      }
+    }
+
     // Deduplicacao das mensagens do WhatsApp: so o servidor (Admin SDK) grava e le.
     match /whatsapp_inbound_messages/{messageKey} {
       allow read, write: if false;

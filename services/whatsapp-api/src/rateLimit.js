@@ -22,6 +22,8 @@ export const DEFAULT_RATE_LIMITS = Object.freeze({
   linkConfirm: { limit: 10, windowMs: 10 * 60_000 },
   // Checkout/portal/exclusao pelo Dashboard, por ID token.
   billingToken: { limit: 10, windowMs: 60_000 },
+  // Exportacao de dados pelo Dashboard, por usuario (le a conta inteira e o Chatwoot).
+  dataExport: { limit: 3, windowMs: 10 * 60_000 },
   // Teto geral das rotas de cobranca (cada chamada pode bater no Stripe).
   billingGlobal: { limit: 120, windowMs: 60_000 },
   // Checagem profunda de saude (1 leitura no Firestore por chamada).

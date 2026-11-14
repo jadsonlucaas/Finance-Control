@@ -16,6 +16,7 @@ export const ACCOUNT_DELETION_ERROR_MESSAGES = Object.freeze({
   OWNER_REQUIRED: 'Apenas o owner exclui administradores.',
   USER_NOT_FOUND: 'Usuário não encontrado.',
   STRIPE_REQUIRED: 'Não foi possível cancelar a assinatura agora. A conta foi bloqueada; tente de novo mais tarde.',
+  CHATWOOT_UNAVAILABLE: 'Não foi possível apagar as conversas do WhatsApp agora. A conta foi bloqueada; tente de novo mais tarde.',
   DELETION_INCOMPLETE: 'A exclusão não terminou. Tente de novo.',
   AUTH_INVALID: 'Sua sessão expirou. Entre de novo.',
   ACCOUNT_DELETION_NOT_CONFIGURED: 'Exclusão de conta indisponível no momento.'

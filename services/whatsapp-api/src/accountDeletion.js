@@ -13,6 +13,7 @@ import { hashPhone, normalizePhone } from './phoneLinks.js';
  * tentativa continua de onde parou):
  *  1. bloqueia o perfil (status inactive) e revoga as sessoes;
  *  2. apaga o cliente no Stripe (cancela a assinatura na hora; faturas ficam no Stripe para fins fiscais);
+ *     e os contatos do Chatwoot com os telefones da conta (o Chatwoot apaga junto as conversas);
  *  3. apaga todos os dados no Firestore (ver ACCOUNT_DATA_LOCATIONS) e anonimiza referencias em dados de terceiros;
  *  4. apaga o login no Firebase Authentication;
  *  5. confere que nada sobrou e grava um registro sem dados pessoais (hash do uid).
@@ -27,6 +28,7 @@ export const ACCOUNT_DATA_LOCATIONS = Object.freeze([
   'users/{uid} (perfil) e todas as subcolecoes (finance_records, local_storage, audit_logs, idempotency_receipts, whatsapp_pending_actions...)',
   'user_onboarding/{uid}',
   'notification_settings/{uid} e consent_events',
+  'legal_consents/{uid} e events (aceites de Termos/Privacidade)',
   'notification_state/{uid}, notification_deliveries (uid), notification_messages (uid)',
   'whatsapp_links (uid)',
   'whatsapp_link_codes (owner_uid)',
@@ -38,7 +40,8 @@ export const ACCOUNT_DATA_LOCATIONS = Object.freeze([
   'users/*/audit_logs de admins (details.target_uid/target_email): anonimizados',
   'shared_macros/shared_categories (owner_uid/owner_email): anonimizados',
   'Firebase Authentication',
-  'Stripe (cliente e assinatura)'
+  'Stripe (cliente e assinatura)',
+  'Chatwoot (contatos com os telefones da conta e suas conversas), quando configurado'
 ]);
 
 export const hashUid = (uid) => createHash('sha256').update(String(uid)).digest('hex');
@@ -48,7 +51,7 @@ const sameEmail = (a, b) => {
 };
 const isNotFound = (error) => error?.code === 'auth/user-not-found' || error?.errorInfo?.code === 'auth/user-not-found';
 
-export function createAccountDeletionService({ store, verifyIdToken, auth, stripe = null, now = () => new Date(), logger = console } = {}) {
+export function createAccountDeletionService({ store, verifyIdToken, auth, stripe = null, chatwoot = null, now = () => new Date(), logger = console } = {}) {
   const configured = Boolean(store && verifyIdToken && auth);
 
   async function authenticate(body) {
@@ -98,6 +101,22 @@ export function createAccountDeletionService({ store, verifyIdToken, auth, strip
     return customerIds.length;
   }
 
+  // Antes de apagar o Firestore: os telefones vem dele. Falha aqui deixa a conta bloqueada e a
+  // nova tentativa refaz. Sem Chatwoot configurado, a exclusao segue e o registro diz isso.
+  async function deleteChatwootContacts(phones, uidHash) {
+    if (!chatwoot?.deleteContactsByPhones) {
+      if (phones.length) logger.warn?.(JSON.stringify({ level: 'warn', event: 'account_deletion_chatwoot_skipped', uid_hash: uidHash.slice(0, 16) }));
+      return { status: 'nao_configurado', deleted: 0 };
+    }
+    if (!phones.length) return { status: 'sem_telefone', deleted: 0 };
+    try {
+      return { status: 'ok', deleted: await chatwoot.deleteContactsByPhones([...new Set(phones)]) };
+    } catch (error) {
+      logger.error?.(JSON.stringify({ level: 'error', event: 'account_deletion_chatwoot_failed', uid_hash: uidHash.slice(0, 16), status: error?.chatwoot?.status || 0 }));
+      throw new ApiError(503, 'CHATWOOT_UNAVAILABLE', 'Nao foi possivel apagar as conversas agora. A conta foi bloqueada; tente de novo.');
+    }
+  }
+
   async function purge(uid, { mode, actorUid }) {
     const nowIso = now().toISOString();
     const uidHash = hashUid(uid);
@@ -108,6 +127,7 @@ export function createAccountDeletionService({ store, verifyIdToken, auth, strip
     const customerIds = [...new Set(footprint.customerIds.filter(Boolean))];
     const phoneKeys = [...new Set(footprint.phones.map(normalizePhone).filter(Boolean).map(hashPhone))];
     const stripeCustomers = await deleteStripeCustomers(customerIds);
+    const chatwootResult = await deleteChatwootContacts(footprint.phones.map(normalizePhone).filter(Boolean), uidHash);
 
     const counts = await store.purgeAccountData(uid, { customerIds, phoneKeys, marker: DELETED_MARKER });
     await ignoreMissingUser(() => auth.deleteUser(uid));
@@ -125,6 +145,8 @@ export function createAccountDeletionService({ store, verifyIdToken, auth, strip
       actor: mode === 'admin' ? actorUid : 'self',
       deleted_at: nowIso,
       stripe_customers_deleted: stripeCustomers,
+      chatwoot: chatwootResult.status,
+      chatwoot_contacts_deleted: chatwootResult.deleted,
       counts
     });
     logger.info?.(JSON.stringify({ level: 'info', event: 'account_deleted', mode, uid_hash: uidHash.slice(0, 16), counts }));

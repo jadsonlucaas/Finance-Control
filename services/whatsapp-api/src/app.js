@@ -42,6 +42,8 @@ export const HEALTH_DEEP_PATH = '/internal/health';
 export const NOTIFICATIONS_PENDING_PATH = '/internal/notificacoes/pendentes';
 export const NOTIFICATIONS_RESULT_PATH = '/internal/notificacoes/resultado';
 // Exclusao de conta: mesma rota/relay do n8n, acao no corpo.
+// Exportacao dos dados da conta (direito de acesso/portabilidade): mesma rota, acao no corpo.
+export const DATA_EXPORT_ACTION = 'exportar_dados';
 export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOwnAccount', excluir_usuario: 'deleteUserAsAdmin' });
 
 /**
@@ -63,6 +65,7 @@ export function createApp({
   stripeWebhookSecret = '',
   checkout = null,
   accountDeletion = null,
+  dataExport = null,
   now = () => new Date(),
   logger = console,
   newId = () => randomUUID(),
@@ -214,6 +217,13 @@ export function createApp({
           if (!accountDeletion?.configured) throw new ApiError(503, 'ACCOUNT_DELETION_NOT_CONFIGURED', 'Exclusao de conta indisponivel no momento.');
           const result = await accountDeletion[deletion](body);
           code = 'ACCOUNT_DELETED';
+          status = 200;
+          return { status, body: result };
+        }
+        if (route === BILLING_PATH && String(body?.acao || '') === DATA_EXPORT_ACTION) {
+          if (!dataExport?.configured) throw new ApiError(503, 'DATA_EXPORT_NOT_CONFIGURED', 'Exportacao indisponivel no momento.');
+          const result = await dataExport.exportOwnData(body, { beforeExport: (uid) => rateLimiter.enforce('dataExport', uid) });
+          code = 'DATA_EXPORTED';
           status = 200;
           return { status, body: result };
         }

@@ -358,6 +358,29 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       if ([...stripeSubscriptions.values()].some((value) => customerIds.includes(value.customer_id))) leftovers.push('billing_stripe_subscriptions');
       return leftovers;
     },
+    async exportAccountData(uid) {
+      const data = users.get(uid);
+      const entries = (map) => [...map.entries()].map(([id, value]) => ({ id, ...clone(value) }));
+      const conta = {};
+      if (data) {
+        if (data.records.size) conta.finance_records = entries(data.records);
+        if (data.budgets.size) conta.budgets = entries(data.budgets);
+        if (data.pending.size) conta.whatsapp_pending_actions = entries(data.pending);
+        if (data.receipts.size) conta.idempotency_receipts = entries(data.receipts);
+        if (data.audit.length) conta.audit_logs = clone(data.audit);
+      }
+      const byUid = (map) => [...map.entries()].filter(([, value]) => value?.uid === uid).map(([id, value]) => ({ id, ...clone(value) }));
+      return {
+        perfil: clone(userProfiles.get(uid)) || null,
+        dados_da_conta: conta,
+        cadastro: clone(onboarding.get(uid)) || null,
+        preferencias_de_notificacao: { atual: clone(notificationSettings.get(uid)) || null, historico: clone(consentEvents.filter((event) => event.uid === uid)) },
+        aceites_de_termos: { atual: null, historico: [] },
+        alertas: { estado: clone(notificationState.get(uid)) || null, entregas: byUid(notificationDeliveries), mensagens: byUid(notificationMessages) },
+        whatsapp: { vinculos: byUid(links), cortesia: clone(compAccess.get(uid)) || null },
+        assinatura: clone(subscriptions.get(uid)) || null
+      };
+    },
     async recordAccountDeletion(id, data) {
       accountDeletions.set(id, clone(data));
     },

@@ -12,6 +12,9 @@ import { createAccountOnboardingService, PLAN_CHOICE_STORAGE_KEY, validateSignup
 import { createBillingCheckoutService } from './billingCheckout.js';
 import { createBudgetService } from './budgets.js';
 import { createNotificationSettingsService } from './notificationSettings.js';
+import { createLegalConsentService } from './legalConsent.js';
+import { createDataExportService } from './dataExport.js';
+import { getLocale } from '../core/i18n.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -62,6 +65,12 @@ export function installFirebaseServices({ target = window, config } = {}) {
     getIdToken: (forceRefresh = false) => (auth.currentUser ? auth.currentUser.getIdToken(forceRefresh) : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' }))),
     reauthenticate: (password) => reauthenticateWithPassword(auth, password)
   });
+  target.dataExportSdk = createDataExportService({
+    endpoint: String(import.meta.env?.VITE_BILLING_API_URL || '').trim(),
+    getIdToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID' }))),
+    getLocale,
+    documentRef: target.document
+  });
   const profileAccessService = createProfileAccessService({
     authService,
     userAdminService: target.userAdminSdk
@@ -69,6 +78,7 @@ export function installFirebaseServices({ target = window, config } = {}) {
   target.accountOnboardingSdk = createAccountOnboardingService(db);
   target.budgetsSdk = createBudgetService(db);
   target.notificationSettingsSdk = createNotificationSettingsService(db);
+  target.legalConsentSdk = createLegalConsentService(db);
   // Moeda (e depois idioma/fuso) do usuario: aplicada a cada login, antes do primeiro render.
   installUserPreferencesRuntime(target);
   target.authSdk = {
@@ -95,6 +105,15 @@ export function installFirebaseServices({ target = window, config } = {}) {
             await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, { ...suggested, ...details });
           } catch (error) {
             captureError(error, { operation: 'auth.sign_up.onboarding_details' });
+          }
+        }
+        if (details?.legal_accepted && credential?.user?.uid) {
+          try {
+            // Aceite dos Termos/Privacidade marcado no cadastro. Se falhar, o app pede de novo ao entrar.
+            const { locale } = suggestPreferences({ ...browserLocaleContext(target), country: details.country, phone: details.whatsapp_phone });
+            await target.legalConsentSdk.accept(credential.user.uid, { source: 'signup', locale });
+          } catch (error) {
+            captureError(error, { operation: 'auth.sign_up.legal_consent' });
           }
         }
         return credential;

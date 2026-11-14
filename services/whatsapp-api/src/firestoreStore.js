@@ -130,6 +130,14 @@ export function createFirestoreStore(db) {
         add('notification_consent_events', consentEvents.size);
         await db.recursiveDelete(notificationRef);
       }
+      // Aceites de Termos/Privacidade + historico (subcolecao events).
+      const legalRef = db.collection('legal_consents').doc(uid);
+      const legalEvents = await legalRef.collection('events').get();
+      if ((await legalRef.get()).exists || legalEvents.size) {
+        add('legal_consents', 1);
+        add('legal_consent_events', legalEvents.size);
+        await db.recursiveDelete(legalRef);
+      }
       await deleteDoc('notification_state', notificationState.doc(uid));
       await deleteQuery('notification_deliveries', notificationDeliveries.where('uid', '==', uid));
       await deleteQuery('notification_messages', notificationMessages.where('uid', '==', uid));
@@ -169,6 +177,8 @@ export function createFirestoreStore(db) {
         check('user_onboarding', onboardingCol.doc(uid).get()),
         check('notification_settings', db.collection('notification_settings').doc(uid).get()),
         check('notification_settings', db.collection('notification_settings').doc(uid).collection('consent_events').limit(1).get()),
+        check('legal_consents', db.collection('legal_consents').doc(uid).get()),
+        check('legal_consents', db.collection('legal_consents').doc(uid).collection('events').limit(1).get()),
         check('notification_state', notificationState.doc(uid).get()),
         check('notification_deliveries', notificationDeliveries.where('uid', '==', uid).limit(1).get()),
         check('notification_messages', notificationMessages.where('uid', '==', uid).limit(1).get()),
@@ -186,6 +196,39 @@ export function createFirestoreStore(db) {
       ]);
       if ((await auditMentions(uid)).length) leftovers.push('audit_logs');
       return [...new Set(leftovers)];
+    },
+    // --- Exportacao de dados (dataExport.js): tudo que e da conta, legivel. ---
+    // Fica de fora so o que e seguranca/controle interno: codigos de vinculo, tentativas e eventos do Stripe.
+    async exportAccountData(uid) {
+      const docs = (snapshot) => snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const withSub = async (ref, sub) => {
+        const [main, children] = await Promise.all([readData(ref), ref.collection(sub).get()]);
+        return { atual: main, historico: docs(children) };
+      };
+      const [profile, subcollections] = await Promise.all([readData(userDoc(uid)), userDoc(uid).listCollections()]);
+      const conta = {};
+      for (const sub of subcollections) conta[sub.id] = docs(await sub.get());
+      const [onboarding, notificacoes, aceites, estadoAlertas, entregas, mensagens, vinculos, cortesia, assinatura] = await Promise.all([
+        readData(onboardingCol.doc(uid)),
+        withSub(db.collection('notification_settings').doc(uid), 'consent_events'),
+        withSub(db.collection('legal_consents').doc(uid), 'events'),
+        readData(notificationState.doc(uid)),
+        notificationDeliveries.where('uid', '==', uid).get(),
+        notificationMessages.where('uid', '==', uid).get(),
+        links.where('uid', '==', uid).get(),
+        readData(compAccess.doc(uid)),
+        readData(subscriptions.doc(uid))
+      ]);
+      return {
+        perfil: profile,
+        dados_da_conta: conta,
+        cadastro: onboarding,
+        preferencias_de_notificacao: notificacoes,
+        aceites_de_termos: aceites,
+        alertas: { estado: estadoAlertas, entregas: docs(entregas), mensagens: docs(mensagens) },
+        whatsapp: { vinculos: docs(vinculos), cortesia },
+        assinatura
+      };
     },
     async recordAccountDeletion(id, data) {
       await deletions.doc(id).set(data);

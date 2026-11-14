@@ -55,6 +55,10 @@ export function authTemplate() {
                         <input id="auth-whatsapp-consent" type="checkbox" class="mt-0.5">
                         <span>Aceito receber mensagens no WhatsApp (boas-vindas e alertas). Posso cancelar quando quiser.</span>
                     </label>
+                    <label class="flex items-start gap-2 text-xs text-textSecondary">
+                        <input id="auth-legal-accept" type="checkbox" class="mt-0.5">
+                        <span>Li e aceito os <a href="/legal/termos.html" target="_blank" rel="noopener" class="text-accent underline">Termos de Uso</a> e a <a href="/legal/privacidade.html" target="_blank" rel="noopener" class="text-accent underline">Política de Privacidade</a>.</span>
+                    </label>
                 </div>
                 </div>
                 <div id="auth-error" class="hidden text-sm rounded-lg border border-danger/20 bg-danger/10 text-danger px-3 py-2"></div>
