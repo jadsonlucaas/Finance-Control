@@ -142,6 +142,7 @@
                         </div>
                     </div>
                     <div id="user-preferences-panel"></div>
+                    <div id="notification-settings-panel"></div>
                     <div id="whatsapp-link-panel"></div>
                     <div id="backup-restore-panel"></div>
                     <div id="account-deletion-panel"></div>

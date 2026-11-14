@@ -8,12 +8,14 @@ import { MESSAGE_MESSAGES, MESSAGE_PATTERNS } from './es-ES-messages.js';
 import { DASHBOARD_MESSAGES, DASHBOARD_PATTERNS } from './es-ES-dashboard.js';
 import { PDF_INSIGHT_PATTERNS } from './es-ES-pdfInsights.js';
 import { BUDGET_MESSAGES, BUDGET_PATTERNS } from './es-ES-budgets.js';
+import { NOTIFICATION_MESSAGES, NOTIFICATION_PATTERNS } from './es-ES-notifications.js';
 
 const messages = {
   ...SCREEN_MESSAGES,
   ...MESSAGE_MESSAGES,
   ...DASHBOARD_MESSAGES,
   ...BUDGET_MESSAGES,
+  ...NOTIFICATION_MESSAGES,
   // --- Login e cadastro ---
   'Acesso Seguro': 'Acceso seguro',
   'Entrar': 'Iniciar sesión',
@@ -102,6 +104,6 @@ const messages = {
   'Açores': 'Azores'
 };
 
-const patterns = [...SCREEN_PATTERNS, ...MESSAGE_PATTERNS, ...DASHBOARD_PATTERNS, ...PDF_INSIGHT_PATTERNS, ...BUDGET_PATTERNS];
+const patterns = [...SCREEN_PATTERNS, ...MESSAGE_PATTERNS, ...DASHBOARD_PATTERNS, ...PDF_INSIGHT_PATTERNS, ...BUDGET_PATTERNS, ...NOTIFICATION_PATTERNS];
 
 export const ES_ES = Object.freeze({ messages: Object.freeze(messages), patterns: Object.freeze(patterns) });

@@ -119,6 +119,14 @@ export function createFirestoreStore(db) {
       for (const key of phoneKeys) await deleteDoc('whatsapp_link_attempts', linkAttempts.doc(key));
       await deleteDoc('whatsapp_comp_access', compAccess.doc(uid));
       await deleteDoc('user_onboarding', onboardingCol.doc(uid));
+      // Preferencias de notificacao + historico de consentimento (subcolecao consent_events).
+      const notificationRef = db.collection('notification_settings').doc(uid);
+      const consentEvents = await notificationRef.collection('consent_events').get();
+      if ((await notificationRef.get()).exists || consentEvents.size) {
+        add('notification_settings', 1);
+        add('notification_consent_events', consentEvents.size);
+        await db.recursiveDelete(notificationRef);
+      }
       await deleteDoc('billing_subscriptions', subscriptions.doc(uid));
       await deleteQuery('billing_customers', billingCustomers.where('uid', '==', uid));
       for (const customerId of customerIds) {
@@ -153,6 +161,8 @@ export function createFirestoreStore(db) {
       Object.keys(await countUserTree(uid)).forEach((name) => leftovers.push(name));
       await Promise.all([
         check('user_onboarding', onboardingCol.doc(uid).get()),
+        check('notification_settings', db.collection('notification_settings').doc(uid).get()),
+        check('notification_settings', db.collection('notification_settings').doc(uid).collection('consent_events').limit(1).get()),
         check('whatsapp_comp_access', compAccess.doc(uid).get()),
         check('billing_subscriptions', subscriptions.doc(uid).get()),
         check('whatsapp_links', links.where('uid', '==', uid).limit(1).get()),
@@ -220,6 +230,7 @@ export function createFirestoreStore(db) {
     },
     getBillingSubscription: (uid) => readData(subscriptions.doc(uid)),
     getOnboarding: (uid) => readData(db.collection('user_onboarding').doc(uid)),
+    getNotificationSettings: (uid) => readData(db.collection('notification_settings').doc(uid)),
     async mergeBillingSubscription(uid, patch) {
       await subscriptions.doc(uid).set(patch, { merge: true });
     },

@@ -866,6 +866,78 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Preferencias de notificacao e consentimento dos alertas no WhatsApp (ver src/core/notificationSettings.js).
+    // O dono liga/desliga cada alerta. Mudar o consentimento exige, no mesmo lote, um registro
+    // imutavel em consent_events com o mesmo estado, horario do servidor e versao do texto.
+    // Revogacao pelo WhatsApp e gravada pelo servidor (Admin SDK).
+    function notificationConsentKeys() {
+      return ['whatsapp_consent', 'whatsapp_consent_version', 'whatsapp_consent_source', 'whatsapp_consent_at', 'whatsapp_consent_event_id'];
+    }
+
+    function hasValidNotificationSettingsShape(uid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['uid', 'schema_version', 'updated_at', 'due_soon_enabled', 'due_soon_days', 'overdue_enabled',
+          'budget_enabled', 'monthly_summary_enabled', 'send_hour', 'whatsapp_consent', 'whatsapp_consent_version',
+          'whatsapp_consent_source', 'whatsapp_consent_at', 'whatsapp_consent_event_id'])
+        && d.keys().hasAll(['uid', 'schema_version', 'updated_at', 'due_soon_enabled', 'due_soon_days', 'overdue_enabled',
+          'budget_enabled', 'monthly_summary_enabled', 'send_hour', 'whatsapp_consent'])
+        && d.uid == uid
+        && d.schema_version == 1
+        && d.updated_at == request.time
+        && d.due_soon_enabled is bool
+        && d.due_soon_days in [1, 3, 7]
+        && d.overdue_enabled is bool
+        && d.budget_enabled is bool
+        && d.monthly_summary_enabled is bool
+        && d.send_hour is int && d.send_hour >= 7 && d.send_hour <= 21
+        && d.whatsapp_consent in ['none', 'granted', 'revoked'];
+    }
+
+    function isValidNotificationConsentChange(uid) {
+      let d = request.resource.data;
+      return d.whatsapp_consent in ['granted', 'revoked']
+        && d.whatsapp_consent_version in ['whatsapp-alerts-v1']
+        && d.whatsapp_consent_source == 'dashboard'
+        && d.whatsapp_consent_at == request.time
+        && d.whatsapp_consent_event_id is string
+        && d.whatsapp_consent_event_id.matches('^[A-Za-z0-9]{10,40}$')
+        && getAfter(/databases/$(database)/documents/notification_settings/$(uid)/consent_events/$(d.whatsapp_consent_event_id)).data.action == d.whatsapp_consent;
+    }
+
+    function isValidNotificationSettingsCreate(uid) {
+      let d = request.resource.data;
+      return hasValidNotificationSettingsShape(uid)
+        && ((d.whatsapp_consent == 'none' && !d.keys().hasAny(['whatsapp_consent_version', 'whatsapp_consent_source', 'whatsapp_consent_at', 'whatsapp_consent_event_id']))
+          || isValidNotificationConsentChange(uid));
+    }
+
+    function isValidNotificationSettingsUpdate(uid) {
+      return hasValidNotificationSettingsShape(uid)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(notificationConsentKeys())
+          || isValidNotificationConsentChange(uid));
+    }
+
+    match /notification_settings/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || (isAdmin() && isActiveUser()));
+      allow create: if isActiveSelf(uid) && isValidNotificationSettingsCreate(uid);
+      allow update: if isActiveSelf(uid) && isValidNotificationSettingsUpdate(uid);
+      allow delete: if false;
+
+      match /consent_events/{eventId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || (isAdmin() && isActiveUser()));
+        allow create: if isActiveSelf(uid)
+          && request.resource.data.keys().hasOnly(['uid', 'action', 'version', 'source', 'at'])
+          && request.resource.data.uid == uid
+          && request.resource.data.action in ['granted', 'revoked']
+          && request.resource.data.version in ['whatsapp-alerts-v1']
+          && request.resource.data.source == 'dashboard'
+          && request.resource.data.at == request.time
+          && getAfter(/databases/$(database)/documents/notification_settings/$(uid)).data.whatsapp_consent_event_id == eventId
+          && getAfter(/databases/$(database)/documents/notification_settings/$(uid)).data.whatsapp_consent == request.resource.data.action;
+        allow update, delete: if false;
+      }
+    }
+
     // Deduplicacao das mensagens do WhatsApp: so o servidor (Admin SDK) grava e le.
     match /whatsapp_inbound_messages/{messageKey} {
       allow read, write: if false;

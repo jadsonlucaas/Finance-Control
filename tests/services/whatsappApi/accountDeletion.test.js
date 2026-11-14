@@ -29,6 +29,7 @@ function setup({ stripeConfigured = true } = {}) {
   );
   store._setOnboarding('uid-alice', { uid: 'uid-alice', name: 'Alice', country: 'BR', whatsapp_phone: PHONE });
   store._setComp('uid-alice', { uid: 'uid-alice', status: 'active' });
+  store._setNotificationSettings('uid-alice', { uid: 'uid-alice', whatsapp_consent: 'granted' });
   store._setSubscription('uid-alice', { uid: 'uid-alice', customer_id: 'cus_1', subscription_id: 'sub_1', status: 'active', phone: PHONE });
   store.setBillingCustomer('cus_1', { uid: 'uid-alice' });
   store.saveStripeSubscription('sub_1', { subscription_id: 'sub_1', customer_id: 'cus_1', status: 'active' });
@@ -68,6 +69,7 @@ async function expectAliceGone({ store, authUsers }) {
   expect(store._linkCode('code1')).toBeNull();
   expect(await store.getLinkAttempts(hashPhone(PHONE))).toBeNull();
   expect(await store.getStripeSubscription('sub_1')).toBeNull();
+  expect(await store.getNotificationSettings('uid-alice')).toBeNull();
   expect(await store.getBillingCustomer('cus_1')).toBeNull();
   expect(authUsers.has('uid-alice')).toBe(false);
 }
