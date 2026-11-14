@@ -20,6 +20,9 @@ export function createFirestoreStore(db) {
   const inboundMessages = db.collection('whatsapp_inbound_messages');
   const billingCustomers = db.collection('billing_customers');
   const stripeSubscriptions = db.collection('billing_stripe_subscriptions');
+  const notificationState = db.collection('notification_state');
+  const notificationDeliveries = db.collection('notification_deliveries');
+  const notificationMessages = db.collection('notification_messages');
   // Reserva atomica com retomada: cria; se existe 'processing' com stampField < staleBeforeIso, assume.
   const reserveOrReclaim = (ref, data, staleBeforeIso, stampField) => db.runTransaction(async (tx) => {
     const snapshot = await tx.get(ref);
@@ -127,6 +130,9 @@ export function createFirestoreStore(db) {
         add('notification_consent_events', consentEvents.size);
         await db.recursiveDelete(notificationRef);
       }
+      await deleteDoc('notification_state', notificationState.doc(uid));
+      await deleteQuery('notification_deliveries', notificationDeliveries.where('uid', '==', uid));
+      await deleteQuery('notification_messages', notificationMessages.where('uid', '==', uid));
       await deleteDoc('billing_subscriptions', subscriptions.doc(uid));
       await deleteQuery('billing_customers', billingCustomers.where('uid', '==', uid));
       for (const customerId of customerIds) {
@@ -163,6 +169,9 @@ export function createFirestoreStore(db) {
         check('user_onboarding', onboardingCol.doc(uid).get()),
         check('notification_settings', db.collection('notification_settings').doc(uid).get()),
         check('notification_settings', db.collection('notification_settings').doc(uid).collection('consent_events').limit(1).get()),
+        check('notification_state', notificationState.doc(uid).get()),
+        check('notification_deliveries', notificationDeliveries.where('uid', '==', uid).limit(1).get()),
+        check('notification_messages', notificationMessages.where('uid', '==', uid).limit(1).get()),
         check('whatsapp_comp_access', compAccess.doc(uid).get()),
         check('billing_subscriptions', subscriptions.doc(uid).get()),
         check('whatsapp_links', links.where('uid', '==', uid).limit(1).get()),
@@ -231,6 +240,83 @@ export function createFirestoreStore(db) {
     getBillingSubscription: (uid) => readData(subscriptions.doc(uid)),
     getOnboarding: (uid) => readData(db.collection('user_onboarding').doc(uid)),
     getNotificationSettings: (uid) => readData(db.collection('notification_settings').doc(uid)),
+    // --- Alertas automaticos (notificationService.js), gravados so pelo servidor ---
+    async listNotificationRecipients({ limit = 200 } = {}) {
+      const snapshot = await db.collection('notification_settings').where('whatsapp_consent', '==', 'granted').limit(limit).get();
+      return snapshot.docs.map((doc) => ({ uid: doc.id, settings: doc.data() }));
+    },
+    async getActiveLinkByUid(uid) {
+      const snapshot = await links.where('uid', '==', uid).where('status', '==', 'active').limit(1).get();
+      return snapshot.empty ? null : snapshot.docs[0].data();
+    },
+    // Horario da ultima mensagem recebida: define a janela de 24h do WhatsApp.
+    async touchLinkInbound(phone, nowIso) {
+      try {
+        await links.doc(phone).update({ last_inbound_at: nowIso });
+      } catch (error) {
+        if (error?.code !== 5 && error?.code !== 'not-found') throw error;
+      }
+    },
+    getNotificationState: (uid) => readData(notificationState.doc(uid)),
+    async setNotificationState(uid, data) {
+      await notificationState.doc(uid).set(data, { merge: true });
+    },
+    async getNotificationDeliveries(ids) {
+      if (!ids.length) return new Map();
+      const snapshots = await db.getAll(...ids.map((id) => notificationDeliveries.doc(id)));
+      return new Map(snapshots.filter((doc) => doc.exists).map((doc) => [doc.id, doc.data()]));
+    },
+    /** Reserva todas as chaves ou nenhuma (outro disparo pode estar reservando as mesmas). */
+    async reserveNotificationDeliveries(entries) {
+      return db.runTransaction(async (tx) => {
+        const refs = entries.map((entry) => notificationDeliveries.doc(entry.id));
+        const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+        if (snapshots.some((doc) => doc.exists)) return false;
+        refs.forEach((ref, index) => tx.create(ref, entries[index].data));
+        return true;
+      });
+    },
+    async saveNotificationMessage(id, data) {
+      await notificationMessages.doc(id).set(data);
+    },
+    getNotificationMessage: (id) => readData(notificationMessages.doc(id)),
+    async finishNotificationMessage(id, deliveryIds, patch) {
+      const batch = db.batch();
+      batch.update(notificationMessages.doc(id), patch);
+      deliveryIds.forEach((deliveryId) => batch.update(notificationDeliveries.doc(deliveryId), { status: 'sent', sent_at: patch.finished_at }));
+      await batch.commit();
+    },
+    async failNotificationMessage(id, deliveryIds, patch) {
+      const batch = db.batch();
+      batch.update(notificationMessages.doc(id), patch);
+      deliveryIds.forEach((deliveryId) => batch.delete(notificationDeliveries.doc(deliveryId)));
+      await batch.commit();
+    },
+    /** Revogacao pelo WhatsApp: estado + registro no historico, juntos. */
+    async revokeNotificationConsent(uid, { at, eventId }) {
+      const ref = db.collection('notification_settings').doc(uid);
+      const batch = db.batch();
+      batch.set(ref, {
+        uid,
+        schema_version: 1,
+        updated_at: at,
+        whatsapp_consent: 'revoked',
+        whatsapp_consent_version: 'whatsapp-alerts-v1',
+        whatsapp_consent_source: 'whatsapp',
+        whatsapp_consent_at: at,
+        whatsapp_consent_event_id: eventId
+      }, { merge: true });
+      batch.create(ref.collection('consent_events').doc(eventId), { uid, action: 'revoked', version: 'whatsapp-alerts-v1', source: 'whatsapp', at });
+      await batch.commit();
+    },
+    async purgeExpiredNotificationData({ before, limit }) {
+      let total = 0;
+      for (const collection of [notificationDeliveries, notificationMessages]) {
+        const snapshot = await collection.where('expires_at', '<', before).limit(limit).get();
+        if (!snapshot.empty) total += await deleteRefs(snapshot.docs.map((doc) => doc.ref));
+      }
+      return total;
+    },
     async mergeBillingSubscription(uid, patch) {
       await subscriptions.doc(uid).set(patch, { merge: true });
     },

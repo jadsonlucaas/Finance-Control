@@ -14,6 +14,7 @@ import { createPreferenceResolver } from './preferences.js';
 import { runWithCurrency } from './money.js';
 import { buildOrcamento, defineBudget } from './budgets.js';
 import { currentCompetence } from './dates.js';
+import { createNotificationService } from './notificationService.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -37,6 +38,9 @@ export const BILLING_PATH = '/internal/billing';
 const PREFIX = '/internal/whatsapp';
 // Saude com teste real do banco (usada pelo monitor do n8n a cada 5 min).
 export const HEALTH_DEEP_PATH = '/internal/health';
+// Alertas automaticos (n8n de hora em hora): busca as mensagens e devolve o resultado do envio.
+export const NOTIFICATIONS_PENDING_PATH = '/internal/notificacoes/pendentes';
+export const NOTIFICATIONS_RESULT_PATH = '/internal/notificacoes/resultado';
 // Exclusao de conta: mesma rota/relay do n8n, acao no corpo.
 export const ACCOUNT_DELETION_ACTIONS = Object.freeze({ excluir_conta: 'deleteOwnAccount', excluir_usuario: 'deleteUserAsAdmin' });
 
@@ -64,7 +68,8 @@ export function createApp({
   newId = () => randomUUID(),
   rateLimiter = createRateLimiter(),
   healthTimeoutMs = 5000,
-  preferenceResolver = null
+  preferenceResolver = null,
+  notificationTemplates = {}
 }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const access = createAccessPolicy({ store, mode: accessMode });
@@ -73,13 +78,23 @@ export function createApp({
   const links = createLinkService({ store, now });
   const billing = stripeWebhookSecret ? createBillingService({ store, now, logger }) : null;
   const inbound = typeof store.reserveInboundMessage === 'function' ? createInboundMessageService({ store, now }) : null;
+  const notifications = createNotificationService({ store, access, preferences, now, newId, templates: notificationTemplates, logger });
 
   // Rotas sem usuario resolvido: o telefone ainda pode nao estar vinculado.
   const linkRoutes = {
     // Chamada pelo n8n antes do agente: { duplicada: true } quando a mensagem ja foi recebida.
     'mensagem/registrar': async (body) => {
       if (!inbound) throw new ApiError(503, 'DEDUP_NOT_CONFIGURED', 'Deduplicacao indisponivel.');
-      return inbound.register(body);
+      const registered = await inbound.register(body);
+      // Janela de 24h do WhatsApp: guarda no vinculo a hora da ultima mensagem do usuario.
+      if (!registered.result.duplicada && typeof store.touchLinkInbound === 'function') {
+        try {
+          await store.touchLinkInbound(normalizePhone(body.telefone), now().toISOString());
+        } catch {
+          logger.warn?.(JSON.stringify({ level: 'warn', event: 'link_inbound_touch_failed' }));
+        }
+      }
+      return registered;
     },
     'vinculo/confirmar': async (body) => {
       const { phoneHash, ...result } = await links.confirm(body);
@@ -173,6 +188,15 @@ export function createApp({
         status = result.ok ? 200 : 503;
         return { status, body: result };
       }
+      if (route === NOTIFICATIONS_PENDING_PATH || route === NOTIFICATIONS_RESULT_PATH) {
+        if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
+        if (!notifications.configured) throw new ApiError(503, 'NOTIFICATIONS_NOT_CONFIGURED', 'Alertas indisponiveis.');
+        const pendingRoute = route === NOTIFICATIONS_PENDING_PATH;
+        rateLimiter.enforce(pendingRoute ? 'notificationsRun' : 'notificationsResult', 'all');
+        const result = pendingRoute ? await notifications.collectPending(body || {}) : await notifications.reportResult(body || {});
+        status = 200;
+        return { status, body: result };
+      }
       if (route === STRIPE_WEBHOOK_PATH) {
         if (method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.');
         const result = await handleStripeWebhook(headers, rawBody);
@@ -215,13 +239,19 @@ export function createApp({
         status = 200;
         return { status, body: result };
       }
-      const handler = readRoutes[name] || writeRoutes[name];
+      const handler = readRoutes[name] || writeRoutes[name] || (name === 'notificacoes/parar' ? true : null);
       if (!handler) throw new ApiError(404, 'NOT_FOUND', 'Rota nao encontrada.');
 
       const { uid, phoneHash: hash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
       phoneHash = hash;
       rateLimiter.enforce('user', uid);
-      if (writeRoutes[name]) rateLimiter.enforce('userWrite', uid);
+      if (writeRoutes[name] || name === 'notificacoes/parar') rateLimiter.enforce('userWrite', uid);
+      // "parar alertas" vale mesmo sem Premium: revogar consentimento nunca depende de assinatura.
+      if (name === 'notificacoes/parar') {
+        const prefs = await preferences.forUser(uid, body.telefone);
+        status = 200;
+        return { status, body: await notifications.stopFromWhatsApp(uid, prefs) };
+      }
       await access.assert(uid, { phone: body.telefone });
       // Fuso, idioma e moeda do usuario, escolhidos em Configuracoes no Dashboard.
       const prefs = await preferences.forUser(uid, body.telefone);

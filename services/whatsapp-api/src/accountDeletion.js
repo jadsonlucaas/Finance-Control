@@ -27,6 +27,7 @@ export const ACCOUNT_DATA_LOCATIONS = Object.freeze([
   'users/{uid} (perfil) e todas as subcolecoes (finance_records, local_storage, audit_logs, idempotency_receipts, whatsapp_pending_actions...)',
   'user_onboarding/{uid}',
   'notification_settings/{uid} e consent_events',
+  'notification_state/{uid}, notification_deliveries (uid), notification_messages (uid)',
   'whatsapp_links (uid)',
   'whatsapp_link_codes (owner_uid)',
   'whatsapp_link_attempts/{hash do telefone}',

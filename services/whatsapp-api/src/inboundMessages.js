@@ -65,6 +65,14 @@ export async function purgeExpiredInboundMessages({ store, now = () => new Date(
     total += deleted;
     if (deleted < batch) break;
   }
+  // Registros dos alertas automaticos (chaves enviadas e mensagens) com expires_at vencido.
+  if (typeof store.purgeExpiredNotificationData === 'function') {
+    for (let round = 0; round < maxBatches; round += 1) {
+      const deleted = await store.purgeExpiredNotificationData({ before, limit: batch });
+      total += deleted;
+      if (deleted < batch) break;
+    }
+  }
   return total;
 }
 

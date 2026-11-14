@@ -247,3 +247,15 @@ Lancamentos e referencias de cada usuario ficam em cache por 30 s (`READ_CACHE_T
 mensagem do WhatsApp chama varias ferramentas em sequencia; sem o cache cada uma lia todos os lancamentos no
 Firestore (e a cota gratuita do plano Spark estourou em 09/11/2026). Escritas da propria API limpam o cache do
 usuario; alteracoes feitas no Dashboard aparecem no WhatsApp em ate 30 s.
+
+## Alertas automáticos (Etapa 3)
+
+O n8n chama de hora em hora (com `x-api-key`):
+
+- `POST /internal/notificacoes/pendentes` `{ limite? }` → `{ mensagens: [{ id, tipo, telefone, chatwoot_account_id, idioma, janela_aberta, texto, template }], resumo }`.
+- `POST /internal/notificacoes/resultado` `{ id, status: "enviado" | "falhou", erro_codigo? }` — um por mensagem. `falhou` libera as chaves (o aviso volta no dia seguinte).
+- `POST /internal/whatsapp/notificacoes/parar` `{ telefone, accountId }` — "parar alertas" no WhatsApp; revoga o consentimento (vale sem Premium) e devolve `resposta_usuario`.
+
+Regras: só usuários com `notification_settings/{uid}.whatsapp_consent = granted`, vínculo ativo e acesso Premium; uma vez por dia, a partir de `send_hour` (fuso da conta) até 21h. Tipos: contas a vencer (hoje até hoje+1/3/7 dias), vencidas (até 7 dias atrás), orçamento 80%/100% do mês, resumo do mês anterior (dias 1 a 3). Cada aviso tem uma chave e nunca se repete (`notification_deliveries`, +120 dias). Nada de texto, valor ou telefone em claro fica gravado.
+
+Janela de 24h: `mensagem/registrar` grava `last_inbound_at` no vínculo. Dentro de 23h30 vai `texto` (`template: null`). Fora dela só sai com template aprovado na Meta, configurado em `NOTIFICATION_TEMPLATES` (ou `_FILE`), por exemplo `{"due_soon":{"pt-BR":"fc_contas_a_vencer","es-ES":"fc_facturas_por_vencer"}}`; sem template o aviso fica para outro dia (`resumo.aguardando_template`). Parâmetros por tipo: `due_soon` [quantidade, total, primeiro vencimento dd/mm]; `overdue` [quantidade, total]; `budget` [categoria, percentual, usado, limite]; `monthly_summary` [mês, receitas, despesas, saldo].

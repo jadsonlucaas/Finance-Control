@@ -25,7 +25,10 @@ export const DEFAULT_RATE_LIMITS = Object.freeze({
   // Teto geral das rotas de cobranca (cada chamada pode bater no Stripe).
   billingGlobal: { limit: 120, windowMs: 60_000 },
   // Checagem profunda de saude (1 leitura no Firestore por chamada).
-  healthDeep: { limit: 10, windowMs: 60_000 }
+  healthDeep: { limit: 10, windowMs: 60_000 },
+  // Alertas automaticos: o n8n busca de hora em hora e devolve um resultado por mensagem.
+  notificationsRun: { limit: 6, windowMs: 60_000 },
+  notificationsResult: { limit: 600, windowMs: 60_000 }
 });
 
 const MAX_KEYS = 50_000;
