@@ -21,6 +21,10 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   const stripeSubscriptions = new Map();
   const onboarding = new Map();
   const notificationSettings = new Map();
+  const consentEvents = [];
+  const notificationState = new Map();
+  const notificationDeliveries = new Map();
+  const notificationMessages = new Map();
   const accountDeletions = new Map();
   Object.entries(seed).forEach(([uid, records]) => {
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
@@ -111,6 +115,76 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     _setNotificationSettings(uid, data) {
       notificationSettings.set(uid, clone(data));
     },
+    async listNotificationRecipients({ limit = 200 } = {}) {
+      return [...notificationSettings.entries()]
+        .filter(([, data]) => data.whatsapp_consent === 'granted')
+        .slice(0, limit)
+        .map(([uid, data]) => ({ uid, settings: clone(data) }));
+    },
+    async getActiveLinkByUid(uid) {
+      const link = [...links.values()].find((item) => item.uid === uid && item.status === 'active');
+      return link ? clone(link) : null;
+    },
+    async touchLinkInbound(phone, nowIso) {
+      const link = links.get(phone);
+      if (link) links.set(phone, { ...link, last_inbound_at: nowIso });
+    },
+    async getNotificationState(uid) {
+      return clone(notificationState.get(uid)) || null;
+    },
+    async setNotificationState(uid, data) {
+      notificationState.set(uid, { ...(notificationState.get(uid) || {}), ...clone(data) });
+    },
+    async getNotificationDeliveries(ids) {
+      return new Map(ids.filter((id) => notificationDeliveries.has(id)).map((id) => [id, clone(notificationDeliveries.get(id))]));
+    },
+    async reserveNotificationDeliveries(entries) {
+      if (entries.some((entry) => notificationDeliveries.has(entry.id))) return false;
+      entries.forEach((entry) => notificationDeliveries.set(entry.id, clone(entry.data)));
+      return true;
+    },
+    async saveNotificationMessage(id, data) {
+      notificationMessages.set(id, clone(data));
+    },
+    async getNotificationMessage(id) {
+      return clone(notificationMessages.get(id)) || null;
+    },
+    async finishNotificationMessage(id, deliveryIds, patch) {
+      notificationMessages.set(id, { ...notificationMessages.get(id), ...clone(patch) });
+      deliveryIds.forEach((deliveryId) => {
+        const current = notificationDeliveries.get(deliveryId);
+        if (current) notificationDeliveries.set(deliveryId, { ...current, status: 'sent', sent_at: patch.finished_at });
+      });
+    },
+    async failNotificationMessage(id, deliveryIds, patch) {
+      notificationMessages.set(id, { ...notificationMessages.get(id), ...clone(patch) });
+      deliveryIds.forEach((deliveryId) => notificationDeliveries.delete(deliveryId));
+    },
+    async revokeNotificationConsent(uid, { at, eventId }) {
+      const iso = at instanceof Date ? at.toISOString() : String(at);
+      notificationSettings.set(uid, {
+        ...(notificationSettings.get(uid) || { uid, schema_version: 1 }),
+        updated_at: iso,
+        whatsapp_consent: 'revoked',
+        whatsapp_consent_version: 'whatsapp-alerts-v1',
+        whatsapp_consent_source: 'whatsapp',
+        whatsapp_consent_at: iso,
+        whatsapp_consent_event_id: eventId
+      });
+      consentEvents.push({ uid, id: eventId, action: 'revoked', version: 'whatsapp-alerts-v1', source: 'whatsapp', at: iso });
+    },
+    async purgeExpiredNotificationData({ before, limit }) {
+      let total = 0;
+      for (const map of [notificationDeliveries, notificationMessages]) {
+        for (const [key, value] of map) {
+          if (total >= limit) break;
+          if (value.expires_at && new Date(value.expires_at) < before) { map.delete(key); total += 1; }
+        }
+      }
+      return total;
+    },
+    _consentEvents: () => clone(consentEvents),
+    _notificationDeliveries: () => clone([...notificationDeliveries.entries()]),
     async getBillingSubscription(uid) {
       return clone(subscriptions.get(uid)) || null;
     },
@@ -246,6 +320,10 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       dropKey('whatsapp_comp_access', compAccess, uid);
       dropKey('user_onboarding', onboarding, uid);
       dropKey('notification_settings', notificationSettings, uid);
+      dropKey('notification_state', notificationState, uid);
+      dropWhere('notification_deliveries', notificationDeliveries, (data) => data.uid === uid);
+      dropWhere('notification_messages', notificationMessages, (data) => data.uid === uid);
+      for (let index = consentEvents.length - 1; index >= 0; index -= 1) if (consentEvents[index].uid === uid) consentEvents.splice(index, 1);
       dropKey('billing_subscriptions', subscriptions, uid);
       dropWhere('billing_customers', billingCustomers, (data) => data.uid === uid);
       customerIds.forEach((id) => {
@@ -270,6 +348,7 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       if (data && (data.records.size || data.pending.size || data.receipts.size || data.audit.length)) leftovers.push('users/subcolecoes');
       if (onboarding.has(uid)) leftovers.push('user_onboarding');
       if (notificationSettings.has(uid)) leftovers.push('notification_settings');
+      if (notificationState.has(uid) || [...notificationDeliveries.values(), ...notificationMessages.values()].some((value) => value.uid === uid)) leftovers.push('notification_data');
       if (compAccess.has(uid)) leftovers.push('whatsapp_comp_access');
       if (subscriptions.has(uid)) leftovers.push('billing_subscriptions');
       if ([...links.values()].some((link) => link.uid === uid)) leftovers.push('whatsapp_links');

@@ -6,6 +6,7 @@ import { normalizeAccessMode } from './access.js';
 import { createCheckoutService, createStripeClient } from './checkout.js';
 import { createAccountDeletionService } from './accountDeletion.js';
 import { startInboundCleanup } from './inboundMessages.js';
+import { parseNotificationTemplates } from './notificationService.js';
 
 function required(name) {
   const value = readSetting(name);
@@ -97,7 +98,9 @@ async function main() {
     appUrl: readSetting('APP_URL')
   });
   const accountDeletion = createAccountDeletionService({ store, verifyIdToken, auth: await createAuthAdmin(), stripe });
-  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout, accountDeletion });
+  // Opcional: templates aprovados na Meta para alertas fora da janela de 24h (JSON por tipo e idioma).
+  const notificationTemplates = parseNotificationTemplates(readSetting('NOTIFICATION_TEMPLATES'));
+  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout, accountDeletion, notificationTemplates });
   const port = Number(process.env.PORT || 3000);
 
   const server = http.createServer(async (req, res) => {
@@ -120,7 +123,7 @@ async function main() {
   });
 
   server.listen(port, () => {
-    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret), billing_checkout: checkout.configured, account_deletion: accountDeletion.configured }));
+    console.info(JSON.stringify({ level: 'info', event: 'listening', port, legacy_linked_phones: links.size, access_mode: accessMode, stripe_webhook: Boolean(stripeWebhookSecret), billing_checkout: checkout.configured, account_deletion: accountDeletion.configured, notification_templates: Object.keys(notificationTemplates).length }));
   });
 
   // Apaga os registros de deduplicacao vencidos. INBOUND_CLEANUP_INTERVAL_MS=0 desliga.
