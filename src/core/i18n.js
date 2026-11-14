@@ -87,6 +87,14 @@ export function translateText(text, locale = currentLocale) {
       }
     }
   }
+  // Itens de lista desenhados com marcador ("• texto"): traduz o texto e mantem o marcador.
+  if (translated === undefined) {
+    const bullet = /^([•\-–]\s+)(.+)$/.exec(key);
+    if (bullet) {
+      const inner = translateText(bullet[2], locale);
+      if (inner !== bullet[2]) translated = `${bullet[1]}${inner}`;
+    }
+  }
   if (translated === undefined || translated === key) return text;
   const start = text.slice(0, text.indexOf(trimmed));
   const end = text.slice(text.indexOf(trimmed) + trimmed.length);

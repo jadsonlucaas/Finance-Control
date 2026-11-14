@@ -72,3 +72,24 @@ describe('PDF', () => {
     expect(doc.calls.text[0]).toBe('Generado el 13/11/2026 | Periodo 2026-01 hasta fin');
   });
 });
+
+describe('PDF: leitura gerencial com valores no meio', () => {
+  it('traduz frases montadas e itens com marcador', async () => {
+    const { translateText } = await import('../../src/core/i18n.js');
+    await setLocale('es-ES');
+    expect(translateText('• Situação geral: superávit de 4.048,48 € no recorte analisado.'))
+      .toBe('• Situación general: superávit de 4.048,48 € en el periodo analizado.');
+    expect(translateText('• Comportamento relevante: maior concentração em sem concentração relevante.'))
+      .toBe('• Comportamiento relevante: mayor concentración en sin concentración relevante.');
+    expect(translateText('• Cobertura financeira de 10,00x para obrigações pagas e em aberto.'))
+      .toBe('• Cobertura financiera de 10,00x para obligaciones pagadas y pendientes.');
+    expect(translateText('• Categoria dominante: nenhuma categoria dominante, com 0,00 €.'))
+      .toBe('• Categoría dominante: ninguna categoría dominante, con 0,00 €.');
+    expect(translateText('• Natureza do resultado: pontual no recorte analisado.'))
+      .toBe('• Naturaleza del resultado: puntual en el periodo analizado.');
+    // Frase fixa do dicionario, agora tambem com marcador.
+    expect(translateText('• O consumo discricionário está controlado dentro do recorte atual.')).not.toContain('consumo discricionário está');
+    await setLocale('pt-BR');
+    expect(translateText('• Situação geral: superávit de R$ 10,00 no recorte analisado.')).toBe('• Situação geral: superávit de R$ 10,00 no recorte analisado.');
+  });
+});
