@@ -2,7 +2,7 @@
  * Frase curta de confirmacao do cadastro automatico, ja no idioma do usuario.
  * O agente do WhatsApp repassa este texto como esta, sem montar lista nem copiar status.
  */
-const ES_CATEGORIES = Object.freeze({
+export const ES_CATEGORIES = Object.freeze({
   'Alimentação': 'Alimentación',
   'Reserva de emergência': 'Fondo de emergencia',
   'Investimentos': 'Inversiones',

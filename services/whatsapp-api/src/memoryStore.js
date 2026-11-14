@@ -6,7 +6,7 @@ const clone = (value) => (value === undefined ? undefined : structuredClone(valu
 export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}) {
   const users = new Map();
   const bucket = (uid) => {
-    if (!users.has(uid)) users.set(uid, { records: new Map(), pending: new Map(), receipts: new Map(), audit: [] });
+    if (!users.has(uid)) users.set(uid, { records: new Map(), pending: new Map(), receipts: new Map(), audit: [], budgets: new Map() });
     return users.get(uid);
   };
   const userProfiles = new Map(Object.entries(profiles).map(([uid, profile]) => [uid, clone(profile)]));
@@ -114,6 +114,13 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       return [...bucket(uid).records.values()]
         .filter((record) => record.type === 'saida' || record.type === 'entrada')
         .map(clone);
+    },
+    async listBudgets(uid) {
+      return [...bucket(uid).budgets.entries()].map(([id, budget]) => ({ ...clone(budget), id }));
+    },
+    _setBudget(uid, id, data) {
+      if (data) bucket(uid).budgets.set(id, clone(data));
+      else bucket(uid).budgets.delete(id);
     },
     async listReferenceRecords(uid) {
       const personal = [...bucket(uid).records.values()].filter((record) => record.type === 'macro' || record.type === 'categoria');
