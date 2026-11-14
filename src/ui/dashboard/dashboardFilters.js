@@ -1,7 +1,7 @@
-import { normalizeCompetenceKey } from '../../core/dates.js';
+import { currentCompetenceKey, normalizeCompetenceKey } from '../../core/dates.js';
 
 export function getCurrentMonthFallback() {
-  return new Date().toISOString().slice(0, 7);
+  return currentCompetenceKey();
 }
 
 export function getDashboardFilterMonthRange() {

@@ -1,3 +1,4 @@
+import { isoDateInTimeZone } from '../core/dates.js';
 import { buildArchiveToggleRecord, archiveRecord } from '../application/records/archiveRecord.js';
 import { createManyRecords as createManyRecordsUseCase } from '../application/records/createManyRecords.js';
 import { createRecord as createRecordUseCase } from '../application/records/createRecord.js';
@@ -15,7 +16,7 @@ function getMutationSdk(target = globalThis) {
 }
 
 function dateToIsoDate(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  return isoDateInTimeZone(date);
 }
 
 export async function createRecord(record, options = {}) {

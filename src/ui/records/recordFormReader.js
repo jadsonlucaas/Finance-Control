@@ -1,3 +1,4 @@
+import { todayIsoDate } from '../../core/dates.js';
 function byId(doc, id) {
   return doc?.getElementById?.(id) || null;
 }
@@ -87,7 +88,7 @@ export function readSaidaFormValues(doc = document, options = {}) {
   const {
     formCycle = '',
     getHourExtraRecordDefaults = () => ({}),
-    today = new Date().toISOString().slice(0, 10)
+    today = todayIsoDate()
   } = options;
 
   const amount = Number.parseFloat(valueOf(doc, 'form-amount'));

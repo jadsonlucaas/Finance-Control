@@ -1,3 +1,4 @@
+import { todayIsoDate } from '../../core/dates.js';
 import { formatCurrency as formatDisplayCurrency } from '../../core/formatters.js';
 import { roundCurrency } from '../../core/money.js';
 import { createMemoryMutationAttemptStore } from '../records/mutationAttemptStore.js';
@@ -238,7 +239,7 @@ function renderSummary(target, summary) {
 
 function fillForm(target, record = null) {
   syncPersonOptions(target);
-  const today = target.today || new Date().toISOString().slice(0, 10);
+  const today = target.today || todayIsoDate();
   const title = byId(target, 'hour-control-title');
   const save = byId(target, 'btn-save-hour-control');
   if (title) title.textContent = record?.id ? 'Editar Lancamento de Horas' : 'Novo Lancamento de Horas';

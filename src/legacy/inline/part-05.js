@@ -155,9 +155,7 @@ function consolidarEntradaMensal(person = '', competencia = '') {
                 .filter((item) => !item.end_date && item.start_date && item.start_date < startDate);
 
             for (const previous of previousActiveRecords) {
-                const previousEnd = new Date(`${startDate}T00:00:00`);
-                previousEnd.setDate(previousEnd.getDate() - 1);
-                const resolvedEnd = previousEnd.toISOString().slice(0, 10);
+                const resolvedEnd = addDaysToIsoDate(startDate, -1);
                 await window.dataSdk.update({ ...previous, id: previous.id, end_date: resolvedEnd });
             }
 

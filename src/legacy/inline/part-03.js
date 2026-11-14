@@ -770,7 +770,7 @@
         document.getElementById('form-recurrence-end-date')?.addEventListener('change', updateRecurrencePreview);
         document.getElementById('form-status')?.addEventListener('change', updateRecurrencePreview);
 
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayIsoDate();
         const thisMonth = today.slice(0, 7);
         document.getElementById('form-occurred').value = today;
         document.getElementById('form-competence').value = thisMonth;
@@ -4184,7 +4184,7 @@
             const saidasNaoEssenciais = saidasOperacionais.filter(pdfIsNonEssential);
             const saidasVencidas = saidasEmAberto.filter((item) => {
                 const dueDate = item.due_date || item.occurred_date || '';
-                return dueDate && dueDate < new Date().toISOString().slice(0, 10);
+                return dueDate && dueDate < todayIsoDate();
             });
             const receitas = realTotals
                 ? realTotals.receitas
