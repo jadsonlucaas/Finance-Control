@@ -12,7 +12,7 @@ import { normalizePhone } from './phoneLinks.js';
 import { checkStoreHealth } from './health.js';
 import { createPreferenceResolver } from './preferences.js';
 import { runWithCurrency } from './money.js';
-import { buildOrcamento } from './budgets.js';
+import { buildOrcamento, defineBudget } from './budgets.js';
 import { currentCompetence } from './dates.js';
 import {
   buildCategorias,
@@ -133,7 +133,16 @@ export function createApp({
   const writeRoutes = {
     'acoes/preparar': (uid, body, prefs) => actions.prepare(uid, body, prefs),
     'acoes/confirmar': (uid, body, prefs) => actions.confirm(uid, body, prefs),
-    'acoes/cancelar': (uid, body) => actions.cancel(uid, body)
+    'acoes/cancelar': (uid, body) => actions.cancel(uid, body),
+    // Cria ou altera o limite (categoria ou total) direto, como o cadastro de gastos.
+    'orcamento/definir': (uid, body, prefs) => defineBudget(store, uid, {
+      categoria: typeof body.categoria === 'string' ? body.categoria : '',
+      valor: body.valor,
+      competencia: resolveCompetence(body.competencia, now(), prefs.time_zone),
+      currentCompetence: currentCompetence(now(), prefs.time_zone),
+      locale: prefs.locale,
+      nowIso: now().toISOString()
+    })
   };
 
   async function handleStripeWebhook(headers, rawBody) {
