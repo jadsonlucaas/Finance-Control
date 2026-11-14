@@ -1,5 +1,6 @@
 import { formatCurrency as formatDisplayCurrency } from '../../core/formatters.js';
 import { translatePdfDocument } from '../i18n/chartAndPdfTranslation.js';
+import { DEFAULT_LOCALE, formatCompetenceLabel, getLocale } from '../../core/i18n.js';
 function formatCurrency(value = 0) {
   return formatDisplayCurrency(value);
 }
@@ -9,6 +10,19 @@ function formatDate(value = '') {
   const [date] = String(value).split('T');
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date.split('-').reverse().join('/');
   return String(value);
+}
+
+// "2026-11" -> "nov/2026" (ou "nov/2026" em espanhol); outros valores ficam como vieram.
+function formatPeriod(value, fallback) {
+  if (!value) return fallback;
+  return /^\d{4}-\d{2}$/.test(String(value)) ? formatCompetenceLabel(value) : String(value);
+}
+
+// Nome do arquivo no idioma da conta: em espanhol, "informe-financiero-...".
+export function localizedPdfFilename(filename, locale = getLocale()) {
+  const name = filename || 'relatorio-financial.pdf';
+  if (locale === DEFAULT_LOCALE) return name;
+  return name.replace(/^relatorio-financial/, 'informe-financiero');
 }
 
 function getAutoTable(doc, jspdf) {
@@ -32,7 +46,7 @@ export async function createPdfReport(reportModel, {
   doc.setFontSize(18);
   doc.text(reportModel.title || 'Relatorio Financeiro Gerencial', 32, 40);
   doc.setFontSize(9);
-  doc.text(`Gerado em ${formatDate(reportModel.generatedAt)} | Periodo ${reportModel.period?.start || 'inicio'} ate ${reportModel.period?.end || 'fim'}`, 32, 58);
+  doc.text(`Gerado em ${formatDate(reportModel.generatedAt)} | Periodo ${formatPeriod(reportModel.period?.start, 'inicio')} ate ${formatPeriod(reportModel.period?.end, 'fim')}`, 32, 58);
 
   autoTable.call(doc, {
     startY: 82,
@@ -79,6 +93,7 @@ export async function createPdfReport(reportModel, {
     }
   });
 
-  doc.save(filename || 'relatorio-financial.pdf');
-  return { success: true, filename: filename || 'relatorio-financial.pdf', pages: doc.getNumberOfPages?.() || 0 };
+  const finalName = localizedPdfFilename(filename);
+  doc.save(finalName);
+  return { success: true, filename: finalName, pages: doc.getNumberOfPages?.() || 0 };
 }
