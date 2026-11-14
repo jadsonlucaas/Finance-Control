@@ -130,6 +130,14 @@ export function createFirestoreStore(db) {
         add('notification_consent_events', consentEvents.size);
         await db.recursiveDelete(notificationRef);
       }
+      // Aceites de Termos/Privacidade + historico (subcolecao events).
+      const legalRef = db.collection('legal_consents').doc(uid);
+      const legalEvents = await legalRef.collection('events').get();
+      if ((await legalRef.get()).exists || legalEvents.size) {
+        add('legal_consents', 1);
+        add('legal_consent_events', legalEvents.size);
+        await db.recursiveDelete(legalRef);
+      }
       await deleteDoc('notification_state', notificationState.doc(uid));
       await deleteQuery('notification_deliveries', notificationDeliveries.where('uid', '==', uid));
       await deleteQuery('notification_messages', notificationMessages.where('uid', '==', uid));
@@ -169,6 +177,8 @@ export function createFirestoreStore(db) {
         check('user_onboarding', onboardingCol.doc(uid).get()),
         check('notification_settings', db.collection('notification_settings').doc(uid).get()),
         check('notification_settings', db.collection('notification_settings').doc(uid).collection('consent_events').limit(1).get()),
+        check('legal_consents', db.collection('legal_consents').doc(uid).get()),
+        check('legal_consents', db.collection('legal_consents').doc(uid).collection('events').limit(1).get()),
         check('notification_state', notificationState.doc(uid).get()),
         check('notification_deliveries', notificationDeliveries.where('uid', '==', uid).limit(1).get()),
         check('notification_messages', notificationMessages.where('uid', '==', uid).limit(1).get()),

@@ -331,11 +331,19 @@ async function loadChannelSettings(target = globalThis) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'notification_settings_ui' });
     notificationSettings = { installed: false, reason: 'NOTIFICATION_SETTINGS_LOAD_FAILED' };
   }
+  let privacy;
   try {
-    return { whatsappLink: await loader(), accountDeletion, userPreferences, notificationSettings };
+    const module = await (app.privacyUiLoader || (() => import('./ui/account/privacyUi.js')))();
+    privacy = module.installPrivacyUi(target);
+  } catch (error) {
+    target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'privacy_ui' });
+    privacy = { installed: false, reason: 'PRIVACY_LOAD_FAILED' };
+  }
+  try {
+    return { whatsappLink: await loader(), accountDeletion, userPreferences, notificationSettings, privacy };
   } catch (error) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'channel_settings_ui' });
-    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion, userPreferences, notificationSettings };
+    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion, userPreferences, notificationSettings, privacy };
   }
 }
 
@@ -621,8 +629,9 @@ function installPlannerStorageRuntime(target = globalThis) {
 
 // Escolha de plano (apos o cadastro) e volta do Stripe. Falha aqui nao derruba o app.
 function installPlanChooserLater(target = globalThis) {
-  Promise.all([import('./ui/billing/planChooserUi.js'), import('./ui/billing/planGate.js')])
-    .then(([chooser, gate]) => {
+  Promise.all([import('./ui/billing/planChooserUi.js'), import('./ui/billing/planGate.js'), import('./ui/legal/legalConsentGate.js')])
+    .then(([chooser, gate, legal]) => {
+      legal.installLegalConsentGate(target);
       chooser.installPlanChooser(target);
       gate.installPlanGate(target);
     })

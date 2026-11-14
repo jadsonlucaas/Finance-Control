@@ -499,7 +499,11 @@
                     setAuthError(checked.error);
                     return;
                 }
-                signupDetails = checked.value;
+                if (!document.getElementById('auth-legal-accept')?.checked) {
+                    setAuthError('Aceite os Termos de Uso e a Política de Privacidade para criar a conta.');
+                    return;
+                }
+                signupDetails = { ...checked.value, legal_accepted: true };
             }
 
             try {

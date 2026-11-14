@@ -12,6 +12,7 @@ import { createAccountOnboardingService, PLAN_CHOICE_STORAGE_KEY, validateSignup
 import { createBillingCheckoutService } from './billingCheckout.js';
 import { createBudgetService } from './budgets.js';
 import { createNotificationSettingsService } from './notificationSettings.js';
+import { createLegalConsentService } from './legalConsent.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -69,6 +70,7 @@ export function installFirebaseServices({ target = window, config } = {}) {
   target.accountOnboardingSdk = createAccountOnboardingService(db);
   target.budgetsSdk = createBudgetService(db);
   target.notificationSettingsSdk = createNotificationSettingsService(db);
+  target.legalConsentSdk = createLegalConsentService(db);
   // Moeda (e depois idioma/fuso) do usuario: aplicada a cada login, antes do primeiro render.
   installUserPreferencesRuntime(target);
   target.authSdk = {
@@ -95,6 +97,15 @@ export function installFirebaseServices({ target = window, config } = {}) {
             await target.accountOnboardingSdk.saveSignupDetails(credential.user.uid, { ...suggested, ...details });
           } catch (error) {
             captureError(error, { operation: 'auth.sign_up.onboarding_details' });
+          }
+        }
+        if (details?.legal_accepted && credential?.user?.uid) {
+          try {
+            // Aceite dos Termos/Privacidade marcado no cadastro. Se falhar, o app pede de novo ao entrar.
+            const { locale } = suggestPreferences({ ...browserLocaleContext(target), country: details.country, phone: details.whatsapp_phone });
+            await target.legalConsentSdk.accept(credential.user.uid, { source: 'signup', locale });
+          } catch (error) {
+            captureError(error, { operation: 'auth.sign_up.legal_consent' });
           }
         }
         return credential;
