@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, runTransaction } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, onSnapshot, runTransaction } from 'firebase/firestore';
 import {
   BUDGET_SCOPES,
   budgetIdFor,
@@ -49,11 +49,21 @@ export function createBudgetService(db, { now = () => new Date().toISOString() }
     });
   }
 
+  /** Escuta os orcamentos em tempo real (outra aba ou o WhatsApp mudando). Devolve unsubscribe. */
+  function subscribeBudgets(uid, onChange, onError = () => {}) {
+    if (!uid) throw new Error('AUTH_REQUIRED');
+    return onSnapshot(
+      budgetsRef(uid),
+      (snapshot) => onChange(snapshot.docs.map((item) => normalizeBudget(item.data(), item.id)).filter(Boolean)),
+      onError
+    );
+  }
+
   async function deleteBudget(uid, id) {
     if (!uid) throw new Error('AUTH_REQUIRED');
     if (!id) throw new Error('INVALID_BUDGET');
     await deleteDoc(budgetRef(uid, id));
   }
 
-  return { listBudgets, saveBudgetLimit, deleteBudget };
+  return { listBudgets, subscribeBudgets, saveBudgetLimit, deleteBudget };
 }

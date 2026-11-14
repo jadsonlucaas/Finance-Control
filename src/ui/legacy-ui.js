@@ -8,7 +8,7 @@ import {
 } from './dom.js';
 import { activateTab as activateNavigationTab } from './navigationTabs.js';
 
-const DEFAULT_VIEWS = ['dashboard', 'mes-detalhe', 'saidas', 'entradas', 'parcelamentos', 'importacao', 'controle-horas', 'novo', 'configuracoes'];
+const DEFAULT_VIEWS = ['dashboard', 'mes-detalhe', 'saidas', 'entradas', 'parcelamentos', 'orcamentos', 'importacao', 'controle-horas', 'novo', 'configuracoes'];
 const STATE_KEY = Symbol.for('finance.legacyUiBridgeState');
 
 function getState(target) {

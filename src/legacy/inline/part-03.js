@@ -1236,6 +1236,7 @@
             if (currentTab === 'entradas') renderEntradas();
             if (currentTab === 'controle-horas') renderControleHoras();
             if (currentTab === 'configuracoes') renderConfiguracoes();
+            if (currentTab === 'orcamentos' && typeof window.renderOrcamentos === 'function') window.renderOrcamentos();
         }
 
         function getFilteredForCompetence(competence) {

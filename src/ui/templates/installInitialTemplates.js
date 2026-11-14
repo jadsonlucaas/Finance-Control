@@ -9,6 +9,7 @@ import { viewCategoriasTemplate } from './views/viewCategoriasTemplate.js';
 import { viewNovoTemplate } from './views/viewNovoTemplate.js';
 import { viewConfiguracoesTemplate } from './views/viewConfiguracoesTemplate.js';
 import { viewParcelamentosTemplate } from './views/viewParcelamentosTemplate.js';
+import { viewOrcamentosTemplate } from './views/viewOrcamentosTemplate.js';
 
 export function installInitialTemplates(target = document) {
   const authRoot = target.getElementById('auth-root');
@@ -28,6 +29,7 @@ export function installInitialTemplates(target = document) {
       viewCategoriasTemplate() +
       viewNovoTemplate() +
       viewConfiguracoesTemplate() +
-      viewParcelamentosTemplate();
+      viewParcelamentosTemplate() +
+      viewOrcamentosTemplate();
   }
 }
