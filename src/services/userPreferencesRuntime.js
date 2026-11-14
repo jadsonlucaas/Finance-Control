@@ -62,7 +62,9 @@ export function installUserPreferencesRuntime(target = globalThis, options = {})
     }
     try {
       const { details, preferences } = await loadAccountPreferences(target, uid, service());
-      if (token === loadToken) apply({ ...preferences, fromAccount: Boolean(details) });
+      // Conta logada sempre aplica o proprio idioma (pelo telefone; sem cadastro = pt-BR).
+      // Sem isso, uma conta sem cadastro herdava o idioma de outra conta usada no mesmo navegador.
+      if (token === loadToken) apply({ ...preferences, fromAccount: true, hasDetails: Boolean(details) });
     } catch (error) {
       target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'user_preferences.runtime_load' });
     }

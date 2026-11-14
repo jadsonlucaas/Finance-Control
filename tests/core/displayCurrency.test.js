@@ -99,6 +99,23 @@ describe('preferencias aplicadas no app', () => {
     expect(getDisplayCurrency()).toBe('BRL');
   });
 
+  it('conta sem cadastro nao herda o idioma de outra conta do mesmo navegador', async () => {
+    const storage = new Map();
+    const spanish = fakeTarget({ getMyDetails: vi.fn(async () => ({ country: 'ES', whatsapp_phone: '+34637210215' })) });
+    spanish.localStorage = { setItem: (k, v) => storage.set(k, v), getItem: (k) => storage.get(k) ?? null };
+    installUserPreferencesRuntime(spanish);
+    spanish.emit('authStateChanged', { uid: 'es' });
+    await vi.waitFor(() => expect(getLocale()).toBe('es-ES'));
+    expect(storage.get('fc.locale')).toBe('es-ES');
+
+    const noDetails = fakeTarget({ getMyDetails: vi.fn(async () => null) });
+    noDetails.localStorage = spanish.localStorage;
+    installUserPreferencesRuntime(noDetails);
+    noDetails.emit('authStateChanged', { uid: 'admin' });
+    await vi.waitFor(() => expect(getLocale()).toBe('pt-BR'));
+    expect(storage.get('fc.locale')).toBe('pt-BR');
+  });
+
   it('erro ao ler as preferencias nao derruba nada: fica no padrao', async () => {
     const report = vi.fn();
     const target = fakeTarget({ getMyDetails: vi.fn(async () => { throw new Error('offline'); }) });
