@@ -83,7 +83,7 @@
                 autoLunchApplied,
                 crossesMidnight: Boolean(calc.crossesMidnight),
                 endedDate: calc.crossesMidnight && /^\d{4}-\d{2}-\d{2}$/.test(date)
-                    ? new Date(new Date(`${date}T00:00:00`).getTime() + 86400000).toISOString().slice(0, 10)
+                    ? addDaysToIsoDate(date, 1)
                     : date || '',
                 errors: []
             };

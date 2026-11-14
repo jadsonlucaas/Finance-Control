@@ -1,4 +1,4 @@
-import { normalizeCompetenceKey } from '../core/dates.js';
+import { addDaysToIsoDate, normalizeCompetenceKey } from '../core/dates.js';
 import { roundCurrency } from '../core/money.js';
 import {
   calcularDSRHoraExtra,
@@ -296,9 +296,7 @@ function createInvalidWorkSession(errors = [], warnings = [], crossesMidnight = 
 
 function deriveEndedDate(occurredDate = '', crossesMidnight = false) {
   if (!crossesMidnight || !/^\d{4}-\d{2}-\d{2}$/.test(occurredDate)) return occurredDate || '';
-  const date = new Date(`${occurredDate}T00:00:00`);
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return addDaysToIsoDate(occurredDate, 1);
 }
 
 export function calcularHoras(horaInicial = '', horaFinal = '', options = {}) {

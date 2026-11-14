@@ -1,4 +1,4 @@
-import { normalizeCompetenceKey } from '../core/dates.js';
+import { addDaysToIsoDate, currentCompetenceKey, normalizeCompetenceKey, todayIsoDate } from '../core/dates.js';
 import { formatCompactCurrency, formatCurrency } from '../core/formatters.js';
 import { parseCurrencyValue, roundCurrency } from '../core/money.js';
 import {
@@ -43,6 +43,9 @@ export const GLOBAL_BRIDGE_API = {
   roundCurrency,
   parseCurrencyValue,
   normalizeCompetenceKey,
+  todayIsoDate,
+  currentCompetenceKey,
+  addDaysToIsoDate,
   parseTimeToMinutes,
   formatHoursDecimal,
   normalizeImportText,
