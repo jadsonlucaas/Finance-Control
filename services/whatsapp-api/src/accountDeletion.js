@@ -26,6 +26,7 @@ const UID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 export const ACCOUNT_DATA_LOCATIONS = Object.freeze([
   'users/{uid} (perfil) e todas as subcolecoes (finance_records, local_storage, audit_logs, idempotency_receipts, whatsapp_pending_actions...)',
   'user_onboarding/{uid}',
+  'notification_settings/{uid} e consent_events',
   'whatsapp_links (uid)',
   'whatsapp_link_codes (owner_uid)',
   'whatsapp_link_attempts/{hash do telefone}',

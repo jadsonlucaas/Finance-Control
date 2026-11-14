@@ -323,11 +323,19 @@ async function loadChannelSettings(target = globalThis) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'user_preferences_ui' });
     userPreferences = { installed: false, reason: 'USER_PREFERENCES_LOAD_FAILED' };
   }
+  let notificationSettings;
   try {
-    return { whatsappLink: await loader(), accountDeletion, userPreferences };
+    const module = await (app.notificationSettingsUiLoader || (() => import('./ui/account/notificationSettingsUi.js')))();
+    notificationSettings = module.installNotificationSettingsUi(target);
+  } catch (error) {
+    target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'notification_settings_ui' });
+    notificationSettings = { installed: false, reason: 'NOTIFICATION_SETTINGS_LOAD_FAILED' };
+  }
+  try {
+    return { whatsappLink: await loader(), accountDeletion, userPreferences, notificationSettings };
   } catch (error) {
     target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'channel_settings_ui' });
-    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion, userPreferences };
+    return { whatsappLink: { installed: false, reason: 'CHANNEL_SETTINGS_LOAD_FAILED' }, accountDeletion, userPreferences, notificationSettings };
   }
 }
 

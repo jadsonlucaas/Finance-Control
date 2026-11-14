@@ -20,6 +20,7 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
   const billingCustomers = new Map();
   const stripeSubscriptions = new Map();
   const onboarding = new Map();
+  const notificationSettings = new Map();
   const accountDeletions = new Map();
   Object.entries(seed).forEach(([uid, records]) => {
     records.forEach((record) => bucket(uid).records.set(record.id, clone(record)));
@@ -103,6 +104,12 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     },
     _setOnboarding(uid, data) {
       onboarding.set(uid, clone(data));
+    },
+    async getNotificationSettings(uid) {
+      return clone(notificationSettings.get(uid)) || null;
+    },
+    _setNotificationSettings(uid, data) {
+      notificationSettings.set(uid, clone(data));
     },
     async getBillingSubscription(uid) {
       return clone(subscriptions.get(uid)) || null;
@@ -238,6 +245,7 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       phoneKeys.forEach((key) => dropKey('whatsapp_link_attempts', linkAttempts, key));
       dropKey('whatsapp_comp_access', compAccess, uid);
       dropKey('user_onboarding', onboarding, uid);
+      dropKey('notification_settings', notificationSettings, uid);
       dropKey('billing_subscriptions', subscriptions, uid);
       dropWhere('billing_customers', billingCustomers, (data) => data.uid === uid);
       customerIds.forEach((id) => {
@@ -261,6 +269,7 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       const data = users.get(uid);
       if (data && (data.records.size || data.pending.size || data.receipts.size || data.audit.length)) leftovers.push('users/subcolecoes');
       if (onboarding.has(uid)) leftovers.push('user_onboarding');
+      if (notificationSettings.has(uid)) leftovers.push('notification_settings');
       if (compAccess.has(uid)) leftovers.push('whatsapp_comp_access');
       if (subscriptions.has(uid)) leftovers.push('billing_subscriptions');
       if ([...links.values()].some((link) => link.uid === uid)) leftovers.push('whatsapp_links');
