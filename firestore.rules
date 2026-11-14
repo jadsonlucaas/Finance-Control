@@ -633,6 +633,25 @@ service cloud.firestore {
         ));
     }
 
+    function hasValidBudgetShape(uid, budgetId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['owner_uid', 'scope', 'category_name', 'limits', 'updated_at', 'schema_version'])
+        && data.keys().hasAll(['owner_uid', 'scope', 'limits', 'updated_at'])
+        && data.owner_uid == uid
+        && data.updated_at is string
+        && data.limits is map
+        && data.limits.size() <= 120
+        && (!('schema_version' in data) || (data.schema_version is int && data.schema_version > 0))
+        && (
+          (data.scope == 'total' && budgetId == 'total' && !('category_name' in data))
+          || (data.scope == 'category'
+            && budgetId.matches('^cat_[a-z0-9_]{1,90}$')
+            && data.category_name is string
+            && data.category_name.size() > 0
+            && data.category_name.size() <= 80)
+        );
+    }
+
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
 
@@ -673,6 +692,14 @@ service cloud.firestore {
             || (!isReferenceType() && hasValidFinanceShape())
           );
         allow delete: if isActiveSelf(uid) && resource.data.owner_uid == uid;
+      }
+
+      // Orcamentos mensais (total e por categoria). Id deterministico:
+      // 'total' ou 'cat_<slug>' (ver src/domain/budgets.js).
+      match /budgets/{budgetId} {
+        allow read: if isActiveSelf(uid);
+        allow create, update: if isActiveSelf(uid) && hasValidBudgetShape(uid, budgetId);
+        allow delete: if isActiveSelf(uid);
       }
 
       match /local_storage/{key} {
