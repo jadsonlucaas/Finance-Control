@@ -10,6 +10,7 @@ import { installUserPreferencesRuntime } from './userPreferencesRuntime.js';
 import { browserLocaleContext, suggestPreferences } from '../core/userPreferences.js';
 import { createAccountOnboardingService, PLAN_CHOICE_STORAGE_KEY, validateSignupDetails } from './accountOnboarding.js';
 import { createBillingCheckoutService } from './billingCheckout.js';
+import { createBudgetService } from './budgets.js';
 import { createProfileAccessService } from './profileAccess.js';
 import { getProfileAccessErrorMessage } from './profileAccessErrors.js';
 import { captureError, captureMessage, clearUserContext, setUserContext } from './observability/index.js';
@@ -65,6 +66,7 @@ export function installFirebaseServices({ target = window, config } = {}) {
     userAdminService: target.userAdminSdk
   });
   target.accountOnboardingSdk = createAccountOnboardingService(db);
+  target.budgetsSdk = createBudgetService(db);
   // Moeda (e depois idioma/fuso) do usuario: aplicada a cada login, antes do primeiro render.
   installUserPreferencesRuntime(target);
   target.authSdk = {

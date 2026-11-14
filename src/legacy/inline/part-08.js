@@ -59,6 +59,7 @@ function renderConfiguracoes() {
             if (currentTab === 'controle-horas') renderControleHoras();
             if (currentTab === 'configuracoes') renderConfiguracoes();
             if (currentTab === 'parcelamentos' && typeof window.renderParcelamentos === 'function') window.renderParcelamentos();
+            if (currentTab === 'orcamentos' && typeof window.renderOrcamentos === 'function') window.renderOrcamentos();
         }
 
         function addPerson() {

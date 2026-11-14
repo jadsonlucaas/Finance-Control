@@ -227,6 +227,10 @@ export function createFirestoreStore(db) {
       const snapshot = await records(uid).where('type', 'in', ['saida', 'entrada']).get();
       return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     },
+    async listBudgets(uid) {
+      const snapshot = await db.collection('users').doc(uid).collection('budgets').get();
+      return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    },
     async listReferenceRecords(uid) {
       // Referencias globais (shared_macros/shared_categories) + pessoais do proprio usuario.
       const [macros, categories, personal] = await Promise.all([

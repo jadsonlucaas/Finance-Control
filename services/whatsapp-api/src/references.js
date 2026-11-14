@@ -225,7 +225,7 @@ function words(text) {
   return normalizeKey(text).split(/[^a-z0-9]+/).filter(Boolean);
 }
 
-function keywordCategory(text) {
+export function keywordCategory(text) {
   // Plural simples: "ropas", "roupas", "cafes" contam como a palavra no singular.
   const tokens = words(text).flatMap((token) => (token.length > 3 && token.endsWith('s') ? [token, token.slice(0, -1)] : [token]));
   for (const [name, keys] of CATEGORY_KEYWORDS) {

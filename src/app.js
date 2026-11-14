@@ -115,6 +115,7 @@ export function bootstrapApp() {
     .then(() => {
       installHourControlLazyLoader(globalThis);
       installParcelamentosLazyLoader(globalThis);
+      installBudgetsLazyLoader(globalThis);
       installPlannerLazyLoader(globalThis);
       installSettingsLazyLoader(globalThis);
       installReportExportLazyLoader(globalThis);
@@ -370,6 +371,46 @@ export function installSettingsLazyLoader(target = globalThis) {
   Object.defineProperty(target.renderConfiguracoes, '__financeSettingsLazyPlaceholder', { value: true });
 
   if (isSettingsRoute(target)) loadActiveUi().then(() => target.renderConfiguracoes?.()).catch(() => {});
+  return state;
+}
+
+function isBudgetsRoute(target = globalThis) {
+  return normalizeTabName(target.location?.hash || '') === 'orcamentos'
+    || normalizeTabName(target.currentTab || '') === 'orcamentos';
+}
+
+// Tela de Orcamentos: o modulo so e baixado quando a aba e aberta.
+export function installBudgetsLazyLoader(target = globalThis) {
+  if (!target || target.financeApp?.budgetsLoader?.installed) return target.financeApp?.budgetsLoader;
+  const app = target.financeApp || {};
+  target.financeApp = app;
+  const state = { installed: true, promise: null };
+  app.budgetsLoader = state;
+  const loader = app.budgetsUiLoader || (() => import('./ui/budgets/budgetsUi.js'));
+
+  const load = () => {
+    if (!state.promise) {
+      state.promise = loader()
+        .then((module) => module.installBudgetsUi(target))
+        .catch((error) => {
+          state.promise = null;
+          const normalized = normalizeLazyLoadError(error, { operation: 'budgets_ui' });
+          target.financeApp?.resilience?.errorReporter?.report?.({ error: normalized, operation: 'budgets_ui' });
+          target.showToast?.('Nao foi possivel carregar Orcamentos. Tente novamente.', true);
+          throw normalized;
+        });
+    }
+    return state.promise;
+  };
+
+  const placeholder = function renderOrcamentosLazyPlaceholder() {
+    load().then(() => {
+      if (target.renderOrcamentos !== placeholder && isBudgetsRoute(target)) target.renderOrcamentos?.();
+    }).catch(() => {});
+  };
+  if (typeof target.renderOrcamentos !== 'function') target.renderOrcamentos = placeholder;
+  state.load = load;
+  if (isBudgetsRoute(target)) placeholder();
   return state;
 }
 

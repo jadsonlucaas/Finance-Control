@@ -12,6 +12,8 @@ import { normalizePhone } from './phoneLinks.js';
 import { checkStoreHealth } from './health.js';
 import { createPreferenceResolver } from './preferences.js';
 import { runWithCurrency } from './money.js';
+import { buildOrcamento } from './budgets.js';
+import { currentCompetence } from './dates.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -109,6 +111,18 @@ export function createApp({
       return buildLancamentos(await store.listFinanceRecords(uid), filters);
     },
     categorias: async (uid, body, prefs) => buildCategorias(await store.listFinanceRecords(uid), resolvePeriod(body, now(), prefs.time_zone)),
+    // Orcamentos: lidos sem cache (documentos pequenos) para refletir na hora o que
+    // mudou no Dashboard; os lancamentos seguem o cache curto de leitura.
+    orcamento: async (uid, body, prefs) => {
+      if (typeof store.listBudgets !== 'function') throw new ApiError(503, 'BUDGETS_NOT_CONFIGURED', 'Orcamentos indisponiveis.');
+      const [records, budgets] = await Promise.all([store.listFinanceRecords(uid), store.listBudgets(uid)]);
+      return buildOrcamento(records, budgets, {
+        competencia: resolveCompetence(body.competencia, now(), prefs.time_zone),
+        categoria: typeof body.categoria === 'string' ? body.categoria.slice(0, 80) : '',
+        currentCompetence: currentCompetence(now(), prefs.time_zone),
+        locale: prefs.locale
+      });
+    },
     vencimentos: async (uid, body, prefs) => buildVencimentos(await store.listFinanceRecords(uid), body, now(), prefs.time_zone),
     opcoes: async (uid, body) => {
       const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid)]);
