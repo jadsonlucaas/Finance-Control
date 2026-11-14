@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPdfReport } from '../../src/ui/reports/pdfAdapter.js';
+import { createPdfReport, localizedPdfFilename } from '../../src/ui/reports/pdfAdapter.js';
+import { setLocale } from '../../src/core/i18n.js';
 
 function createTarget() {
   const save = vi.fn();
@@ -47,5 +48,27 @@ describe('pdfAdapter', () => {
   it('fails before generation when PDF libraries are unavailable', async () => {
     await expect(createPdfReport({ tables: { summaryRows: [], detailedRows: [] } }, { target: {}, ensurePdfLibraries: async () => {} }))
       .rejects.toThrow('PDF_LIBRARY_NOT_READY');
+  });
+
+  it('periodo como mes/ano e nome do arquivo no idioma da conta', async () => {
+    const { target, doc } = createTarget();
+    const textCalls = doc.text.mock.calls;
+    const model = {
+      generatedAt: '2026-11-14T12:00:00.000Z',
+      period: { start: '2026-11', end: '2026-11' },
+      tables: { summaryRows: [], detailedRows: [] },
+      metadata: { filename: 'relatorio-financial-2026-11-2026-11-20261114.pdf' }
+    };
+    await createPdfReport(model, { target, ensurePdfLibraries: async () => {} });
+    expect(textCalls.some(([text]) => String(text).includes('Periodo nov/2026 ate nov/2026'))).toBe(true);
+    expect(localizedPdfFilename('relatorio-financial-2026-11-2026-11-20261114.pdf', 'pt-BR')).toBe('relatorio-financial-2026-11-2026-11-20261114.pdf');
+    expect(localizedPdfFilename('relatorio-financial-2026-11-2026-11-20261114.pdf', 'es-ES')).toBe('informe-financiero-2026-11-2026-11-20261114.pdf');
+    await setLocale('es-ES');
+    const es = createTarget();
+    const esCalls = es.doc.text.mock.calls;
+    const result = await createPdfReport(model, { target: es.target, ensurePdfLibraries: async () => {} });
+    expect(result.filename).toBe('informe-financiero-2026-11-2026-11-20261114.pdf');
+    expect(esCalls.some(([text]) => String(text).includes('Periodo nov/2026 hasta nov/2026'))).toBe(true);
+    await setLocale('pt-BR');
   });
 });
