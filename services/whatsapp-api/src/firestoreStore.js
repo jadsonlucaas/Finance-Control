@@ -379,6 +379,22 @@ export function createFirestoreStore(db) {
       return mergeRecordSets(snapshots.map((snapshot) => snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }))))
         .filter((record) => record.type === 'saida' || record.type === 'entrada');
     },
+    /** Consumo do mes (usage.js): incrementos atomicos, cria o documento se nao existir. */
+    async incrementUsage(uid, month, fields, updatedAt) {
+      // Import tardio: os testes de unidade carregam este arquivo sem o firebase-admin instalado.
+      const { FieldValue } = await import('firebase-admin/firestore');
+      const data = { uid, month, updated_at: updatedAt };
+      Object.entries(fields).forEach(([path, value]) => {
+        const parts = path.split('.');
+        let node = data;
+        parts.slice(0, -1).forEach((part) => { node = node[part] ||= {}; });
+        node[parts.at(-1)] = FieldValue.increment(value);
+      });
+      await userDoc(uid).collection('usage').doc(month).set(data, { merge: true });
+    },
+    async getUsage(uid, month) {
+      return readData(userDoc(uid).collection('usage').doc(month));
+    },
     async listBudgets(uid) {
       const snapshot = await db.collection('users').doc(uid).collection('budgets').get();
       return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));

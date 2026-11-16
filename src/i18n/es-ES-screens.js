@@ -25,7 +25,8 @@ export const SCREEN_PATTERNS = Object.freeze([
   [/^Detalhe por Subcategoria - Total (.+)$/, 'Detalle por subcategoría - Total $1'],
   [/^Dia (\d+)$/, 'Día $1'],
   [/^(\d+) dia\(s\) com movimento$/, '$1 día(s) con movimientos'],
-  [/^Sem (\d+)$/, 'Sem. $1']
+  [/^Sem (\d+)$/, 'Sem. $1'],
+  [/^Consumo no mês: (\d+) mensagens · (\d+) consultas da IA · (\d+) leituras$/, 'Consumo del mes: $1 mensajes · $2 consultas de la IA · $3 lecturas']
 ]);
 
 export const SCREEN_MESSAGES = Object.freeze({
@@ -33,6 +34,7 @@ export const SCREEN_MESSAGES = Object.freeze({
   'Carregando lançamentos...': 'Cargando movimientos...',
   'Mostrando lançamentos a partir de': 'Mostrando movimientos desde',
   'Carregar histórico completo': 'Cargar historial completo',
+  'Consumo no mês: sem uso do assistente': 'Consumo del mes: sin uso del asistente',
   // --- Menu lateral e navegacao ---
   'Menu': 'Menú',
   'Fechar menu': 'Cerrar menú',

@@ -18,6 +18,7 @@ const ALICE_PATHS = Object.freeze([
   `users/${ALICE}`,
   `users/${ALICE}/finance_records/r1`,
   `users/${ALICE}/budgets/total`,
+  `users/${ALICE}/usage/2026-11`,
   `users/${ALICE}/local_storage/k1`,
   `users/${ALICE}/audit_logs/a1`,
   `users/${ALICE}/idempotency_receipts/i1`,
@@ -91,6 +92,20 @@ describe('Isolamento entre contas', () => {
     await assertSucceeds(getDoc(doc(alice, `users/${ALICE}`)));
     await assertSucceeds(getDoc(doc(alice, `users/${ALICE}/finance_records/r1`)));
     await assertSucceeds(getDoc(doc(alice, `legal_consents/${ALICE}`)));
+    // Consumo: a dona le, mas so a whatsapp-api (Admin SDK) grava.
+    await assertSucceeds(getDoc(doc(alice, `users/${ALICE}/usage/2026-11`)));
+    await assertFails(setDoc(doc(alice, `users/${ALICE}/usage/2026-11`), { messages: 0 }));
     expect(ALICE_PATHS.length).toBeGreaterThan(15);
+  });
+});
+
+describe('Consumo por cliente (Etapa 5)', () => {
+  it('admin le o consumo de qualquer conta, mas ninguem grava pelo app', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'users', 'root'), { ...profile('root'), role: 'admin' });
+    });
+    const admin = dbFor('root');
+    await assertSucceeds(getDoc(doc(admin, `users/${ALICE}/usage/2026-11`)));
+    await assertFails(setDoc(doc(admin, `users/${ALICE}/usage/2026-11`), { messages: 0 }));
   });
 });

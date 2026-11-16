@@ -16,6 +16,7 @@ import { buildOrcamento, defineBudget } from './budgets.js';
 import { currentCompetence } from './dates.js';
 import { shiftCompetence } from '../../../src/core/recordsHistoryWindow.js';
 import { createNotificationService } from './notificationService.js';
+import { emptyUsage, enterUsage, saveUsage } from './usage.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -90,9 +91,18 @@ export function createApp({
   // Rotas sem usuario resolvido: o telefone ainda pode nao estar vinculado.
   const linkRoutes = {
     // Chamada pelo n8n antes do agente: { duplicada: true } quando a mensagem ja foi recebida.
-    'mensagem/registrar': async (body) => {
+    'mensagem/registrar': async (body, usage) => {
       if (!inbound) throw new ApiError(503, 'DEDUP_NOT_CONFIGURED', 'Deduplicacao indisponivel.');
       const registered = await inbound.register(body);
+      // Consumo: 1 mensagem nova = 1 execucao do agente no n8n. Telefone sem vinculo nao conta.
+      if (!registered.result.duplicada && usage) {
+        try {
+          usage.uid = (await resolver.resolve({ telefone: body.telefone, accountId: body.accountId })).uid;
+          usage.messages = 1;
+        } catch {
+          // Sem vinculo: nada a medir.
+        }
+      }
       // Janela de 24h do WhatsApp: guarda no vinculo a hora da ultima mensagem do usuario.
       if (!registered.result.duplicada && typeof store.touchLinkInbound === 'function') {
         try {
@@ -190,6 +200,8 @@ export function createApp({
     return billing.handleEvent(JSON.parse(rawBody));
   }
 
+  let lastUsageWrite = Promise.resolve(false);
+
   async function handle({ method, path, headers = {}, body, rawBody }) {
     const requestId = newId();
     const started = Date.now();
@@ -197,6 +209,7 @@ export function createApp({
     let phoneHash = '';
     let status = 500;
     let code = 'OK';
+    const usage = enterUsage({ ...emptyUsage(), uid: '' });
     try {
       if (method === 'GET' && route === '/health') {
         status = 200;
@@ -264,7 +277,7 @@ export function createApp({
       rateLimiter.enforce('phone', phoneKey);
       if (name === 'vinculo/confirmar') rateLimiter.enforce('linkConfirm', phoneKey);
       if (linkRoutes[name]) {
-        const { phoneHash: hash, result } = await linkRoutes[name](body);
+        const { phoneHash: hash, result } = await linkRoutes[name](body, usage);
         phoneHash = hash;
         status = 200;
         return { status, body: result };
@@ -274,6 +287,10 @@ export function createApp({
 
       const { uid, phoneHash: hash } = await resolver.resolve({ telefone: body.telefone, accountId: body.accountId });
       phoneHash = hash;
+      usage.uid = uid;
+      usage.tool_calls = 1;
+      usage.routes = { [name]: 1 };
+      if (writeRoutes[name] || name === 'notificacoes/parar') usage.writes = 1;
       rateLimiter.enforce('user', uid);
       if (writeRoutes[name] || name === 'notificacoes/parar') rateLimiter.enforce('userWrite', uid);
       // "parar alertas" vale mesmo sem Premium: revogar consentimento nunca depende de assinatura.
@@ -302,8 +319,11 @@ export function createApp({
     } finally {
       // Sem valores financeiros, telefone ou corpo da requisicao no log.
       logger.info(JSON.stringify({ level: 'info', request_id: requestId, method, route, status, code, phone_hash: phoneHash, duration_ms: Date.now() - started }));
+      // Sem await: medir consumo nao atrasa nem derruba a resposta.
+      if (usage.uid) lastUsageWrite = saveUsage(store, usage.uid, usage, { now: now(), logger });
     }
   }
 
-  return { handle };
+  // Testes: aguarda a ultima gravacao de consumo.
+  return { handle, flushUsage: () => lastUsageWrite };
 }
