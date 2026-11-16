@@ -52,9 +52,11 @@ async function createStore() {
   });
   const { createFirestoreStore } = await import('./firestoreStore.js');
   const { withReadCache } = await import('./readCache.js');
+  const { withReadCounting } = await import('./usage.js');
   // READ_CACHE_TTL_MS=0 desliga o cache.
   const ttl = process.env.READ_CACHE_TTL_MS;
-  return withReadCache(createFirestoreStore(getFirestore()), ttl === undefined || ttl === '' ? {} : { ttlMs: Number(ttl) });
+  // Contagem de leituras por baixo do cache: so conta o que foi ao Firestore.
+  return withReadCache(withReadCounting(createFirestoreStore(getFirestore())), ttl === undefined || ttl === '' ? {} : { ttlMs: Number(ttl) });
 }
 
 function readBody(req, limit) {

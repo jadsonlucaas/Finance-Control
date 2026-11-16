@@ -198,6 +198,21 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
         .filter((record) => matchesRecentRecordQueries(record, from))
         .map(clone);
     },
+    async incrementUsage(uid, month, fields, updatedAt) {
+      const store = bucket(uid).usage ||= new Map();
+      const doc = store.get(month) || { uid, month };
+      Object.entries(fields).forEach(([path, value]) => {
+        const parts = path.split('.');
+        let node = doc;
+        parts.slice(0, -1).forEach((part) => { node = node[part] ||= {}; });
+        node[parts.at(-1)] = (node[parts.at(-1)] || 0) + value;
+      });
+      doc.updated_at = updatedAt;
+      store.set(month, doc);
+    },
+    async getUsage(uid, month) {
+      return clone(bucket(uid).usage?.get(month)) || null;
+    },
     async listBudgets(uid) {
       return [...bucket(uid).budgets.entries()].map(([id, budget]) => ({ ...clone(budget), id }));
     },

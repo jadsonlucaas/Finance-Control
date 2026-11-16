@@ -71,6 +71,12 @@ function renderAssistantCompButton(user) {
   return `<button data-set-assistant-comp="${escapeHtml(user.uid)}" data-assistant-comp="${active ? 'off' : 'on'}" class="${BUTTON_BASE} ${style}" title="Acesso ao assistente sem assinatura" ${disabledAttr(!user.actions.assistantComp)}>${label}</button>`;
 }
 
+function renderUsage(user) {
+  const usage = user.usage;
+  if (!usage) return '<div class="text-xs text-textSecondary mt-1" data-admin-user-usage>Consumo no mês: sem uso do assistente</div>';
+  return `<div class="text-xs text-textSecondary mt-1" data-admin-user-usage title="Contado pelo servidor do assistente. Mensagens = execuções do agente de IA; leituras = documentos lidos no banco.">Consumo no mês: ${usage.messages} mensagens · ${usage.toolCalls} consultas da IA · ${usage.recordsRead} leituras</div>`;
+}
+
 function renderUser(user) {
   const disabled = user.actions.self || user.actions.loading;
   const approve = user.actions.approve
@@ -86,6 +92,7 @@ function renderUser(user) {
         <div>
           <div class="font-medium text-sm text-textPrimary">${escapeHtml(user.email || 'Sem email')}</div>
           <div class="text-xs text-textSecondary mt-1">UID: ${escapeHtml(user.uid)}</div>
+          ${renderUsage(user)}
           <div class="flex gap-2 mt-2 flex-wrap">
             <span class="px-2 py-1 rounded-full text-[11px] font-semibold ${roleClass(user.role)}">${escapeHtml(user.roleLabel)}</span>
             <span class="px-2 py-1 rounded-full text-[11px] font-semibold ${statusClass(user.status)}">${escapeHtml(user.statusLabel)}</span>

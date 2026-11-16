@@ -25,7 +25,8 @@ function createUserAdminWebAdapter(target = globalThis) {
   return {
     readSource: {
       listUsers: (query = {}) => target.userAdminSdk?.listUsers?.(query) || [],
-      listAssistantComps: () => target.assistantAccessSdk?.listCompGrants?.() || {}
+      listAssistantComps: () => target.assistantAccessSdk?.listCompGrants?.() || {},
+      listUsage: (uids) => target.userAdminSdk?.listUsage?.(uids) || {}
     },
     actions: {
       updateUser: (uid, payload) => target.userAdminSdk?.updateUser?.(uid, payload),

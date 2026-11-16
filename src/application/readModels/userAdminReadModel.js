@@ -15,6 +15,19 @@ function normalizeText(value = '') {
   return String(value || '').trim().toLowerCase();
 }
 
+// Consumo do mes gravado pelo servidor do assistente (users/{uid}/usage/{AAAA-MM}).
+function normalizeUsage(usage) {
+  if (!usage || typeof usage !== 'object') return null;
+  const count = (value) => (Number.isFinite(Number(value)) ? Math.max(0, Math.round(Number(value))) : 0);
+  return {
+    month: String(usage.month || ''),
+    messages: count(usage.messages),
+    toolCalls: count(usage.tool_calls),
+    writes: count(usage.writes),
+    recordsRead: count(usage.records_read)
+  };
+}
+
 function normalizeUser(user = {}) {
   const status = normalizeAccountStatus(user.status, ACCOUNT_STATUS.PENDING);
   const role = normalizeAccountRole(user.role, ACCOUNT_ROLE.USER);
@@ -27,7 +40,8 @@ function normalizeUser(user = {}) {
     status,
     roleLabel: getAccountRoleLabel(role),
     statusLabel: getAccountStatusLabel(status),
-    assistantComp: user.assistantComp === true
+    assistantComp: user.assistantComp === true,
+    usage: normalizeUsage(user.usage)
   };
 }
 

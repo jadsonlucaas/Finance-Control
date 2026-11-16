@@ -41,7 +41,8 @@ export function createUserAdminController({
     pendingActions: {},
     model: null,
     lastItems: [],
-    compGrants: {}
+    compGrants: {},
+    usage: {}
   };
 
   function getAuth() {
@@ -57,13 +58,27 @@ export function createUserAdminController({
   }
 
   function withAssistantAccess(items) {
-    return items.map((user) => ({ ...user, assistantComp: state.compGrants[user.uid]?.status === 'active' }));
+    return items.map((user) => ({
+      ...user,
+      assistantComp: state.compGrants[user.uid]?.status === 'active',
+      usage: state.usage[user.uid] || null
+    }));
   }
 
   async function loadCompGrants() {
     if (typeof readSource.listAssistantComps !== 'function') return;
     try {
       state.compGrants = (await readSource.listAssistantComps()) || {};
+    } catch (error) {
+      consoleRef.error?.(error);
+    }
+  }
+
+  // Consumo do mes de cada usuario da pagina (falha aqui nao impede a lista).
+  async function loadUsage(items) {
+    if (typeof readSource.listUsage !== 'function') return;
+    try {
+      state.usage = (await readSource.listUsage(items.map((user) => user.uid || user.id).filter(Boolean))) || {};
     } catch (error) {
       consoleRef.error?.(error);
     }
@@ -108,7 +123,7 @@ export function createUserAdminController({
         }
       }));
       state.lastItems = result.items;
-      await loadCompGrants();
+      await Promise.all([loadCompGrants(), loadUsage(result.items)]);
       return renderFromItems(result.items, result.pageInfo);
     } catch (error) {
       consoleRef.error?.(error);

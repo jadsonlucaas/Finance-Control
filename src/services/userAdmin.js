@@ -204,10 +204,24 @@ export function createUserAdminService(db, auditService = null) {
     };
   }
 
+  // Consumo do mes (users/{uid}/usage/{AAAA-MM}, gravado pelo servidor do assistente): 1 leitura por usuario da pagina.
+  async function listUsage(uids = [], month = new Date().toISOString().slice(0, 7)) {
+    const entries = await Promise.all([...new Set(uids)].filter(Boolean).map(async (uid) => {
+      try {
+        const snapshot = await getDoc(doc(db, 'users', uid, 'usage', month));
+        return [uid, snapshot.exists() ? snapshot.data() : null];
+      } catch {
+        return [uid, null];
+      }
+    }));
+    return Object.fromEntries(entries);
+  }
+
   return {
     ensureProfile,
     getProfile,
     listUsers,
+    listUsage,
     updateUser
   };
 }
