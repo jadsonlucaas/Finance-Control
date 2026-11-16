@@ -111,7 +111,12 @@ async function main() {
   const dataExport = createDataExportService({ store, verifyIdToken, chatwoot });
   // Opcional: templates aprovados na Meta para alertas fora da janela de 24h (JSON por tipo e idioma).
   const notificationTemplates = parseNotificationTemplates(readSetting('NOTIFICATION_TEMPLATES'));
-  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout, accountDeletion, dataExport, notificationTemplates });
+  // Limite diario por usuario (0 desliga). Padrao em src/dailyLimits.js.
+  const dailyLimits = {
+    messages: readSetting('WHATSAPP_DAILY_MESSAGE_LIMIT'),
+    tool_calls: readSetting('WHATSAPP_DAILY_TOOL_LIMIT')
+  };
+  const app = createApp({ store, resolver: createPhoneResolver(links, { store }), apiKey, accessMode, stripeWebhookSecret, checkout, accountDeletion, dataExport, notificationTemplates, dailyLimits });
   const port = Number(process.env.PORT || 3000);
 
   const server = http.createServer(async (req, res) => {

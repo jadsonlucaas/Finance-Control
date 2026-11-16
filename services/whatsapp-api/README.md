@@ -52,6 +52,17 @@ Rollout seguro: conceda a cortesia a quem precisa **antes** de trocar para `enti
 
 **Número principal (Premium pelo Stripe):** o telefone informado no pagamento fica em `billing_subscriptions/{uid}.phone`. Só esse número usa o Premium no WhatsApp; outro número vinculado à mesma conta recebe `assinatura: "phone_mismatch"` e a mensagem para usar o número do pagamento ou trocá-lo em "Gerenciar assinatura". A cortesia do admin não depende do telefone.
 
+### Limite diário por usuário
+
+Mesmo com Premium ou cortesia, cada conta tem um teto por dia (dia UTC, o mesmo do consumo em `users/{uid}/usage`):
+
+| Variável | Padrão | Efeito |
+| --- | --- | --- |
+| `WHATSAPP_DAILY_MESSAGE_LIMIT` | `100` | Mensagens novas por dia. Acima disso, `mensagem/registrar` devolve `{ duplicada: false, limite_atingido: true, mensagem }` para o n8n responder sem chamar o agente. |
+| `WHATSAPP_DAILY_TOOL_LIMIT` | `400` | Ferramentas por dia. Acima disso, as rotas respondem 429 `DAILY_LIMIT_REACHED` com a mensagem no idioma do usuário (proteção contra loop do agente). |
+
+`0` desliga o limite. A contagem fica em memória e, quando a conta aparece pela primeira vez no dia, parte do que já está gravado no consumo do dia (reiniciar a API não zera). `notificacoes/parar` não conta.
+
 ## Checkout e portal (criados pelo servidor)
 
 O Dashboard chama um webhook público do n8n, que repassa (com a `x-api-key`) para:
@@ -207,6 +218,7 @@ docker run -d --name financecontrol_whatsapp_api_dev --network <rede-do-n8n> \
 2. Gere `WHATSAPP_API_KEY` com `openssl rand -hex 32`. Use uma chave **nova**, sem reaproveitar a da API readonly.
 3. (Opcional) `WHATSAPP_PHONE_LINKS`: vínculos manuais de reserva. Novos usuários se vinculam pelo app.
 4. (Opcional) `WHATSAPP_ACCESS_MODE`: `open` (padrão) ou `entitlement` (exige assinatura ou cortesia).
+5. (Opcional) `WHATSAPP_DAILY_MESSAGE_LIMIT` e `WHATSAPP_DAILY_TOOL_LIMIT`: teto diário por usuário (padrão 100 e 400; `0` desliga).
 5. (Opcional) `STRIPE_WEBHOOK_SECRET_FILE`: segredo de assinatura do endpoint do webhook no Stripe (`whsec_...`), como secret do Portainer.
 6. Forneça a service account com `FIREBASE_SERVICE_ACCOUNT_JSON` ou com um arquivo montado em `GOOGLE_APPLICATION_CREDENTIALS`.
 
