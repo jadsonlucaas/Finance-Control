@@ -1,5 +1,6 @@
 import { toMillis } from './links.js';
 import { hashPhone } from './phoneLinks.js';
+import { buildRecentRecordQueries, mergeRecordSets } from '../../../src/core/recordsHistoryWindow.js';
 
 /**
  * Adaptador Firestore (Firebase Admin SDK). Mesma interface do memoryStore.
@@ -363,9 +364,20 @@ export function createFirestoreStore(db) {
     async mergeBillingSubscription(uid, patch) {
       await subscriptions.doc(uid).set(patch, { merge: true });
     },
-    async listFinanceRecords(uid) {
-      const snapshot = await records(uid).where('type', 'in', ['saida', 'entrada']).get();
-      return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    /**
+     * Lancamentos (saidas e entradas). Com `from` ('AAAA-MM'), le so o que tem
+     * competencia/vencimento/data a partir desse mes e as contas ainda em aberto,
+     * em vez do historico inteiro. Consultas de campo unico: sem indice composto.
+     */
+    async listFinanceRecords(uid, { from = '' } = {}) {
+      const specs = buildRecentRecordQueries(from);
+      if (specs[0].key === 'all') {
+        const snapshot = await records(uid).where('type', 'in', ['saida', 'entrada']).get();
+        return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+      }
+      const snapshots = await Promise.all(specs.map((spec) => records(uid).where(spec.field, spec.op, spec.value).get()));
+      return mergeRecordSets(snapshots.map((snapshot) => snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }))))
+        .filter((record) => record.type === 'saida' || record.type === 'entrada');
     },
     async listBudgets(uid) {
       const snapshot = await db.collection('users').doc(uid).collection('budgets').get();

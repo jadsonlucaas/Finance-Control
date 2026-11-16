@@ -7,6 +7,7 @@ import { formatMoney, parseAmount } from './money.js';
 import { installmentConfirmation, registrationConfirmation } from './confirmationText.js';
 import { addMonthsClamped, createInstallmentSeries } from '../../../src/domain/installmentSeries.js';
 import { toPublicRecord } from './queries.js';
+import { shiftCompetence } from '../../../src/core/recordsHistoryWindow.js';
 import { autoExpenseCategory, autoPaymentMethod, buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory } from './references.js';
 
 export const PENDING_ACTION_TTL_MS = 10 * 60 * 1000;
@@ -305,7 +306,9 @@ export function createActionService({ store, now = () => new Date(), newId = () 
   }
 
   async function loadLookups(uid) {
-    const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid)]);
+    // Formas de pagamento usadas nos ultimos 12 meses bastam; nao precisa do historico inteiro.
+    const from = shiftCompetence(now().toISOString().slice(0, 7), -11);
+    const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid, { from })]);
     return { catalog: buildReferenceCatalog(references), paymentMethods: buildPaymentMethods(records) };
   }
 

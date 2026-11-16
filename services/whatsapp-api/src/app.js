@@ -14,6 +14,7 @@ import { createPreferenceResolver } from './preferences.js';
 import { runWithCurrency } from './money.js';
 import { buildOrcamento, defineBudget } from './budgets.js';
 import { currentCompetence } from './dates.js';
+import { shiftCompetence } from '../../../src/core/recordsHistoryWindow.js';
 import { createNotificationService } from './notificationService.js';
 import {
   buildCategorias,
@@ -26,6 +27,9 @@ import {
   resolvePeriod
 } from './queries.js';
 
+
+// Meses lidos quando a consulta nao diz o periodo (busca, opcoes, formas de pagamento).
+export const RECENT_LOOKUP_MONTHS = 12;
 export const MAX_BODY_BYTES = 16 * 1024;
 // Eventos do Stripe (checkout/assinatura) passam facil de 16 KB.
 export const MAX_STRIPE_BODY_BYTES = 512 * 1024;
@@ -121,29 +125,45 @@ export function createApp({
     }
   };
 
+  // Ler so a partir do mes que a consulta precisa (mais as contas em aberto), nao o historico inteiro.
+  const recentStart = (prefs) => shiftCompetence(currentCompetence(now(), prefs.time_zone), -(RECENT_LOOKUP_MONTHS - 1));
+  const recordsFrom = (uid, from) => store.listFinanceRecords(uid, { from });
+
   const readRoutes = {
-    despesas: async (uid, body, prefs) => buildLegacyDespesas(await store.listFinanceRecords(uid), resolveCompetence(body.competencia, now(), prefs.time_zone)),
-    resumo: async (uid, body, prefs) => buildResumo(await store.listFinanceRecords(uid), resolvePeriod(body, now(), prefs.time_zone)),
+    despesas: async (uid, body, prefs) => {
+      const competence = resolveCompetence(body.competencia, now(), prefs.time_zone);
+      return buildLegacyDespesas(await recordsFrom(uid, competence), competence);
+    },
+    resumo: async (uid, body, prefs) => {
+      const period = resolvePeriod(body, now(), prefs.time_zone);
+      return buildResumo(await recordsFrom(uid, period.inicio), period);
+    },
     lancamentos: async (uid, body, prefs) => {
       const filters = parseListFilters(body, now(), prefs.time_zone);
-      return buildLancamentos(await store.listFinanceRecords(uid), filters);
+      // Sem competencia: busca nos ultimos 12 meses (e futuros), mais recentes primeiro.
+      return buildLancamentos(await recordsFrom(uid, filters.competencia || recentStart(prefs)), filters);
     },
-    categorias: async (uid, body, prefs) => buildCategorias(await store.listFinanceRecords(uid), resolvePeriod(body, now(), prefs.time_zone)),
+    categorias: async (uid, body, prefs) => {
+      const period = resolvePeriod(body, now(), prefs.time_zone);
+      return buildCategorias(await recordsFrom(uid, period.inicio), period);
+    },
     // Orcamentos: lidos sem cache (documentos pequenos) para refletir na hora o que
     // mudou no Dashboard; os lancamentos seguem o cache curto de leitura.
     orcamento: async (uid, body, prefs) => {
       if (typeof store.listBudgets !== 'function') throw new ApiError(503, 'BUDGETS_NOT_CONFIGURED', 'Orcamentos indisponiveis.');
-      const [records, budgets] = await Promise.all([store.listFinanceRecords(uid), store.listBudgets(uid)]);
+      const competencia = resolveCompetence(body.competencia, now(), prefs.time_zone);
+      const [records, budgets] = await Promise.all([recordsFrom(uid, competencia), store.listBudgets(uid)]);
       return buildOrcamento(records, budgets, {
-        competencia: resolveCompetence(body.competencia, now(), prefs.time_zone),
+        competencia,
         categoria: typeof body.categoria === 'string' ? body.categoria.slice(0, 80) : '',
         currentCompetence: currentCompetence(now(), prefs.time_zone),
         locale: prefs.locale
       });
     },
-    vencimentos: async (uid, body, prefs) => buildVencimentos(await store.listFinanceRecords(uid), body, now(), prefs.time_zone),
-    opcoes: async (uid, body) => {
-      const [references, records] = await Promise.all([store.listReferenceRecords(uid), store.listFinanceRecords(uid)]);
+    // Vencidas de qualquer epoca vem pela consulta de contas em aberto.
+    vencimentos: async (uid, body, prefs) => buildVencimentos(await recordsFrom(uid, currentCompetence(now(), prefs.time_zone)), body, now(), prefs.time_zone),
+    opcoes: async (uid, body, prefs) => {
+      const [references, records] = await Promise.all([store.listReferenceRecords(uid), recordsFrom(uid, recentStart(prefs))]);
       return buildOpcoes(references, records, body);
     }
   };
