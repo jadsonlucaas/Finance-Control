@@ -1,0 +1,94 @@
+{
+  "_comment": "Copia (sem credenciais) das partes do n8n que conversam com a whatsapp-api. Atualize com scripts/n8n/README ao mudar o fluxo no n8n.",
+  "source": {
+    "main": {
+      "id": "jRpdmUjM1mpcEhT7",
+      "versionId": "3d819256-fc29-4d09-843b-e67517580f9f"
+    },
+    "toolApi": {
+      "id": "MQd8UCqfsnuDaX7e",
+      "versionId": "b6652741-0a50-457b-8d98-67a8606f4e1d"
+    }
+  },
+  "registrarMensagem": {
+    "url": "http://financecontrol_whatsapp_api_dev:3000/internal/whatsapp/mensagem/registrar",
+    "jsonBody": "={{ JSON.stringify({ telefone: $('Edit Fields').first().json.telefone_remetente, accountId: Number($('Edit Fields').first().json.account_id), mensagemId: String($('Webhook').first().json.body?.id ?? '') }) }}"
+  },
+  "gates": {
+    "mensagemNova": "={{ !(Number($json.statusCode) === 200 && $json.body && $json.body.duplicada === true) }}",
+    "codigoVinculo": "={{ /^\\s*(vincular\\s+)?[2-9A-HJKMNP-Z]{4}[\\s-]?[2-9A-HJKMNP-Z]{4}\\s*$/i.test(String($('Edit Fields').first().json.mensagem || '')) }}",
+    "vinculado": "={{ $json.ok === true && $json.dados && $json.dados.vinculado === true }}"
+  },
+  "linkCalls": {
+    "confirmar": {
+      "rota": "vinculo/confirmar",
+      "parametros": "={{ JSON.stringify({ codigo: String($('Edit Fields').first().json.mensagem || '').replace(/^\\s*vincular\\s+/i, '').trim() }) }}"
+    },
+    "status": {
+      "rota": "vinculo/status",
+      "parametros": "{}"
+    }
+  },
+  "tools": [
+    {
+      "name": "resumo_financeiro_mes",
+      "rota": "resumo",
+      "parametros": "={{ JSON.stringify({ competencia: $fromAI('competencia', 'Mes AAAA-MM quando a pergunta for de um unico mes; vazio se for periodo', 'string', ''), competencia_inicio: $fromAI('competencia_inicio', 'Primeiro mes AAAA-MM do periodo; vazio se for um unico mes', 'string', ''), competencia_fim: $fromAI('competencia_fim', 'Ultimo mes AAAA-MM do periodo; vazio se for um unico mes', 'string', '') }) }}"
+    },
+    {
+      "name": "listar_lancamentos",
+      "rota": "lancamentos",
+      "parametros": "={{ JSON.stringify({ competencia: $fromAI('competencia', 'Mes AAAA-MM ou vazio para todos', 'string', ''), tipo: $fromAI('tipo', 'despesa, receita ou vazio', 'string', ''), status: $fromAI('status', 'Pago, em aberto, Pendente, Cancelado ou vazio', 'string', ''), categoria: $fromAI('categoria', 'Nome (ou parte) da categoria ou vazio', 'string', ''), forma_pagamento: $fromAI('forma_pagamento', 'Forma de pagamento (ou parte, ex.: Nubank) ou vazio', 'string', ''), busca: $fromAI('busca', 'Texto para procurar na descricao, pessoa ou pagamento, ou vazio', 'string', ''), limite: $fromAI('limite', 'Quantidade maxima de itens (1 a 50)', 'number', 20) }) }}"
+    },
+    {
+      "name": "gastos_por_categoria",
+      "rota": "categorias",
+      "parametros": "={{ JSON.stringify({ competencia: $fromAI('competencia', 'Mes AAAA-MM quando a pergunta for de um unico mes; vazio se for periodo', 'string', ''), competencia_inicio: $fromAI('competencia_inicio', 'Primeiro mes AAAA-MM do periodo; vazio se for um unico mes', 'string', ''), competencia_fim: $fromAI('competencia_fim', 'Ultimo mes AAAA-MM do periodo; vazio se for um unico mes', 'string', '') }) }}"
+    },
+    {
+      "name": "contas_a_vencer",
+      "rota": "vencimentos",
+      "parametros": "={{ JSON.stringify({ dias: $fromAI('dias', 'Quantidade de dias a frente (0 a 90)', 'number', 7) }) }}"
+    },
+    {
+      "name": "preparar_acao",
+      "rota": "acoes/preparar",
+      "parametros": "={{ JSON.stringify({ acao: $fromAI('acao', 'registrar_despesa, registrar_receita, marcar_pago, editar ou excluir', 'string'), dados: $fromAI('dados', 'Objeto JSON com os dados da acao, em texto', 'string') }) }}"
+    },
+    {
+      "name": "confirmar_acao",
+      "rota": "acoes/confirmar",
+      "parametros": "={}"
+    },
+    {
+      "name": "cancelar_acao",
+      "rota": "acoes/cancelar",
+      "parametros": "={}"
+    },
+    {
+      "name": "opcoes_cadastro",
+      "rota": "opcoes",
+      "parametros": "={{ JSON.stringify({ macro: $fromAI('macro', 'Macro para filtrar as categorias (ex.: FIXO) ou vazio para todas', 'string', '') }) }}"
+    },
+    {
+      "name": "consultar_orcamento",
+      "rota": "orcamento",
+      "parametros": "={{ JSON.stringify({ categoria: $fromAI('categoria', 'Categoria citada pelo usuario (ex.: alimentacao, comida, uber) ou vazio para o total e todas', 'string', ''), competencia: $fromAI('competencia', 'Mes AAAA-MM ou vazio para o mes atual', 'string', '') }) }}"
+    },
+    {
+      "name": "definir_orcamento",
+      "rota": "orcamento/definir",
+      "parametros": "={{ JSON.stringify({ categoria: $fromAI('categoria', 'Categoria citada pelo usuario (ex.: transporte, alimentacao, comida) ou vazio/total para o total do mes', 'string', ''), valor: $fromAI('valor', 'Valor do limite, so o numero (ex.: 357 ou 120.5)', 'number'), competencia: $fromAI('competencia', 'Mes AAAA-MM pedido ou vazio para o mes atual', 'string', '') }) }}"
+    },
+    {
+      "name": "parar_alertas",
+      "rota": "notificacoes/parar",
+      "parametros": "{}"
+    }
+  ],
+  "toolApi": {
+    "url": "=http://financecontrol_whatsapp_api_dev:3000/internal/whatsapp/{{ $json.rota }}",
+    "validaEMontaPedido": "const e = $input.first().json;\nconst ROTAS = ['resumo','despesas','lancamentos','categorias','vencimentos','orcamento','orcamento/definir','opcoes','acoes/preparar','acoes/confirmar','acoes/cancelar','vinculo/confirmar','vinculo/status','notificacoes/parar'];\nconst telefone = String(e.telefone || '').trim();\nconst accountId = Number(e.accountId);\nconst rota = String(e.rota || '').trim();\nif (!/^\\+[1-9]\\d{7,14}$/.test(telefone)) throw new Error('Telefone invalido.');\nif (!Number.isSafeInteger(accountId) || accountId <= 0) throw new Error('Conta invalida.');\nif (!ROTAS.includes(rota)) throw new Error('Rota nao permitida.');\nconst parse = (v) => {\n  if (v && typeof v === 'object') return v;\n  if (v && String(v).trim()) { try { return JSON.parse(String(v)); } catch { throw new Error('Parametros devem ser JSON valido.'); } }\n  return {};\n};\nlet params = parse(e.parametros);\nif (!params || typeof params !== 'object' || Array.isArray(params)) params = {};\nif (typeof params.dados === 'string') {\n  const d = parse(params.dados);\n  params.dados = d && typeof d === 'object' && !Array.isArray(d) ? d : {};\n}\n// Remove campos vazios enviados pela IA\nfor (const k of Object.keys(params)) { if (params[k] === '' || params[k] === null) delete params[k]; }\n// Telefone e conta sempre vem do fluxo, nunca da IA.\ndelete params.telefone; delete params.accountId; delete params.uid; delete params.owner_uid;\nreturn [{ json: { rota, body: { ...params, telefone, accountId } } }];",
+    "formataResposta": "const r = $input.first().json;\nconst status = Number(r.statusCode || 0);\nconst body = r.body && typeof r.body === 'object' ? r.body : {};\nif (status >= 200 && status < 300) return [{ json: { ok: true, dados: body } }];\nconst erro = body.erro || { codigo: 'HTTP_' + status, mensagem: 'Falha ao consultar o sistema.' };\nreturn [{ json: { ok: false, erro } }];"
+  }
+}
