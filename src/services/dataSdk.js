@@ -4,11 +4,25 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  query,
   runTransaction,
   setDoc,
   updateDoc,
+  where,
   writeBatch
 } from 'firebase/firestore';
+import { currentCompetenceKey } from '../core/dates.js';
+import {
+  DEFAULT_HISTORY_WINDOW_MONTHS,
+  HISTORY_MODE_FULL,
+  HISTORY_MODE_WINDOW,
+  HISTORY_WINDOW_EVENT,
+  buildHistoryWindowQueries,
+  historyWindowStart,
+  mergeRecordSets,
+  nextHistoryStart,
+  normalizeHistoryWindowMonths
+} from '../core/recordsHistoryWindow.js';
 import { sanitizeFirestoreRecord } from './firestoreSanitizer.js';
 import {
   classifyFinanceRecordAuditAction,
@@ -253,8 +267,20 @@ export function writeCachedUserRecords(target = globalThis, uid = '', records = 
   }
 }
 
-export function createDataSdkService({ auth, db, target = window, auditService = null } = {}) {
-  let unsubscribeRecords = null;
+export function createDataSdkService({
+  auth,
+  db,
+  target = window,
+  auditService = null,
+  historyWindowMonths = DEFAULT_HISTORY_WINDOW_MONTHS,
+  currentCompetence = () => currentCompetenceKey()
+} = {}) {
+  const windowMonths = normalizeHistoryWindowMonths(historyWindowMonths);
+  let recordUnsubscribes = [];
+  let historyGeneration = 0;
+  let historyState = { mode: HISTORY_MODE_FULL, start: '', loading: false, uid: '' };
+  let historyReady = Promise.resolve(historyState);
+  let activeDataHandler = null;
   let unsubscribeSharedMacros = null;
   let unsubscribeSharedCategories = null;
   let unsubscribeLocalStorageSync = null;
@@ -532,11 +558,14 @@ export function createDataSdkService({ auth, db, target = window, auditService =
       (target.clearTimeout || clearTimeout)(combinedRecordsEmitTimer);
       combinedRecordsEmitTimer = 0;
     }
-    if (unsubscribeRecords) unsubscribeRecords();
+    stopRecordListeners();
+    historyGeneration += 1;
+    historyState = { mode: HISTORY_MODE_FULL, start: '', loading: false, uid: '' };
+    historyReady = Promise.resolve(historyState);
+    activeDataHandler = null;
     if (unsubscribeSharedMacros) unsubscribeSharedMacros();
     if (unsubscribeSharedCategories) unsubscribeSharedCategories();
     if (unsubscribeLocalStorageSync) unsubscribeLocalStorageSync();
-    unsubscribeRecords = null;
     unsubscribeSharedMacros = null;
     unsubscribeSharedCategories = null;
     unsubscribeLocalStorageSync = null;
@@ -556,6 +585,135 @@ export function createDataSdkService({ auth, db, target = window, auditService =
       expired: false
     });
   }
+
+
+  function stopRecordListeners() {
+    recordUnsubscribes.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch {
+        // Listener ja encerrado.
+      }
+    });
+    recordUnsubscribes = [];
+  }
+
+  function publishHistoryState(next) {
+    historyState = Object.freeze({ ...next });
+    try {
+      target.dispatchEvent?.(new CustomEvent(HISTORY_WINDOW_EVENT, { detail: historyState }));
+    } catch {
+      // Ambiente sem CustomEvent (testes antigos): o estado continua disponivel em getHistoryState().
+    }
+    return historyState;
+  }
+
+  /**
+   * Escuta os lancamentos do usuario. Com `start` ('AAAA-MM'), so a janela de
+   * historico (ver core/recordsHistoryWindow.js); sem `start`, a colecao inteira.
+   * Os registros ja exibidos so sao trocados quando TODAS as consultas novas
+   * responderam, para a tela nao "piscar" vazia ao ampliar a janela.
+   */
+  function subscribeUserRecords(uid, start = '') {
+    stopRecordListeners();
+    historyGeneration += 1;
+    const generation = historyGeneration;
+    const specs = buildHistoryWindowQueries(start);
+    const sets = new Map();
+    let pending = specs.length;
+    let resolveReady;
+    historyReady = new Promise((resolve) => { resolveReady = resolve; });
+    publishHistoryState({
+      mode: start ? HISTORY_MODE_WINDOW : HISTORY_MODE_FULL,
+      start: start || '',
+      loading: true,
+      uid
+    });
+
+    const applySnapshot = () => {
+      latestUserRecords = mergeRecordSets([...sets.values()]);
+      const cacheInfo = writeCachedUserRecords(target, uid, latestUserRecords);
+      setFinanceCacheState(target, {
+        source: 'firebase',
+        uid,
+        savedAt: cacheInfo.savedAt,
+        expiresAt: cacheInfo.expiresAt,
+        cached: false,
+        recordCount: latestUserRecords.length,
+        expired: false
+      });
+      if (!historyState.loading) {
+        if (activeDataHandler) scheduleCombinedRecordsEmit(activeDataHandler);
+        return;
+      }
+      // Primeira resposta desta janela: entrega ja (sincrono) para que quem aguardou
+      // ensureFrom/ensureFull leia os registros novos logo em seguida.
+      if (combinedRecordsEmitTimer) {
+        (target.clearTimeout || clearTimeout)(combinedRecordsEmitTimer);
+        combinedRecordsEmitTimer = 0;
+      }
+      if (activeDataHandler) emitCombinedRecords(activeDataHandler);
+      resolveReady(publishHistoryState({ ...historyState, loading: false }));
+    };
+
+    specs.forEach((spec) => {
+      const reference = spec.key === 'all'
+        ? getUserCollection(uid)
+        : query(getUserCollection(uid), where(spec.field, spec.op, spec.value));
+      let first = true;
+      const unsubscribe = onSnapshot(reference, (snapshot) => {
+        if (generation !== historyGeneration) return;
+        sets.set(spec.key, snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data() })));
+        if (first) {
+          first = false;
+          pending -= 1;
+        }
+        if (pending > 0) return;
+        applySnapshot();
+      }, (error) => {
+        if (generation !== historyGeneration) return;
+        console.error('Erro ao escutar lancamentos', error?.code || error?.name || 'FIRESTORE_LISTEN_ERROR');
+        if (start) {
+          // Falha numa consulta da janela: volta ao modo antigo (colecao inteira) em vez de mostrar dados pela metade.
+          subscribeUserRecords(uid, '');
+          historyReady.then(resolveReady);
+          return;
+        }
+        resolveReady(publishHistoryState({ ...historyState, loading: false, error: error?.code || 'FIRESTORE_LISTEN_ERROR' }));
+      });
+      recordUnsubscribes.push(unsubscribe);
+    });
+    return historyReady;
+  }
+
+  function currentUid() {
+    return auth.currentUser?.uid || '';
+  }
+
+  /** Garante que os lancamentos a partir de `competence` (AAAA-MM ou AAAA-MM-DD) estao carregados. */
+  function ensureHistoryFrom(competence) {
+    const uid = currentUid();
+    if (!uid || !activeDataHandler || historyState.uid !== uid) return Promise.resolve(historyState);
+    const next = nextHistoryStart(competence, historyState);
+    if (historyState.mode === HISTORY_MODE_FULL || next === historyState.start) return historyReady;
+    return subscribeUserRecords(uid, next);
+  }
+
+  /** Carrega todo o historico (backup, importacao, exclusao de categoria, botao "carregar tudo"). */
+  function ensureFullHistory() {
+    const uid = currentUid();
+    if (!uid || !activeDataHandler || historyState.uid !== uid) return Promise.resolve(historyState);
+    if (historyState.mode === HISTORY_MODE_FULL) return historyReady;
+    return subscribeUserRecords(uid, '');
+  }
+
+  const historyWindow = {
+    getState: () => historyState,
+    ensureFrom: ensureHistoryFrom,
+    ensureFull: ensureFullHistory,
+    ready: () => historyReady,
+    windowMonths
+  };
 
   const cloudLocalStorageSync = {
     set: (key, value) => saveLocalStorageKeyToCloud(key, value).catch((error) => console.error('Erro ao sincronizar localStorage', error)),
@@ -595,20 +753,8 @@ export function createDataSdkService({ auth, db, target = window, auditService =
         });
       }
 
-      unsubscribeRecords = onSnapshot(getUserCollection(user.uid), (snapshot) => {
-        latestUserRecords = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data() }));
-        const cacheInfo = writeCachedUserRecords(target, user.uid, latestUserRecords);
-        setFinanceCacheState(target, {
-          source: 'firebase',
-          uid: user.uid,
-          savedAt: cacheInfo.savedAt,
-          expiresAt: cacheInfo.expiresAt,
-          cached: false,
-          recordCount: latestUserRecords.length,
-          expired: false
-        });
-        scheduleCombinedRecordsEmit(dataHandler);
-      });
+      activeDataHandler = dataHandler;
+      subscribeUserRecords(user.uid, windowMonths ? historyWindowStart(currentCompetence(), windowMonths) : '');
 
       unsubscribeSharedMacros = onSnapshot(getSharedMacrosCollection(), (snapshot) => {
         latestSharedMacros = snapshot.docs.map((recordDoc) => ({ id: recordDoc.id, ...recordDoc.data(), shared_scope: 'global' }));
@@ -861,6 +1007,8 @@ export function createDataSdkService({ auth, db, target = window, auditService =
         const user = auth.currentUser;
         if (!user) throw new Error('AUTH_REQUIRED');
         if (!record.id) throw new Error('Documento precisa de um ID');
+        // "Em uso" precisa olhar o historico inteiro, nao so os meses carregados.
+        if (isReferenceRecord(record)) await ensureFullHistory();
         if (isReferenceRecord(record) && isReferenceInUse(record, latestUserRecords)) {
           throw new Error('REFERENCE_IN_USE');
         }
@@ -883,8 +1031,13 @@ export function createDataSdkService({ auth, db, target = window, auditService =
 
   installLocalStorageCloudSyncPatch();
 
+  dataSdk.getHistoryState = historyWindow.getState;
+  dataSdk.ensureHistoryFrom = ensureHistoryFrom;
+  dataSdk.ensureFullHistory = ensureFullHistory;
+
   return {
     dataSdk,
+    historyWindow,
     cloudLocalStorageSync,
     batchDeleteRecords,
     cleanupOnSignOut

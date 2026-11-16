@@ -2,6 +2,7 @@ import '../styles/app.css';
 import '../styles/style.css';
 import { installSignupSuggestions } from './ui/auth/signupSuggestions.js';
 import { installLocale } from './ui/i18n/installLocale.js';
+import { installHistoryWindowUi } from './ui/history/historyWindowUi.js';
 import { installFinancialSelectorGlobals } from './application/selectors/financialSelectors.js';
 import { createApplicationDependencies } from './application/dependencies/createApplicationDependencies.js';
 import { createDefaultApplicationGateway } from './application/gateway/defaultApplicationGateway.js';
@@ -102,6 +103,7 @@ export function bootstrapApp() {
   installImportPipelineGlobals(globalThis);
   installLegacyEventBindings(globalThis);
   installModalKeyboard(globalThis);
+  installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);
   installRecordFormValidationGlobals(globalThis);
   installRecordListRendererGlobals(globalThis);

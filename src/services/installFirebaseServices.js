@@ -2,6 +2,7 @@ import { createAuthService, persistAuthSession, reauthenticateWithPassword, subs
 import { createAccountDeletionService } from './accountDeletion.js';
 import { createAuditService, installAuditGlobals } from './audit.js';
 import { createDataSdkService } from './dataSdk.js';
+import { normalizeHistoryWindowMonths } from '../core/recordsHistoryWindow.js';
 import { createFirebaseService } from './firebase.js';
 import { createUserAdminService } from './userAdmin.js';
 import { createWhatsAppLinkService } from './whatsappLink.js';
@@ -31,7 +32,14 @@ function setPlanChoicePending(target, pending) {
 export function installFirebaseServices({ target = window, config } = {}) {
   const { auth, db, runtime } = createFirebaseService(config);
   const auditService = createAuditService({ auth, db, target });
-  const dataServices = createDataSdkService({ auth, db, target, auditService });
+  const dataServices = createDataSdkService({
+    auth,
+    db,
+    target,
+    auditService,
+    // Meses de historico carregados ao abrir o app (0 = historico completo, modo antigo).
+    historyWindowMonths: normalizeHistoryWindowMonths(import.meta.env?.VITE_FINANCE_HISTORY_WINDOW_MONTHS)
+  });
 
   target.__financeDataServices = dataServices;
   target.__financeFirestoreDb = db;
@@ -45,6 +53,7 @@ export function installFirebaseServices({ target = window, config } = {}) {
   });
   target.__financeRawDataSdk = dataServices.dataSdk;
   target.dataSdk = dataServices.dataSdk;
+  target.financeHistoryWindow = dataServices.historyWindow;
   const authService = createAuthService(auth, auditService);
   target.userAdminSdk = createUserAdminService(db, auditService);
   target.whatsappLinkSdk = createWhatsAppLinkService(db);

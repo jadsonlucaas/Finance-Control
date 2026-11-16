@@ -40,7 +40,9 @@ export function createBackupController({
   now = () => new Date().toISOString(),
   appVersion = '',
   maxFileBytes = 5 * 1024 * 1024,
-  errorReporter = null
+  errorReporter = null,
+  // Garante o historico completo antes de ler (o app abre so com os meses recentes).
+  prepareData = async () => {}
 } = {}) {
   if (!presenter) throw new Error('BACKUP_PRESENTER_REQUIRED');
   if (typeof repositoriesProvider !== 'function') throw new Error('BACKUP_REPOSITORIES_PROVIDER_REQUIRED');
@@ -102,6 +104,7 @@ export function createBackupController({
     backupState = toLoadingState(backupState);
     publish();
     try {
+      await prepareData();
       const result = await CreateFinanceBackupSnapshot({
         context,
         repositories: repositoriesProvider(),
@@ -223,6 +226,7 @@ export function createBackupController({
           return validated;
         }
       }
+      await prepareData();
       const result = await PrepareFinanceRestore({
         snapshot: restoreSnapshot,
         context,

@@ -56,7 +56,8 @@ export function installBackupActiveUi(target = globalThis, options = {}) {
     connectivity: options.connectivity || target.financeApp?.applicationDependencies?.services?.connectivity,
     now: options.now,
     appVersion: options.appVersion || target.financeApp?.version || '',
-    errorReporter: options.errorReporter || target.financeApp?.applicationDependencies?.services?.errorReporter
+    errorReporter: options.errorReporter || target.financeApp?.applicationDependencies?.services?.errorReporter,
+    prepareData: options.prepareData || (() => target.financeHistoryWindow?.ensureFull?.())
   });
 
   presenter.renderShell();
