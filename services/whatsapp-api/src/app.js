@@ -17,6 +17,7 @@ import { currentCompetence } from './dates.js';
 import { shiftCompetence } from '../../../src/core/recordsHistoryWindow.js';
 import { createNotificationService } from './notificationService.js';
 import { emptyUsage, enterUsage, saveUsage } from './usage.js';
+import { createDailyLimiter, dailyLimitMessage } from './dailyLimits.js';
 import {
   buildCategorias,
   buildLancamentos,
@@ -77,7 +78,9 @@ export function createApp({
   rateLimiter = createRateLimiter(),
   healthTimeoutMs = 5000,
   preferenceResolver = null,
-  notificationTemplates = {}
+  notificationTemplates = {},
+  dailyLimits = undefined,
+  dailyLimiter = null
 }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const access = createAccessPolicy({ store, mode: accessMode });
@@ -86,6 +89,7 @@ export function createApp({
   const links = createLinkService({ store, now });
   const billing = stripeWebhookSecret ? createBillingService({ store, now, logger }) : null;
   const inbound = typeof store.reserveInboundMessage === 'function' ? createInboundMessageService({ store, now }) : null;
+  const daily = dailyLimiter || createDailyLimiter({ store, limits: dailyLimits, logger });
   const notifications = createNotificationService({ store, access, preferences, now, newId, templates: notificationTemplates, logger });
 
   // Rotas sem usuario resolvido: o telefone ainda pode nao estar vinculado.
@@ -101,6 +105,19 @@ export function createApp({
           usage.messages = 1;
         } catch {
           // Sem vinculo: nada a medir.
+        }
+      }
+      // Limite diario por usuario: o n8n responde a mensagem pronta em vez de chamar o agente.
+      if (!registered.result.duplicada && usage?.uid) {
+        const dailyCheck = await daily.hit('messages', usage.uid, now());
+        if (!dailyCheck.allowed) {
+          let locale = '';
+          try {
+            locale = (await preferences.forUser(usage.uid, body.telefone)).locale;
+          } catch {
+            // Sem preferencias: responde em portugues.
+          }
+          registered.result = { ...registered.result, limite_atingido: true, mensagem: dailyLimitMessage(locale) };
         }
       }
       // Janela de 24h do WhatsApp: guarda no vinculo a hora da ultima mensagem do usuario.
@@ -302,6 +319,8 @@ export function createApp({
       await access.assert(uid, { phone: body.telefone });
       // Fuso, idioma e moeda do usuario, escolhidos em Configuracoes no Dashboard.
       const prefs = await preferences.forUser(uid, body.telefone);
+      // Teto diario de ferramentas: segura o custo mesmo se o agente entrar em loop.
+      await daily.enforce('tool_calls', uid, { now: now(), locale: prefs.locale });
       const result = await runWithCurrency(prefs.currency, () => handler(uid, body, prefs));
       status = 200;
       // /despesas e a rota legada com contrato fixo: fica sem o bloco de preferencias.

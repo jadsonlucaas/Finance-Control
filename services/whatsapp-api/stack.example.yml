@@ -18,6 +18,9 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/financecontrol_firebase_sa_dev_v1
       # open (padrao) ou entitlement: exige assinatura do Stripe ou cortesia do admin.
       WHATSAPP_ACCESS_MODE: open
+      # Opcional: limite diario por usuario (padrao 100 mensagens / 400 ferramentas; 0 desliga).
+      # WHATSAPP_DAILY_MESSAGE_LIMIT: "100"
+      # WHATSAPP_DAILY_TOOL_LIMIT: "400"
       # Opcional: sem ele o webhook do Stripe responde 503.
       STRIPE_WEBHOOK_SECRET_FILE: /run/secrets/financecontrol_stripe_webhook_secret_test_v1
       # Opcional: checkout/portal criados pelo servidor.

@@ -329,6 +329,8 @@ async function seedProfiles() {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await setDoc(doc(db, 'users/active-user'), profile('active-user'));
+    // active-user e Premium (cortesia): controle de horas e importacao exigem o plano (Etapa 5, item 4).
+    await setDoc(doc(db, 'whatsapp_comp_access/active-user'), { uid: 'active-user', status: 'active', granted_by: 'owner-user', granted_at: '2026-01-01T00:00:00.000Z' });
     await setDoc(doc(db, 'users/pending-user'), profile('pending-user', { status: 'pending' }));
     await setDoc(doc(db, 'users/inactive-user'), profile('inactive-user', { status: 'inactive' }));
     await setDoc(doc(db, 'users/user-a'), profile('user-a'));

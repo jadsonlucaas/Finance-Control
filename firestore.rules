@@ -633,6 +633,25 @@ service cloud.firestore {
         ));
     }
 
+    // Plano (Etapa 5, item 4): mesma regra do app (src/ui/billing/planGate.js) e da whatsapp-api
+    // (services/whatsapp-api/src/access.js). Premium = cortesia ativa do admin ou assinatura do
+    // Stripe em trialing/active/past_due; admin sempre tem tudo.
+    function hasPremiumAccess(uid) {
+      let compPath = /databases/$(database)/documents/whatsapp_comp_access/$(uid);
+      let subscriptionPath = /databases/$(database)/documents/billing_subscriptions/$(uid);
+      return isAdmin()
+        || (exists(compPath) && get(compPath).data.get('status', '') == 'active')
+        || (exists(subscriptionPath) && get(subscriptionPath).data.get('status', '') in ['trialing', 'active', 'past_due']);
+    }
+
+    // Recursos do Premium que viram lancamentos: controle de horas e importacao de planilha/extrato.
+    // So a criacao e barrada: quem voltou ao Gratuito continua vendo, editando e apagando o que ja tem.
+    function isPremiumOnlyNewRecord() {
+      let d = request.resource.data;
+      return d.get('type', '') == 'controle_horas'
+        || d.get('import_batch_id', '') != '';
+    }
+
     function hasValidBudgetShape(uid, budgetId) {
       let data = request.resource.data;
       return data.keys().hasOnly(['owner_uid', 'scope', 'category_name', 'limits', 'updated_at', 'schema_version'])
@@ -690,7 +709,8 @@ service cloud.firestore {
           && (
             (isReferenceType() && hasValidNewPersonalReferenceShape(uid))
             || (!isReferenceType() && hasValidFinanceShape())
-          );
+          )
+          && (!isPremiumOnlyNewRecord() || hasPremiumAccess(uid));
         allow update: if isActiveSelf(uid)
           && ownerIsImmutable(uid)
           && (
