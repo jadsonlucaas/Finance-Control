@@ -164,6 +164,8 @@ Regras de cálculo:
 | `editar` | `lancamento_id`*, `alteracoes`* com `descricao`, `valor`, `categoria`, `macro_categoria`, `vencimento`, `data`, `competencia`, `status`, `forma_pagamento` ou `pessoa` |
 | `excluir` | `lancamento_id`* (o lançamento é arquivado) |
 
+**Compra parcelada** (`registrar_despesa` com `parcelas`): informe `parcelas` (2 a 120, aceita "21x"), `valor_parcela` **ou** `valor_total` (nunca os dois; `valor` sozinho dá `INSTALLMENT_AMOUNT_REQUIRED`) e, opcionalmente, `vencimento` (data da 1ª parcela) ou `dia_vencimento` (1–31: o próximo dia X a partir de hoje; sem nenhum, um mês depois da compra). A API grava as N parcelas de uma vez (lote único, ids fixos `whatsapp_<id>_<n>`), no mesmo formato da tela Parcelamentos (`parent_id`, `installment_no`, `total_installments`, `is_installment`, `purchase_name`, descrição "Cama (1/21)"). Com `valor_total`, o centavo que sobra vai para a última parcela. A resposta traz `parcelamento` e a frase pronta em `resposta_usuario`.
+
 A resposta traz `confirmation_id` e o `resumo` que deve ser mostrado ao usuário. Só existe uma ação pendente por vez: preparar uma nova cancela a anterior. Em `confirmar` e `cancelar`, o `confirmation_id` é opcional; sem ele (ou com `"ultima"`), a ação usada é a pendente mais recente do usuário, o que permite ao agente confirmar sem guardar o id entre mensagens. Depois disso:
 
 - `POST /internal/whatsapp/acoes/confirmar` com `{ telefone, accountId, confirmation_id }` executa a ação. Se a ação já foi executada, a resposta é `ja_executado`.

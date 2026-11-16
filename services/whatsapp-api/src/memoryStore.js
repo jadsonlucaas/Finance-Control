@@ -222,6 +222,12 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
       if (!bucket(uid).records.has(id)) bucket(uid).records.set(id, { ...clone(data), id, owner_uid: uid });
       return id;
     },
+    async createRecords(uid, items) {
+      items.forEach(({ id, data }) => {
+        if (!bucket(uid).records.has(id)) bucket(uid).records.set(id, { ...clone(data), id, owner_uid: uid });
+      });
+      return items.map((item) => item.id);
+    },
     async updateRecord(uid, id, patch) {
       const current = bucket(uid).records.get(id);
       if (!current) throw new Error('record not found');

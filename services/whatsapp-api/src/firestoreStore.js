@@ -405,6 +405,18 @@ export function createFirestoreStore(db) {
       }
       return ref.id;
     },
+    // Parcelamento: todas as parcelas num lote so (tudo ou nada). Ids fixos: numa retomada
+    // o lote ja gravado e reconhecido (already-exists) e nada e duplicado.
+    async createRecords(uid, items) {
+      const batch = db.batch();
+      items.forEach(({ id, data }) => batch.create(records(uid).doc(id), { ...data, owner_uid: uid }));
+      try {
+        await batch.commit();
+      } catch (error) {
+        if (!(error?.code === 6 || error?.code === 'already-exists')) throw error;
+      }
+      return items.map((item) => item.id);
+    },
     async updateRecord(uid, id, patch) {
       await records(uid).doc(id).update(patch);
     },

@@ -4,7 +4,8 @@ import { summarizeFinanceRecord } from '../../../src/domain/audit/financeRecordA
 import { ApiError, badRequest } from './errors.js';
 import { DEFAULT_TIME_ZONE, isCompetence, isDate, todayIn } from './dates.js';
 import { formatMoney, parseAmount } from './money.js';
-import { registrationConfirmation } from './confirmationText.js';
+import { installmentConfirmation, registrationConfirmation } from './confirmationText.js';
+import { addMonthsClamped, createInstallmentSeries } from '../../../src/domain/installmentSeries.js';
 import { toPublicRecord } from './queries.js';
 import { autoExpenseCategory, autoPaymentMethod, buildPaymentMethods, buildReferenceCatalog, canonicalPaymentMethod, resolveExpenseCategory } from './references.js';
 
@@ -15,6 +16,7 @@ export const ACTIONS = Object.freeze(['registrar_despesa', 'registrar_receita', 
 const SOURCE_CHANNEL = 'future_integration';
 const CREATED_BY_ID = 'whatsapp-api';
 const MAX_TEXT = 140;
+export const MAX_INSTALLMENTS = 120;
 
 function cleanText(value, field) {
   if (value === undefined || value === null) return undefined;
@@ -132,6 +134,87 @@ function buildNewRecord(action, dados, today, nowIso, lookups = null) {
   return record;
 }
 
+function parseInstallmentCount(value) {
+  const match = /^\s*(\d{1,4})\s*x?\s*$/i.exec(String(value ?? ''));
+  const count = match ? Number(match[1]) : NaN;
+  if (!Number.isInteger(count) || count < 2 || count > MAX_INSTALLMENTS) {
+    throw badRequest('INVALID_INSTALLMENTS', `parcelas deve ser um numero inteiro entre 2 e ${MAX_INSTALLMENTS}.`);
+  }
+  return count;
+}
+
+// Primeiro vencimento: data exata, ou o proximo "dia X" a partir de hoje, ou um mes depois da compra.
+function firstInstallmentDueDate(dados, today) {
+  const exact = optionalDate(dados.vencimento, 'vencimento');
+  if (exact) return exact;
+  if (dados.dia_vencimento !== undefined && dados.dia_vencimento !== null && dados.dia_vencimento !== '') {
+    const day = Number(String(dados.dia_vencimento).trim());
+    if (!Number.isInteger(day) || day < 1 || day > 31) throw badRequest('INVALID_DUE_DAY', 'dia_vencimento deve ser um dia entre 1 e 31.');
+    const [year, month, todayDay] = today.split('-').map(Number);
+    const base = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    // Dia ainda por vir neste mes -> este mes; senao, mes que vem (ajustado ao ultimo dia do mes).
+    if (day > todayDay && day <= lastDay) return `${base.slice(0, 8)}${String(day).padStart(2, '0')}`;
+    const next = addMonthsClamped(base, 1);
+    const nextLast = new Date(Date.UTC(Number(next.slice(0, 4)), Number(next.slice(5, 7)), 0)).getUTCDate();
+    return `${next.slice(0, 8)}${String(Math.min(day, nextLast)).padStart(2, '0')}`;
+  }
+  return addMonthsClamped(today, 1);
+}
+
+// Compra parcelada: N lancamentos no mesmo formato da tela Parcelamentos do Dashboard.
+function buildInstallmentRecords(dados, today, nowIso, lookups, seriesId) {
+  const descricao = cleanText(dados.descricao, 'descricao');
+  if (!descricao) throw badRequest('DESCRIPTION_REQUIRED', 'Informe a descricao da compra.');
+  const count = parseInstallmentCount(dados.parcelas);
+  const hasPart = dados.valor_parcela !== undefined && dados.valor_parcela !== null && dados.valor_parcela !== '';
+  const hasTotal = dados.valor_total !== undefined && dados.valor_total !== null && dados.valor_total !== '';
+  if (hasPart === hasTotal) {
+    throw badRequest('INSTALLMENT_AMOUNT_REQUIRED', 'Compra parcelada: informe valor_parcela (valor de cada parcela) OU valor_total (valor da compra inteira), nunca os dois nem so valor.');
+  }
+  const totalAmount = hasPart
+    ? Math.round(requireAmount(dados.valor_parcela, 'valor_parcela') * 100) * count / 100
+    : requireAmount(dados.valor_total, 'valor_total');
+  const firstDueDate = firstInstallmentDueDate(dados, today);
+
+  let categoryName = cleanText(dados.categoria, 'categoria') || undefined;
+  let macroCategory = cleanText(dados.macro_categoria, 'macro_categoria') || undefined;
+  let paymentMethod = cleanText(dados.forma_pagamento, 'forma_pagamento') || undefined;
+  if (lookups) {
+    ({ category_name: categoryName, macro_category: macroCategory } = autoExpenseCategory(lookups.catalog, { descricao, categoria: categoryName, macro: macroCategory }));
+    paymentMethod = autoPaymentMethod(lookups.paymentMethods, { descricao, forma_pagamento: paymentMethod });
+  }
+
+  const series = createInstallmentSeries({
+    description: descricao,
+    purchase_name: descricao,
+    totalAmount,
+    totalInstallments: count,
+    firstDueDate,
+    occurred_date: optionalDate(dados.data, 'data') || today,
+    category_name: categoryName || '',
+    macro_category: macroCategory || '',
+    payment_method: paymentMethod || '',
+    person: cleanText(dados.pessoa, 'pessoa') || '',
+    initialStatus: 'Em aberto',
+    parentId: seriesId,
+    source_channel: SOURCE_CHANNEL,
+    created_by_type: 'integration',
+    created_by_id: CREATED_BY_ID,
+    received_at: nowIso
+  }, { now: new Date(nowIso) });
+  if (!series.isValid) {
+    throw new ApiError(422, 'INSTALLMENT_SERIES_INVALID', 'Parcelamento invalido.',
+      series.errors.map((issue) => ({ campo: issue.field, codigo: issue.code })));
+  }
+  const installments = series.installments.map((record) => {
+    const clean = stripUndefined(record);
+    assertValidRecord(clean);
+    return clean;
+  });
+  return { installments, totalAmount, count, firstDueDate };
+}
+
 const EDITABLE_FIELDS = Object.freeze({
   descricao: 'description',
   valor: 'amount',
@@ -246,7 +329,18 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     };
 
     let resumo;
-    if (acao === 'registrar_despesa' || acao === 'registrar_receita') {
+    const isInstallmentPurchase = acao === 'registrar_despesa' && dados.parcelas !== undefined && dados.parcelas !== null && dados.parcelas !== '';
+    if (acao === 'registrar_receita' && dados.parcelas !== undefined && dados.parcelas !== null && dados.parcelas !== '') {
+      throw badRequest('INSTALLMENTS_ONLY_FOR_EXPENSES', 'Parcelamento so vale para despesas.');
+    }
+    if (isInstallmentPurchase) {
+      const series = buildInstallmentRecords(dados, today, nowIso, await loadLookups(uid), `p_whatsapp_${pending.id}`);
+      pending.records = series.installments;
+      pending.series = { parent_id: `p_whatsapp_${pending.id}`, total: series.totalAmount, parcelas: series.count };
+      const first = series.installments[0];
+      const last = series.installments[series.installments.length - 1];
+      resumo = `Registrar compra parcelada "${first.purchase_name}" em ${series.count}x de ${formatMoney(first.amount)} (total ${formatMoney(series.totalAmount)}), de ${first.due_date} a ${last.due_date}.`;
+    } else if (acao === 'registrar_despesa' || acao === 'registrar_receita') {
       const lookups = acao === 'registrar_despesa' ? await loadLookups(uid) : null;
       pending.record = buildNewRecord(acao, dados, today, nowIso, lookups);
       resumo = `Registrar ${describe(pending.record)}.`;
@@ -277,7 +371,7 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     }
 
     pending.resumo = resumo;
-    pending.request_fingerprint = fingerprint({ acao, record: pending.record, record_id: pending.record_id, patch: pending.patch });
+    pending.request_fingerprint = fingerprint({ acao, record: pending.record, records: pending.records, record_id: pending.record_id, patch: pending.patch });
     // Uma acao pendente por vez: a nova substitui as anteriores, entao o "sim" do usuario
     // so pode confirmar o ultimo resumo que ele viu.
     await store.cancelPendingActions(uid, nowIso);
@@ -360,9 +454,16 @@ export function createActionService({ store, now = () => new Date(), newId = () 
     let recordId = pending.record_id;
     let before = null;
     let after = null;
-    const operation = pending.record ? 'create' : (pending.acao === 'excluir' ? 'archive' : 'update');
+    const isCreate = Boolean(pending.record || pending.records);
+    const operation = isCreate ? 'create' : (pending.acao === 'excluir' ? 'archive' : 'update');
     try {
-      if (pending.record) {
+      if (pending.records) {
+        const stamp = { idempotency_key: idempotencyKey, correlation_id: pending.correlation_id, created_at: nowIso, updated_at: nowIso, processed_at: nowIso };
+        const items = pending.records.map((record, index) => ({ id: `${receiptId}_${index + 1}`, data: { ...record, ...stamp } }));
+        await store.createRecords(uid, items);
+        recordId = items[0].id;
+        after = { ...items[0].data, id: recordId };
+      } else if (pending.record) {
         after = {
           ...pending.record,
           idempotency_key: idempotencyKey,
@@ -408,7 +509,19 @@ export function createActionService({ store, now = () => new Date(), newId = () 
       mensagem: pending.acao === 'excluir' ? 'Lancamento arquivado.' : 'Acao concluida.'
     };
     // Cadastro automatico: frase pronta no idioma do numero; o agente so repassa.
-    if (pending.record) result.resposta_usuario = registrationConfirmation(lancamento, prefs.locale);
+    if (pending.records) {
+      const lastRecord = pending.records[pending.records.length - 1];
+      result.parcelamento = {
+        parent_id: pending.series.parent_id,
+        parcelas: pending.series.parcelas,
+        valor_total: pending.series.total,
+        valor_parcela: pending.records[0].amount,
+        ultima_parcela: lastRecord.amount,
+        primeiro_vencimento: pending.records[0].due_date,
+        ultimo_vencimento: lastRecord.due_date
+      };
+      result.resposta_usuario = installmentConfirmation(lancamento, result.parcelamento, prefs.locale);
+    } else if (pending.record) result.resposta_usuario = registrationConfirmation(lancamento, prefs.locale);
     await store.completeReceipt(uid, receiptId, {
       status: 'completed',
       completed_at: now().toISOString(),
