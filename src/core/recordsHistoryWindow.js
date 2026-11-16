@@ -23,8 +23,9 @@ export const HISTORY_MODE_FULL = 'full';
 export const HISTORY_WINDOW_EVENT = 'financeHistoryWindowChanged';
 
 export const TRANSACTION_RECORD_TYPES = Object.freeze(['saida', 'entrada']);
-// Status "em aberto" de saidas (Em aberto/Vencido) e entradas (Pendente).
-export const OPEN_RECORD_STATUSES = Object.freeze(['Em aberto', 'Vencido', 'Pendente']);
+// Status "em aberto" de saidas (Em aberto/Vencido/vazio) e entradas (Pendente).
+// Status vazio conta como em aberto nas consultas do WhatsApp (EXPENSE_OPEN_STATUSES).
+export const OPEN_RECORD_STATUSES = Object.freeze(['Em aberto', 'Vencido', 'Pendente', '']);
 
 const COMPETENCE_RE = /^\d{4}-\d{2}$/;
 
@@ -112,4 +113,29 @@ export function nextHistoryStart(competence, state = {}) {
   const key = toCompetence(competence);
   if (!key || isCompetenceLoaded(key, state)) return state.start || '';
   return key < state.start ? key : state.start;
+}
+
+/**
+ * Consultas para ler lancamentos a partir de um mes sem trazer o historico inteiro
+ * (usado pela whatsapp-api): competencia/vencimento/data a partir de `start` e as
+ * contas ainda em aberto de qualquer epoca. O resultado e um superconjunto: quem
+ * consome ainda filtra pelo periodo exato.
+ */
+export const RECENT_RECORD_QUERY_KEYS = Object.freeze(['competence', 'due_date', 'occurred_date', 'open']);
+
+export function buildRecentRecordQueries(start) {
+  if (!toCompetence(start)) return [{ key: 'all' }];
+  return buildHistoryWindowQueries(start).filter((item) => RECENT_RECORD_QUERY_KEYS.includes(item.key));
+}
+
+/** Mesmo criterio de buildRecentRecordQueries, em memoria (store de testes). */
+export function matchesRecentRecordQueries(record = {}, start = '') {
+  const competence = toCompetence(start);
+  if (!competence) return true;
+  const firstDay = `${competence}-01`;
+  const text = (value) => (typeof value === 'string' ? value : null);
+  return (text(record.competence) !== null && record.competence >= competence)
+    || (text(record.due_date) !== null && record.due_date >= firstDay)
+    || (text(record.occurred_date) !== null && record.occurred_date >= firstDay)
+    || OPEN_RECORD_STATUSES.includes(record.status);
 }

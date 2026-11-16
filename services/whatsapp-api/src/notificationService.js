@@ -5,6 +5,7 @@ import { ApiError, badRequest } from './errors.js';
 import { runWithCurrency } from './money.js';
 import { buildUserAlerts, stopAlertsReply } from './notifications.js';
 import { hashPhone } from './phoneLinks.js';
+import { shiftCompetence } from '../../../src/core/recordsHistoryWindow.js';
 
 /**
  * Motor dos alertas automaticos, chamado pelo n8n de hora em hora.
@@ -112,11 +113,12 @@ export function createNotificationService({
       return null;
     }
 
+    const competence = currentCompetence(current, prefs.time_zone);
+    // Mes anterior (resumo mensal) em diante + contas em aberto de qualquer epoca (vencidas).
     const [records, budgets] = await Promise.all([
-      store.listFinanceRecords(uid),
+      store.listFinanceRecords(uid, { from: shiftCompetence(competence, -1) }),
       settings.budget_enabled && typeof store.listBudgets === 'function' ? store.listBudgets(uid) : []
     ]);
-    const competence = currentCompetence(current, prefs.time_zone);
     // Primeiro sem filtro para saber as chaves candidatas; depois so as ainda nao enviadas.
     const candidates = await runWithCurrency(prefs.currency, () => buildUserAlerts({ records, budgets, settings, locale: prefs.locale, today, competence }));
     const keys = [...new Set(candidates.flatMap((alert) => alert.chaves))];

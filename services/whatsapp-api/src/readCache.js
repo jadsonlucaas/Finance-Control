@@ -32,12 +32,17 @@ export function withReadCache(store, { ttlMs = DEFAULT_READ_CACHE_TTL_MS, nowMs 
   // Devolve copias para ninguem alterar o que esta no cache.
   const copy = (list) => list.map((item) => ({ ...item }));
   const invalidate = (uid) => {
-    entries.delete(`records:${uid}`);
-    entries.delete(`references:${uid}`);
+    for (const key of [...entries.keys()]) {
+      if (key === `references:${uid}` || key.startsWith(`records:${uid}:`)) entries.delete(key);
+    }
   };
 
   const wrapped = Object.create(store);
-  wrapped.listFinanceRecords = (uid) => cached('records', uid, () => store.listFinanceRecords(uid)).then(copy);
+  // Uma entrada por mes inicial (`from`); sem `from` = historico inteiro.
+  wrapped.listFinanceRecords = (uid, options = {}) => {
+    const from = options?.from || '';
+    return cached('records', `${uid}:${from || 'all'}`, () => store.listFinanceRecords(uid, from ? { from } : {})).then(copy);
+  };
   wrapped.listReferenceRecords = (uid) => cached('references', uid, () => store.listReferenceRecords(uid)).then(copy);
   for (const name of ['createRecord', 'updateRecord', 'purgeAccountData']) {
     if (typeof store[name] !== 'function') continue;

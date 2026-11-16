@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildHistoryWindowQueries,
+  buildRecentRecordQueries,
   historyWindowStart,
   isCompetenceLoaded,
   mergeRecordSets,
@@ -46,7 +47,7 @@ describe('recordsHistoryWindow', () => {
     ]);
     expect(queries.find((item) => item.key === 'competence')).toMatchObject({ field: 'competence', op: '>=', value: '2025-12' });
     expect(queries.find((item) => item.key === 'due_date')).toMatchObject({ field: 'due_date', op: '>=', value: '2025-12-01' });
-    expect(queries.find((item) => item.key === 'open').value).toEqual(['Em aberto', 'Vencido', 'Pendente']);
+    expect(queries.find((item) => item.key === 'open').value).toEqual(['Em aberto', 'Vencido', 'Pendente', '']);
     expect(queries.find((item) => item.key === 'installments')).toMatchObject({ field: 'total_installments', op: '>', value: 1 });
     expect(queries.find((item) => item.key === 'non_transactions')).toMatchObject({ field: 'type', op: 'not-in', value: ['saida', 'entrada'] });
     // Firestore aceita no maximo 10 valores em in/not-in.
@@ -74,5 +75,10 @@ describe('recordsHistoryWindow', () => {
     expect(nextHistoryStart('2026-02', state)).toBe('2025-12');
     expect(nextHistoryStart('', state)).toBe('2025-12');
     expect(isCompetenceLoaded('2001-01', { mode: 'full', start: '' })).toBe(true);
+  });
+
+  it('builds the smaller recent-records query set used by the WhatsApp API', () => {
+    expect(buildRecentRecordQueries('2026-10').map((item) => item.key)).toEqual(['competence', 'due_date', 'occurred_date', 'open']);
+    expect(buildRecentRecordQueries('')).toEqual([{ key: 'all' }]);
   });
 });

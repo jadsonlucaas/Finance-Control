@@ -53,3 +53,18 @@ A linha "Registros financeiros usados por dashboard: mantido completo" foi revis
 - Testes: `tests/core/recordsHistoryWindow.test.js`, `tests/services/dataSdk.historyWindow.test.js` e E2E com emulador `tests/playwright/integration-local-history-window.spec.js`.
 
 Custo: abrir o app passa a ler os documentos da janela (+ em aberto, parcelamentos e cadastros) em vez de todo o historico; uma conta com 3 anos de uso le cerca de um terco do que lia.
+
+## whatsapp-api: leitura a partir do mes necessario - 16/11/2026
+
+`store.listFinanceRecords(uid, { from })` le so os lancamentos com `competence >= from`, `due_date >= from-01` ou `occurred_date >= from-01`, mais as contas em aberto de qualquer epoca (`status in [Em aberto, Vencido, Pendente, '']`), e filtra `saida`/`entrada` em memoria (`buildRecentRecordQueries` em `src/core/recordsHistoryWindow.js`). Sem `from`, continua lendo tudo. Sao consultas de campo unico: nenhum indice composto.
+
+| Rota / uso | `from` |
+| --- | --- |
+| `despesas`, `orcamento` | competencia pedida |
+| `resumo`, `categorias` | inicio do periodo pedido |
+| `lancamentos` com competencia | competencia pedida |
+| `lancamentos` sem competencia, `opcoes`, formas de pagamento, `orcamento/definir` | ultimos 12 meses (`RECENT_LOOKUP_MONTHS`) |
+| `vencimentos` | mes atual (vencidas antigas vem pela consulta de contas em aberto) |
+| alertas automaticos | mes anterior (resumo mensal) |
+
+O cache curto (`readCache.js`) guarda uma entrada por usuario e `from`; escritas da API limpam todas as entradas do usuario. Teste no emulador: `tests/firestore/whatsapp-api-recent-reads-emulator.test.js`.

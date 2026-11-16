@@ -20,6 +20,7 @@ import {
 import { ES_CATEGORIES } from './confirmationText.js';
 import { buildReferenceCatalog, keywordCategory } from './references.js';
 import { ApiError } from './errors.js';
+import { shiftCompetence } from '../../../src/core/recordsHistoryWindow.js';
 import { formatMoney, roundCurrency } from './money.js';
 
 const PT_FROM_ES = new Map(Object.entries(ES_CATEGORIES).map(([pt, es]) => [normalizeBudgetName(es), pt]));
@@ -223,10 +224,13 @@ export async function defineBudget(store, uid, { categoria = '', valor, competen
   if (amount === null || amount <= 0) throw new ApiError(400, 'INVALID_AMOUNT', 'Valor do orcamento deve ser maior que zero.');
 
   const asked = String(categoria || '').trim().slice(0, 80);
+  // Categorias usadas nos ultimos 12 meses e o mes do limite (o que for mais antigo).
+  const recent = shiftCompetence(currentCompetence || competencia, -11);
+  const from = [recent, competencia].filter(Boolean).sort()[0] || '';
   const [budgets, references, records] = await Promise.all([
     store.listBudgets(uid),
     store.listReferenceRecords(uid),
-    store.listFinanceRecords(uid)
+    store.listFinanceRecords(uid, from ? { from } : {})
   ]);
   const isTotal = isTotalBudgetRequest(asked);
   const categoryName = isTotal ? '' : resolveBudgetCategoryName(asked, knownCategoryNames(budgets, references, records));

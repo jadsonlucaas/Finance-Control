@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { matchesRecentRecordQueries } from '../../../src/core/recordsHistoryWindow.js';
 
 const clone = (value) => (value === undefined ? undefined : structuredClone(value));
 
@@ -191,9 +192,10 @@ export function createMemoryStore(seed = {}, { shared = [], profiles = {} } = {}
     async mergeBillingSubscription(uid, patch) {
       subscriptions.set(uid, { ...(subscriptions.get(uid) || {}), ...clone(patch) });
     },
-    async listFinanceRecords(uid) {
+    async listFinanceRecords(uid, { from = '' } = {}) {
       return [...bucket(uid).records.values()]
         .filter((record) => record.type === 'saida' || record.type === 'entrada')
+        .filter((record) => matchesRecentRecordQueries(record, from))
         .map(clone);
     },
     async listBudgets(uid) {
