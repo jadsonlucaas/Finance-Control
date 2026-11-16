@@ -3,12 +3,12 @@
  *
  * Percorre o DOM e troca textos (e placeholder/title/aria-label) que tenham traducao no
  * dicionario do idioma atual. Um MutationObserver traduz o que as telas desenham depois.
- * Em pt-BR nada e observado e os textos originais sao restaurados.
+ * Em pt-BR o dicionario so corrige a acentuacao dos textos antigos (src/i18n/pt-BR.js).
  *
  * Conteudo do usuario (descricoes, categorias, nomes) nao deve ser traduzido: marque o
  * elemento com `data-i18n-skip` ou `translate="no"`.
  */
-import { getLocale, onLocaleChange, translateText, DEFAULT_LOCALE } from '../../core/i18n.js';
+import { getLocale, onLocaleChange, translateText } from '../../core/i18n.js';
 
 const ATTRIBUTES = Object.freeze(['placeholder', 'title', 'aria-label']);
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE', 'svg', 'SVG']);
@@ -37,14 +37,12 @@ export function installDomTranslator(target = globalThis) {
     const source = originalText.has(node) && originalText.get(node).shown === node.data
       ? originalText.get(node).source
       : node.data;
-    if (locale === DEFAULT_LOCALE) {
-      if (originalText.has(node) && node.data !== source) node.data = source;
-      return;
-    }
     const translated = translateText(source, locale);
     if (translated !== source) {
       originalText.set(node, { source, shown: translated });
       if (node.data !== translated) node.data = translated;
+    } else if (originalText.has(node) && node.data !== source) {
+      node.data = source;
     }
   }
 
@@ -56,16 +54,14 @@ export function installDomTranslator(target = globalThis) {
       const current = element.getAttribute(name);
       const known = saved?.[name];
       const source = known && known.shown === current ? known.source : current;
-      if (locale === DEFAULT_LOCALE) {
-        if (known && current !== source) element.setAttribute(name, source);
-        continue;
-      }
       const translated = translateText(source, locale);
       if (translated !== source) {
         saved = saved || {};
         saved[name] = { source, shown: translated };
         originalAttrs.set(element, saved);
         if (current !== translated) element.setAttribute(name, translated);
+      } else if (known && current !== source) {
+        element.setAttribute(name, source);
       }
     }
   }
@@ -92,12 +88,8 @@ export function installDomTranslator(target = globalThis) {
     }
   }
 
-  function observe(locale) {
-    if (locale === DEFAULT_LOCALE) {
-      observer?.disconnect();
-      observer = null;
-      return;
-    }
+  // pt-BR tambem e observado: o dicionario pt-BR corrige a acentuacao de textos antigos.
+  function observe() {
     if (observer || typeof target.MutationObserver !== 'function') return;
     observer = new target.MutationObserver((records) => {
       if (applying) return;

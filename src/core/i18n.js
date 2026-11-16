@@ -6,6 +6,8 @@
  * aos poucos, sem trocar cada texto do codigo por uma chave. Texto sem traducao continua em
  * portugues. Frases com partes variaveis usam `patterns` (expressao regular + substituicao).
  */
+import { PT_BR } from '../i18n/pt-BR.js';
+
 export const DEFAULT_LOCALE = 'pt-BR';
 export const UI_LOCALES = Object.freeze(['pt-BR', 'es-ES']);
 
@@ -13,7 +15,8 @@ export const UI_LOCALES = Object.freeze(['pt-BR', 'es-ES']);
 const LOADERS = Object.freeze({
   'es-ES': () => import('../i18n/es-ES.js').then((module) => module.ES_ES)
 });
-const CATALOGS = {};
+// pt-BR so corrige a acentuacao de textos antigos (arquivo pequeno, carregado junto).
+const CATALOGS = { [DEFAULT_LOCALE]: PT_BR };
 let currentLocale = DEFAULT_LOCALE;
 const listeners = new Set();
 
