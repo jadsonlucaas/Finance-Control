@@ -34,6 +34,7 @@ export function viewDashboardTemplate() {
                             </div>
                         </div>
                         <div id="dashboard-active-filters" class="dashboard-active-filters flex flex-wrap gap-2"></div>
+                        <p data-history-window-notice class="history-window-notice text-xs text-textSecondary" aria-live="polite" hidden></p>
                     </div>
 
                     <div id="advanced-filters-panel" class="hidden mt-4 pt-4 border-t border-surfaceLight/70">

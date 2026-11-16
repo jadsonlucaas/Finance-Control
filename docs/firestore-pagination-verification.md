@@ -32,3 +32,24 @@ O cursor e serializado em Base64URL com valores minimos de ordenacao. Ele nao ex
 - Dashboard e KPIs: continuam usando dataset completo do periodo/owner para nao distorcer totais, medias, percentuais e graficos.
 - Facades legadas sem `db`: mantem fallback local para compatibilidade ate migracao segura.
 - `import_batches`: nao existe colecao persistida atual; a rastreabilidade de importacao fica em receipts de idempotencia e auditoria.
+
+## Janela de historico do Dashboard - 16/11/2026 (issue #113)
+
+A linha "Registros financeiros usados por dashboard: mantido completo" foi revista. Ao abrir o app, o Dashboard nao escuta mais a colecao inteira `users/{uid}/finance_records`; escuta a uniao de 6 consultas de campo unico (indices automaticos, sem indice composto e sem mudanca de regras), montadas em `src/core/recordsHistoryWindow.js`:
+
+| Consulta | Por que |
+| --- | --- |
+| `competence >= inicio` | Lancamentos da janela e todos os meses futuros |
+| `due_date >= inicio-01` | Lancamentos sem `competence` (o app usa o vencimento como competencia) |
+| `occurred_date >= inicio-01` | Idem, pela data do lancamento |
+| `status in [Em aberto, Vencido, Pendente]` | Contas nao pagas de qualquer epoca continuam visiveis |
+| `total_installments > 1` | Parcelamentos completos (progresso "3/10" correto) |
+| `type not-in [saida, entrada]` | Pessoas, categorias, regras, horas e salarios (sempre completos) |
+
+- Janela padrao: 12 meses (mes atual + 11 anteriores). `VITE_FINANCE_HISTORY_WINDOW_MONTHS` na Vercel muda o tamanho; `0` volta ao comportamento antigo (colecao inteira) sem reverter codigo.
+- KPIs continuam corretos para qualquer periodo selecionado: escolher um mes/data anterior a janela em qualquer filtro (`input[type=month|date]`, setas do periodo) chama `financeHistoryWindow.ensureFrom(mes)` e amplia a janela antes de recalcular.
+- Historico completo (`ensureFull`) antes de: tela Importacao, importar/remover/arquivar em Configuracoes, backup e simulacao de restauracao, exclusao de categoria/macro ("em uso" olha tudo) e botao "Carregar histórico completo".
+- Se uma consulta da janela falhar, o app volta sozinho para a colecao inteira (nunca mostra dados pela metade).
+- Testes: `tests/core/recordsHistoryWindow.test.js`, `tests/services/dataSdk.historyWindow.test.js` e E2E com emulador `tests/playwright/integration-local-history-window.spec.js`.
+
+Custo: abrir o app passa a ler os documentos da janela (+ em aberto, parcelamentos e cadastros) em vez de todo o historico; uma conta com 3 anos de uso le cerca de um terco do que lia.

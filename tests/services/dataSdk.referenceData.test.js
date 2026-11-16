@@ -17,6 +17,8 @@ const firestoreCalls = vi.hoisted(() => {
     callback({ docs: [], docChanges: () => [] });
     return vi.fn();
   }),
+  query: vi.fn((ref, ...constraints) => ({ ...ref, constraints })),
+  where: vi.fn((field, op, value) => ({ field, op, value })),
   setDoc: vi.fn(async () => {}),
   updateDoc: vi.fn(async () => {}),
   writeBatch: vi.fn(() => ({ delete: vi.fn(), set: vi.fn(), commit: vi.fn(async () => {}) }))
@@ -49,7 +51,9 @@ function createService({ user = { uid: 'uid-a', email: 'a@example.test' } } = {}
       setTimeout,
       clearTimeout
     },
-    auditService: { logLater: vi.fn() }
+    auditService: { logLater: vi.fn() },
+    // Estes testes cobrem o roteamento de referencias; a janela de historico tem teste proprio.
+    historyWindowMonths: 0
   }));
 }
 

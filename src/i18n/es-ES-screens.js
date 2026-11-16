@@ -29,6 +29,10 @@ export const SCREEN_PATTERNS = Object.freeze([
 ]);
 
 export const SCREEN_MESSAGES = Object.freeze({
+  // --- Janela de historico (src/ui/history/historyWindowUi.js) ---
+  'Carregando lançamentos...': 'Cargando movimientos...',
+  'Mostrando lançamentos a partir de': 'Mostrando movimientos desde',
+  'Carregar histórico completo': 'Cargar historial completo',
   // --- Menu lateral e navegacao ---
   'Menu': 'Menú',
   'Fechar menu': 'Cerrar menú',

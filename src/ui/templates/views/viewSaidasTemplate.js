@@ -6,6 +6,7 @@ export function viewSaidasTemplate() {
                     <div class="saidas-header-copy">
                         <h2 class="font-semibold">Saidas</h2>
                         <p id="saidas-meta" class="text-xs text-textSecondary mt-1"></p>
+                        <p data-history-window-notice class="history-window-notice text-xs text-textSecondary mt-1" aria-live="polite" hidden></p>
                     </div>
                     <div class="saidas-toolbar mobile-section-actions flex gap-2 flex-wrap">
                         <div class="saidas-status-toggle flex gap-1 bg-surfaceLight/40 rounded-lg p-1 border border-surfaceLight">

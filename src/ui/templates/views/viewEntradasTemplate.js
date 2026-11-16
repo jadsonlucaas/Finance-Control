@@ -6,6 +6,7 @@ export function viewEntradasTemplate() {
                     <div class="entradas-header-copy">
                         <h2 class="font-semibold">Entradas</h2>
                         <p id="entradas-meta" class="text-xs text-textSecondary mt-1">Visao consolidada mensal por pessoa e competencia.</p>
+                        <p data-history-window-notice class="history-window-notice text-xs text-textSecondary mt-1" aria-live="polite" hidden></p>
                     </div>
                     <div class="entradas-toolbar mobile-section-actions flex gap-2 flex-wrap">
                         <input
