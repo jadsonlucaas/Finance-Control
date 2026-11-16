@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ApiError } from './errors.js';
+import { ApiError, classifyDependencyError, serviceUnavailableMessage } from './errors.js';
 import { isAuthorized } from './auth.js';
 import { createActionService } from './actions.js';
 import { buildOpcoes } from './references.js';
@@ -32,6 +32,16 @@ import {
 
 // Meses lidos quando a consulta nao diz o periodo (busca, opcoes, formas de pagamento).
 export const RECENT_LOOKUP_MONTHS = 12;
+export const DEFAULT_READ_TIMEOUT_MS = 10_000;
+
+function withDeadline(promise, ms) {
+  if (!(ms > 0)) return promise;
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error('TIMEOUT'), { code: 'TIMEOUT' })), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
 export const MAX_BODY_BYTES = 16 * 1024;
 // Eventos do Stripe (checkout/assinatura) passam facil de 16 KB.
 export const MAX_STRIPE_BODY_BYTES = 512 * 1024;
@@ -80,7 +90,9 @@ export function createApp({
   preferenceResolver = null,
   notificationTemplates = {},
   dailyLimits = undefined,
-  dailyLimiter = null
+  dailyLimiter = null,
+  // Leituras que passam disso viram 503 TIMEOUT antes do limite de 15 s do n8n.
+  readTimeoutMs = DEFAULT_READ_TIMEOUT_MS
 }) {
   if (!store || !resolver) throw new Error('createApp requer store e resolver.');
   const access = createAccessPolicy({ store, mode: accessMode });
@@ -321,7 +333,9 @@ export function createApp({
       const prefs = await preferences.forUser(uid, body.telefone);
       // Teto diario de ferramentas: segura o custo mesmo se o agente entrar em loop.
       await daily.enforce('tool_calls', uid, { now: now(), locale: prefs.locale });
-      const result = await runWithCurrency(prefs.currency, () => handler(uid, body, prefs));
+      const run = runWithCurrency(prefs.currency, () => handler(uid, body, prefs));
+      // So leituras tem prazo: uma escrita interrompida no meio poderia ser gravada depois da resposta.
+      const result = await (readRoutes[name] ? withDeadline(run, readTimeoutMs) : run);
       status = 200;
       // /despesas e a rota legada com contrato fixo: fica sem o bloco de preferencias.
       return { status, body: name === 'despesas' ? result : withPreferences(result, prefs) };
@@ -330,6 +344,14 @@ export function createApp({
         status = error.status;
         code = error.code;
         return { status, body: { erro: { codigo: error.code, mensagem: error.message, ...(error.details ? { detalhes: error.details } : {}) } } };
+      }
+      // Firestore fora (cota, rede, prazo): 503 com mensagem pronta, para o agente nao inventar resposta.
+      const motivo = classifyDependencyError(error);
+      if (motivo) {
+        status = 503;
+        code = 'SERVICO_INDISPONIVEL';
+        logger.warn?.(JSON.stringify({ level: 'warn', request_id: requestId, event: 'dependency_unavailable', motivo }));
+        return { status, body: { erro: { codigo: code, mensagem: serviceUnavailableMessage(body?.telefone), detalhes: { motivo } } } };
       }
       status = 500;
       code = 'INTERNAL_ERROR';

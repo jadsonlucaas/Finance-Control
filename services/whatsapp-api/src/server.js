@@ -56,7 +56,9 @@ async function createStore() {
   // READ_CACHE_TTL_MS=0 desliga o cache.
   const ttl = process.env.READ_CACHE_TTL_MS;
   // Contagem de leituras por baixo do cache: so conta o que foi ao Firestore.
-  return withReadCache(withReadCounting(createFirestoreStore(getFirestore())), ttl === undefined || ttl === '' ? {} : { ttlMs: Number(ttl) });
+  // Banco fora: responde com a ultima leitura boa (ate 10 min) e registra no log.
+  const onStale = ({ kind, motivo, ageMs }) => console.warn(JSON.stringify({ level: 'warn', event: 'read_cache_stale_served', kind, motivo, age_s: Math.round(ageMs / 1000) }));
+  return withReadCache(withReadCounting(createFirestoreStore(getFirestore())), ttl === undefined || ttl === '' ? { onStale } : { ttlMs: Number(ttl), onStale });
 }
 
 function readBody(req, limit) {
