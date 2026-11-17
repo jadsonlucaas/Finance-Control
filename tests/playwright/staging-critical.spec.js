@@ -107,7 +107,7 @@ async function openTab(page, tab) {
   const isMobile = (page.viewportSize()?.width || 1280) < 1024;
   if (isMobile) {
     const hidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-    if (hidden) await page.locator('#btn-mobile-menu').click();
+    if (hidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
     await page.locator(`[data-tab="${tab}"]`).click();
   } else {
     await page.evaluate((targetTab) => window.switchTab(targetTab), tab);

@@ -4,9 +4,10 @@ let currentTheme = readStoredTheme();
 
 function readStoredTheme() {
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+    // Sem escolha salva, o app abre no tema escuro (identidade visual nova).
+    return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
   } catch {
-    return 'light';
+    return 'dark';
   }
 }
 

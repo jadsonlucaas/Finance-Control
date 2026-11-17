@@ -20,6 +20,10 @@ import {
   LogIn,
   LogOut,
   Menu,
+  House,
+  List,
+  ChartPie,
+  ChevronDown,
   Moon,
   PartyPopper,
   Pencil,
@@ -48,6 +52,7 @@ import {
   Calendar,
   CreditCard,
   ShieldCheck,
+  Search,
   X
 } from 'lucide';
 
@@ -73,6 +78,10 @@ export const icons = {
   LogIn,
   LogOut,
   Menu,
+  House,
+  List,
+  ChartPie,
+  ChevronDown,
   Moon,
   PartyPopper,
   Pencil,
@@ -101,6 +110,7 @@ export const icons = {
   Calendar,
   CreditCard,
   ShieldCheck,
+  Search,
   X,
   archive: Archive,
   'archive-restore': ArchiveRestore,
@@ -123,6 +133,12 @@ export const icons = {
   'log-in': LogIn,
   'log-out': LogOut,
   menu: Menu,
+  house: House,
+  list: List,
+  PieChart: ChartPie,
+  'pie-chart': ChartPie,
+  'chart-pie': ChartPie,
+  'chevron-down': ChevronDown,
   moon: Moon,
   'party-popper': PartyPopper,
   pencil: Pencil,
@@ -150,6 +166,7 @@ export const icons = {
   'alert-triangle': AlertTriangle,
   'calendar': Calendar,
   'credit-card': CreditCard,
+  search: Search,
   'shield-check': ShieldCheck,
   x: X
 };

@@ -157,6 +157,7 @@ async function signInBlocked(page, account, statusLabel) {
 }
 
 async function signOutUi(page) {
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-logout').click();
   await expect(page.locator('#auth-screen')).toBeVisible();
   await expect(page.locator('#app')).toBeHidden();

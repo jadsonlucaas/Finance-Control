@@ -10,6 +10,12 @@ export function activateTab(tab, target = globalThis, views = DEFAULT_VIEWS) {
     button.className = button.dataset.tab === tab ? TAB_BUTTON_ACTIVE_CLASS : TAB_BUTTON_IDLE_CLASS;
   });
 
+  // Barra inferior do celular: Saidas e Entradas ficam juntas em "Lancamentos".
+  const bottomTab = tab === 'entradas' ? 'saidas' : tab;
+  documentRef.querySelectorAll('[data-bottom-tab]').forEach((button) => {
+    button.setAttribute('aria-current', button.dataset.bottomTab === bottomTab ? 'page' : 'false');
+  });
+
   views.forEach((view) => {
     const element = documentRef.getElementById('view-' + view);
     if (element) element.classList.toggle('hidden', view !== tab);

@@ -1401,6 +1401,7 @@ test('active PDF export UI lazy loads report model and keeps downloads owner-sco
   });
 
   await expect(page.locator('#report-export-panel')).toBeHidden();
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-export-pdf').click();
   await page.waitForFunction(() => window.financeApp?.reportExportActiveUi?.installed === true);
   await page.waitForFunction(() => window.__pdfSaveCalls?.length === 1);
@@ -1421,6 +1422,7 @@ test('active PDF export UI lazy loads report model and keeps downloads owner-sco
     window.__pdfSaveCalls = [];
     window.ensurePdfLibraries = async () => { throw new Error('LOAD_FAILED:PDF'); };
   });
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-export-pdf').click();
   await expect(page.locator('#report-export-state')).toContainText(/Nao foi possivel|Relatorio/i);
 
@@ -1442,6 +1444,7 @@ test('active PDF export UI lazy loads report model and keeps downloads owner-sco
       };
     };
   });
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-export-pdf').click();
   await page.waitForFunction(() => window.__pdfSaveCalls?.length === 1);
   const switched = await page.evaluate(() => JSON.stringify(window.financeApp.reportExportActiveUi.controller.getState().data.report));

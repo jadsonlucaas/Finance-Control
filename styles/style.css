@@ -1,26 +1,26 @@
 :root {
-    /* Base visual (etapa 1 da reformulacao): fundo neutro, um destaque (azul-petroleo),
-       cartoes planos com borda fina. Contraste de texto >= 4.5:1 sobre surface e bg. */
-    --color-bg: 246 247 249;
+    /* Identidade visual: tema escuro e o padrao (ver [data-theme="dark"]); este e o claro.
+       Um destaque (ciano/azul-petroleo), cartoes com borda fina. Texto >= 4.5:1. */
+    --color-bg: 244 246 250;
     --color-surface: 255 255 255;
-    --color-surface-light: 241 245 249;
-    --color-accent: 14 116 144;
-    --color-accent-dark: 21 94 117;
-    --color-danger: 185 28 28;
-    --color-success: 21 128 61;
-    --color-warn: 180 83 9;
-    --color-text-primary: 15 23 42;
-    --color-text-secondary: 71 85 105;
-    --color-border: 226 232 240;
-    --radius-card: 14px;
-    --radius-control: 10px;
-    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --color-surface-light: 236 240 246;
+    --color-accent: 8 112 150;
+    --color-accent-dark: 6 90 122;
+    --color-danger: 196 43 60;
+    --color-success: 14 128 82;
+    --color-warn: 168 92 0;
+    --color-text-primary: 13 19 34;
+    --color-text-secondary: 74 85 110;
+    --color-border: 222 228 238;
+    --radius-card: 16px;
+    --radius-control: 12px;
+    --shadow-card: 0 1px 3px rgba(13, 19, 34, 0.05);
     --shadow-overlay: 0 12px 32px rgba(15, 23, 42, 0.16);
     --glass-bg: rgb(var(--color-surface));
     --glass-panel-bg: rgb(var(--color-surface));
     --glass-border: rgb(var(--color-border));
     --field-bg: #ffffff;
-    --field-border: rgb(203 213 225);
+    --field-border: rgb(208 216 230);
     --field-text: #0f172a;
     --body-gradient-a: rgba(8, 145, 178, 0.12);
     --body-gradient-b: rgba(14, 165, 233, 0.1);
@@ -29,41 +29,41 @@
     --chart-grid-color: rgba(15, 23, 42, 0.22);
     --chart-muted-color: #94a3b8;
     --chart-divider-color: rgba(148, 163, 184, 0.3);
-    --chart-positive-color: #047857;
-    --chart-negative-color: #b91c1c;
-    --theme-text-secondary: #64748b;
+    --chart-positive-color: #0e8052;
+    --chart-negative-color: #c42b3c;
+    --theme-text-secondary: #4a556e;
 }
 
 [data-theme="dark"] {
-    --color-bg: 11 17 27;
-    --color-surface: 19 27 40;
-    --color-surface-light: 30 41 59;
-    --color-accent: 45 192 214;
-    --color-accent-dark: 34 160 182;
-    --color-danger: 248 113 113;
-    --color-success: 74 222 128;
-    --color-warn: 251 191 36;
-    --color-text-primary: 236 241 247;
-    --color-text-secondary: 160 174 192;
-    --color-border: 42 54 72;
-    --shadow-card: none;
+    --color-bg: 13 19 34;
+    --color-surface: 19 26 43;
+    --color-surface-light: 27 35 56;
+    --color-accent: 91 216 245;
+    --color-accent-dark: 56 189 222;
+    --color-danger: 255 138 148;
+    --color-success: 94 230 168;
+    --color-warn: 246 190 90;
+    --color-text-primary: 232 237 247;
+    --color-text-secondary: 166 178 204;
+    --color-border: 37 47 69;
+    --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
     --glass-bg: rgb(var(--color-surface));
     --glass-panel-bg: rgb(var(--color-surface));
     --glass-border: rgb(var(--color-border));
-    --field-bg: rgba(17, 30, 49, 0.96);
-    --field-border: rgba(71, 85, 105, 0.48);
-    --field-text: #eff6ff;
+    --field-bg: rgb(16 23 39);
+    --field-border: rgb(45 57 82);
+    --field-text: #e8edf7;
     --body-gradient-a: rgba(45, 212, 191, 0.18);
     --body-gradient-b: rgba(14, 165, 233, 0.14);
-    --scrollbar-thumb: #475569;
-    --chart-label-color: #eff6ff;
-    --chart-grid-color: rgba(71, 85, 105, 0.28);
+    --scrollbar-thumb: #334160;
+    --chart-label-color: #e8edf7;
+    --chart-grid-color: rgba(160, 176, 214, 0.14);
     --chart-muted-color: #cbd5e1;
     --chart-divider-color: rgba(100, 116, 139, 0.28);
-    --chart-positive-color: #34d399;
-    --chart-negative-color: #f87171;
-    --theme-text-secondary: #94a3b8;
+    --chart-positive-color: #5ee6a8;
+    --chart-negative-color: #ff8a94;
+    --theme-text-secondary: #a6b2cc;
 }
 
 html {

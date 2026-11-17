@@ -17,9 +17,11 @@ import { renderRecordRowsProgressively } from '../components/recordRow.js';
 import { scheduleIconRender } from '../icons.js';
 import {
   getDashboardAggregations,
+  getDashboardBaseEntradas,
   getDashboardBaseSaidas,
   getDashboardTotals
 } from './dashboardData.js';
+import { renderBalanceTrajectoryCard } from './balanceTrajectoryCard.js';
 
 function createDashboardSummaryCard({ key, label, value, detail, valueClassName, activeClassName }) {
   const card = createElement('div', {
@@ -263,6 +265,12 @@ export function renderDashboardSummaryFromBase(aggregations = getDashboardAggreg
   } = getDashboardTotals();
   const summary = document.getElementById('summary-cards');
   if (!summary) return;
+  try {
+    renderBalanceTrajectoryCard({ entradas: getDashboardBaseEntradas(), saidas: getDashboardBaseSaidas() });
+  } catch (error) {
+    // O cartao de trajetoria e complementar: se falhar, os numeros do mes continuam na tela.
+    console.warn('Falha ao desenhar a trajetoria do saldo', error);
+  }
   summary.replaceChildren(
     createDashboardSummaryCard({
       key: 'entradas',
@@ -270,7 +278,7 @@ export function renderDashboardSummaryFromBase(aggregations = getDashboardAggreg
       value: window.fmt(totalEntradas),
       detail: 'entradas',
       valueClassName: 'text-success',
-      activeClassName: 'border-success shadow-[0_0_15px_rgba(52,211,153,0.3)]'
+      activeClassName: 'border-success'
     }),
     createDashboardSummaryCard({
       key: 'saidas',
@@ -278,7 +286,7 @@ export function renderDashboardSummaryFromBase(aggregations = getDashboardAggreg
       value: window.fmt(totalSaidasPagas),
       detail: 'saidas-pagas',
       valueClassName: 'text-danger',
-      activeClassName: 'border-danger shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+      activeClassName: 'border-danger'
     }),
     createDashboardSummaryCard({
       key: 'aberto',
@@ -286,7 +294,7 @@ export function renderDashboardSummaryFromBase(aggregations = getDashboardAggreg
       value: window.fmt(totalAberto),
       detail: 'saidas-abertas',
       valueClassName: 'text-warn',
-      activeClassName: 'border-warn shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+      activeClassName: 'border-warn'
     }),
     createDashboardSummaryCard({
       key: 'saldo',
@@ -294,7 +302,7 @@ export function renderDashboardSummaryFromBase(aggregations = getDashboardAggreg
       value: window.fmt(saldoProjetado),
       detail: 'saidas-filtro',
       valueClassName: saldoProjetado >= 0 ? 'text-success' : 'text-danger',
-      activeClassName: 'border-accent shadow-[0_0_15px_rgba(56,189,248,0.3)]'
+      activeClassName: 'border-accent'
     })
   );
 }

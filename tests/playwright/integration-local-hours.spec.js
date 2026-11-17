@@ -87,6 +87,7 @@ async function signOutUi(page) {
     await overlay.click();
     await expect(overlay).toHaveClass(/hidden/);
   }
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-logout').click();
   await expect(page.locator('#auth-screen')).toBeVisible();
   await expect(page.locator('#app')).toBeHidden();
@@ -95,7 +96,8 @@ async function signOutUi(page) {
 async function openTab(page, tab) {
   const sidebar = page.locator('#sidebar');
   const isHidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-  if (isHidden) await page.locator('#btn-mobile-menu').click();
+  // No computador o menu lateral fica fixo; o botao de menu so existe em telas menores.
+  if (isHidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
   await expect(sidebar).toBeVisible();
   await page.locator(`[data-tab="${tab}"]`).click();
   await expect(page.locator(`#view-${tab}`)).toBeVisible();

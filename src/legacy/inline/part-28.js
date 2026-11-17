@@ -120,12 +120,13 @@
         }
 
         function ensureHeaderSessionControls() {
-            const actions = document.querySelector('header .flex.items-center.gap-2');
+            // Sessao (e-mail, papel e Sair) fica no menu da conta do topo.
+            const actions = document.getElementById('account-menu') || document.querySelector('header .flex.items-center.gap-2');
             if (!actions) return;
 
             if (!document.getElementById('current-user-email')) {
                 const badge = document.createElement('div');
-                badge.className = 'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surfaceLight text-textSecondary text-xs';
+                badge.className = 'account-menu-meta';
                 badge.innerHTML = '<i data-lucide="user" class="w-4 h-4"></i><span id="current-user-email">Sessão não iniciada</span>';
                 actions.prepend(badge);
             }
@@ -133,7 +134,7 @@
             if (!document.getElementById('current-user-role')) {
                 const roleBadge = document.createElement('div');
                 roleBadge.id = 'current-user-role';
-                roleBadge.className = 'hidden sm:flex items-center px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-semibold';
+                roleBadge.className = 'account-menu-role';
                 roleBadge.textContent = 'Visitante';
                 actions.prepend(roleBadge);
             }
@@ -142,7 +143,9 @@
                 const logoutButton = document.createElement('button');
                 logoutButton.id = 'btn-logout';
                 logoutButton.setAttribute('onclick', 'logout()');
-                logoutButton.className = 'text-xs bg-danger/10 hover:bg-danger text-danger hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors';
+                logoutButton.type = 'button';
+                logoutButton.setAttribute('role', 'menuitem');
+                logoutButton.className = 'account-menu-item account-menu-item-danger';
                 logoutButton.innerHTML = '<i data-lucide="log-out" class="w-4 h-4"></i><span class="mobile-action-label">Sair</span>';
                 actions.appendChild(logoutButton);
             }
