@@ -1070,9 +1070,9 @@ textarea:focus-visible {
     }
 }
 
-/* ---------- Planner mensal (v2) ----------
- * Celular (< 768px): folha em tela cheia, calendario com pontos por tipo e agenda logo abaixo.
- * Computador (>= 1024px): calendario a esquerda com descricao e valor nas celulas, lista a direita.
+/* ---------- Planner mensal (v3) ----------
+ * Mes limpo: dias com pontos por tipo (e saldo do dia no computador). Detalhes so na janela do dia.
+ * Celular (< 768px): folha em tela cheia e janelas como folha inferior.
  */
 
 .planner-modal {
@@ -1081,11 +1081,19 @@ textarea:focus-visible {
     z-index: 60;
     background: rgb(4 8 18 / 0.55);
     overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior: contain;
 }
 
-.planner-modal.hidden {
-    display: none;
+.planner-modal.hidden,
+.planner-modal .hidden {
+    display: none !important;
+}
+
+.planner-modal *,
+.planner-modal *::before,
+.planner-modal *::after {
+    box-sizing: border-box;
 }
 
 .planner-backdrop {
@@ -1098,7 +1106,8 @@ textarea:focus-visible {
 
 .planner-sheet {
     width: 100%;
-    max-width: 1240px;
+    max-width: 1080px;
+    min-width: 0;
     background: rgb(var(--color-surface));
     color: rgb(var(--color-text-primary));
     border: 1px solid rgb(var(--color-border) / 0.9);
@@ -1118,6 +1127,10 @@ textarea:focus-visible {
     justify-content: space-between;
     gap: 16px;
     padding: 20px 24px 12px;
+}
+
+.planner-heading-text {
+    min-width: 0;
 }
 
 .planner-heading {
@@ -1145,7 +1158,7 @@ textarea:focus-visible {
     border: 1px solid rgb(var(--color-border) / 0.9);
     background: rgb(var(--color-surface-light) / 0.6);
     color: rgb(var(--color-text-primary));
-    transition: background-color var(--motion-150) var(--ease-out), border-color var(--motion-150) var(--ease-out);
+    transition: border-color var(--motion-150) var(--ease-out);
 }
 
 .planner-icon-button:hover {
@@ -1167,13 +1180,20 @@ textarea:focus-visible {
     outline-offset: 2px;
 }
 
-/* Barra do mes + resumo */
+.planner-modal [data-tone="positive"] {
+    color: rgb(var(--color-success));
+}
+
+.planner-modal [data-tone="negative"] {
+    color: rgb(var(--color-danger));
+}
+
+/* Barra do mes, resumo e Novo evento */
 
 .planner-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
     gap: 12px 24px;
     padding: 4px 24px 16px;
     border-bottom: 1px solid rgb(var(--color-border) / 0.9);
@@ -1183,6 +1203,7 @@ textarea:focus-visible {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
 }
 
 .planner-month-field {
@@ -1195,6 +1216,7 @@ textarea:focus-visible {
     padding: 0 12px;
     border-radius: var(--radius-control);
     cursor: pointer;
+    overflow: hidden;
 }
 
 .planner-month-label {
@@ -1209,6 +1231,7 @@ textarea:focus-visible {
     position: absolute;
     inset: 0;
     width: 100%;
+    max-width: 100%;
     height: 100%;
     opacity: 0;
     cursor: pointer;
@@ -1228,7 +1251,11 @@ textarea:focus-visible {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, auto));
     gap: 8px 28px;
-    margin: 0;
+    margin: 0 0 0 auto;
+}
+
+.planner-stat {
+    min-width: 0;
 }
 
 .planner-stat dt {
@@ -1246,35 +1273,57 @@ textarea:focus-visible {
     font-variant-numeric: tabular-nums;
 }
 
-.planner-stat[data-tone="positive"] dd,
-.planner-modal [data-tone="positive"] {
-    color: rgb(var(--color-success));
+.planner-stat[data-tone="neutral"] dd {
+    color: rgb(var(--color-text-primary));
 }
 
-.planner-stat[data-tone="negative"] dd,
-.planner-modal [data-tone="negative"] {
-    color: rgb(var(--color-danger));
+.planner-primary-button,
+.planner-secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: var(--radius-control);
+    font-size: 0.9375rem;
+    font-weight: 600;
 }
 
-/* Corpo */
+.planner-primary-button {
+    background: rgb(var(--color-accent));
+    color: var(--on-accent);
+}
 
-.planner-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
-    gap: 24px;
+.planner-secondary-button {
+    width: 100%;
+    border: 1px dashed rgb(var(--color-border));
+    background: transparent;
+    color: rgb(var(--color-accent));
+    font-weight: 500;
+}
+
+.planner-primary-button svg,
+.planner-secondary-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Calendario */
+
+.planner-calendar {
     padding: 20px 24px 24px;
-    align-items: start;
 }
 
 .planner-weekdays,
 .planner-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
+    gap: 8px;
 }
 
 .planner-weekdays {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     text-align: center;
     font-size: 0.75rem;
     font-weight: 500;
@@ -1284,10 +1333,11 @@ textarea:focus-visible {
 .planner-cell {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    align-items: flex-start;
+    gap: 8px;
     min-width: 0;
-    min-height: 104px;
-    padding: 8px;
+    min-height: 92px;
+    padding: 10px;
     text-align: left;
     border-radius: 12px;
     border: 1px solid rgb(var(--color-border) / 0.9);
@@ -1307,23 +1357,14 @@ textarea:focus-visible {
 .planner-cell.is-selected {
     border-color: rgb(var(--color-accent));
     box-shadow: inset 0 0 0 1px rgb(var(--color-accent));
-    background: rgb(var(--color-accent) / 0.1);
-}
-
-.planner-cell-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 4px;
-    min-width: 0;
 }
 
 .planner-cell-day {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 26px;
-    height: 26px;
+    min-width: 28px;
+    height: 28px;
     border-radius: 999px;
     font-size: 0.875rem;
     font-weight: 600;
@@ -1334,41 +1375,26 @@ textarea:focus-visible {
     color: var(--on-accent);
 }
 
-.planner-cell-desktop {
+.planner-cell-dots {
     display: flex;
-    flex-direction: column;
     gap: 4px;
-    min-width: 0;
 }
 
-.planner-cell-mobile {
-    display: none;
-}
-
-.planner-chip {
-    --kind: var(--color-text-secondary);
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding: 3px 6px 3px 8px;
-    border-radius: 6px;
-    border-left: 3px solid rgb(var(--kind));
-    background: rgb(var(--kind) / 0.1);
-    font-size: 0.75rem;
-    line-height: 1.35;
-}
-
-.planner-chip-title {
+.planner-cell-net,
+.planner-cell-note {
+    max-width: 100%;
+    margin-top: auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: rgb(var(--color-text-primary));
+    font-size: 0.8125rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
 }
 
-.planner-chip-amount {
+.planner-cell-note {
     color: rgb(var(--color-text-secondary));
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    font-weight: 400;
 }
 
 .planner-modal [data-kind="expense"] { --kind: var(--color-danger); }
@@ -1379,20 +1405,19 @@ textarea:focus-visible {
 .planner-modal [data-kind="bank_hours"] { --kind: var(--brand-accent-2); }
 
 .planner-dot {
-    --kind: var(--color-text-secondary);
     flex: none;
     display: inline-block;
     width: 8px;
     height: 8px;
     border-radius: 999px;
-    background: rgb(var(--kind));
+    background: rgb(var(--kind, var(--color-text-secondary)));
 }
 
 .planner-legend {
     display: flex;
     flex-wrap: wrap;
     gap: 6px 16px;
-    margin: 12px 0 0;
+    margin: 14px 0 0;
     font-size: 0.75rem;
     color: rgb(var(--color-text-secondary));
 }
@@ -1403,53 +1428,84 @@ textarea:focus-visible {
     gap: 6px;
 }
 
-/* Painel lateral */
+/* Janelas (dia e novo evento) */
 
-.planner-side {
-    display: grid;
-    gap: 16px;
-    min-width: 0;
+.planner-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
 }
 
-.planner-panel {
-    border: 1px solid rgb(var(--color-border) / 0.9);
+.planner-dialog-top {
+    z-index: 75;
+}
+
+.planner-dialog-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(4 8 18 / 0.5);
+}
+
+.planner-dialog-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 480px;
+    max-height: min(86vh, 720px);
+    min-width: 0;
     border-radius: var(--radius-card);
-    background: rgb(var(--color-bg) / 0.4);
-    min-width: 0;
-}
-
-.planner-details-panel {
-    padding: 16px;
+    border: 1px solid rgb(var(--color-border) / 0.9);
     background: rgb(var(--color-surface));
+    color: rgb(var(--color-text-primary));
+    box-shadow: 0 16px 48px rgb(4 8 18 / 0.28);
+    animation: planner-enter var(--motion-200) var(--ease-out);
 }
 
-.planner-panel-head {
+.planner-dialog-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    padding: 16px 16px 8px 20px;
 }
 
-.planner-panel-title {
+.planner-dialog-heading {
+    min-width: 0;
+}
+
+.planner-dialog-title {
     margin: 0;
-    font-size: 1rem;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
     font-weight: 600;
     line-height: 1.3;
 }
 
-.planner-panel-meta {
+.planner-dialog-meta {
     margin: 2px 0 0;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     line-height: 1.4;
     color: rgb(var(--color-text-secondary));
 }
 
-.planner-panel-actions {
+.planner-dialog-tools {
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex: none;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+    padding: 0 12px 8px 20px;
+}
+
+.planner-day-net {
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
 }
 
 .planner-text-button {
@@ -1457,21 +1513,17 @@ textarea:focus-visible {
     align-items: center;
     gap: 4px;
     min-height: 36px;
+    margin-left: auto;
     padding: 0 10px;
     border-radius: 999px;
     font-size: 0.8125rem;
     font-weight: 500;
     color: rgb(var(--color-accent));
     background: transparent;
-    transition: background-color var(--motion-150) var(--ease-out);
 }
 
 .planner-text-button:hover {
     background: rgb(var(--color-accent) / 0.1);
-}
-
-.planner-text-button.hidden {
-    display: none;
 }
 
 .planner-expand-all svg {
@@ -1486,61 +1538,27 @@ textarea:focus-visible {
 
 .planner-details {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
-    max-height: min(62vh, 640px);
+    min-height: 0;
     overflow-y: auto;
-    padding-right: 2px;
+    padding: 0 16px 12px;
+}
+
+.planner-dialog-foot {
+    padding: 12px 16px 16px;
+    border-top: 1px solid rgb(var(--color-border) / 0.9);
 }
 
 .planner-empty {
     margin: 0;
-    padding: 16px 4px;
+    padding: 12px 4px;
     font-size: 0.875rem;
     color: rgb(var(--color-text-secondary));
 }
 
-.planner-day-group + .planner-day-group {
-    margin-top: 6px;
-}
-
-.planner-day-head {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    width: 100%;
-    padding: 6px 4px;
-    text-align: left;
-    background: rgb(var(--color-surface));
-    color: inherit;
-}
-
-.planner-day-date {
-    font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.planner-day-weekday {
-    font-size: 0.8125rem;
-    color: rgb(var(--color-text-secondary));
-}
-
-.planner-day-net {
-    margin-left: auto;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-}
-
-.planner-day-items {
-    display: grid;
-    gap: 6px;
-}
-
 .planner-item {
+    min-width: 0;
     border: 1px solid rgb(var(--color-border) / 0.9);
     border-radius: 12px;
     background: rgb(var(--color-surface));
@@ -1554,22 +1572,22 @@ textarea:focus-visible {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
     min-height: 52px;
     padding: 8px 10px 8px 12px;
     cursor: pointer;
     list-style: none;
 }
 
-.planner-item-summary::-webkit-details-marker,
-.planner-new-event-summary::-webkit-details-marker {
+.planner-item-summary::-webkit-details-marker {
     display: none;
 }
 
 .planner-item-text {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     min-width: 0;
-    flex: 1;
 }
 
 .planner-item-title {
@@ -1680,7 +1698,6 @@ details[open] > summary .planner-chevron svg {
     font-size: 0.8125rem;
     font-weight: 500;
     color: rgb(var(--color-text-primary));
-    transition: background-color var(--motion-150) var(--ease-out);
 }
 
 .planner-action:hover {
@@ -1697,47 +1714,19 @@ details[open] > summary .planner-chevron svg {
     color: rgb(var(--color-danger));
 }
 
-/* Novo evento (recolhivel) */
-
-.planner-new-event-summary {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 56px;
-    padding: 8px 12px 8px 16px;
-    cursor: pointer;
-    list-style: none;
-}
-
-.planner-new-event-summary .planner-panel-title {
-    flex: 1;
-}
-
-.planner-new-event-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    background: rgb(var(--color-accent) / 0.14);
-    color: rgb(var(--color-accent));
-}
-
-.planner-new-event-icon svg {
-    width: 16px;
-    height: 16px;
-}
+/* Formulario do novo evento */
 
 .planner-form {
     display: grid;
     gap: 12px;
-    padding: 4px 16px 16px;
+    padding: 4px 20px 20px;
+    overflow-y: auto;
 }
 
 .planner-field {
     display: grid;
     gap: 4px;
+    min-width: 0;
     font-size: 0.75rem;
     font-weight: 500;
     color: rgb(var(--color-text-secondary));
@@ -1747,6 +1736,7 @@ details[open] > summary .planner-chevron svg {
 .planner-field select,
 .planner-field textarea {
     width: 100%;
+    min-width: 0;
     min-height: 44px;
     padding: 10px 12px;
     border-radius: var(--radius-control);
@@ -1757,36 +1747,24 @@ details[open] > summary .planner-chevron svg {
     font-weight: 400;
 }
 
+.planner-field input[type="date"] {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+}
+
 .planner-field textarea {
     resize: vertical;
 }
 
-.planner-primary-button {
-    min-height: 44px;
-    border-radius: var(--radius-control);
-    background: rgb(var(--color-accent));
-    color: var(--on-accent);
-    font-size: 0.9375rem;
-    font-weight: 600;
-}
-
-/* Tablet: painel abaixo do calendario */
+/* Tablet */
 @media (max-width: 1023.98px) {
-    .planner-body {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .planner-side {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .planner-details {
-        max-height: none;
-        overflow: visible;
+    .planner-summary {
+        margin-left: 0;
     }
 }
 
-/* Celular: folha em tela cheia e celulas compactas */
+/* Celular: folha em tela cheia, dias so com pontos, janelas como folha inferior */
 @media (max-width: 767.98px) {
     .planner-backdrop {
         padding: 0;
@@ -1814,7 +1792,7 @@ details[open] > summary .planner-chevron svg {
     }
 
     .planner-subheading {
-        display: none;
+        font-size: 0.8125rem;
     }
 
     .planner-toolbar {
@@ -1838,7 +1816,6 @@ details[open] > summary .planner-chevron svg {
     }
 
     .planner-stat {
-        min-width: 0;
         padding: 8px 10px;
         border-radius: 12px;
         background: rgb(var(--color-surface-light) / 0.6);
@@ -1850,10 +1827,13 @@ details[open] > summary .planner-chevron svg {
         text-overflow: ellipsis;
     }
 
-    .planner-body {
+    .planner-new-event-button {
+        width: 100%;
+    }
+
+    .planner-calendar {
         padding: 12px 16px 24px;
         padding-bottom: max(24px, env(safe-area-inset-bottom));
-        gap: 16px;
     }
 
     .planner-weekdays,
@@ -1864,38 +1844,38 @@ details[open] > summary .planner-chevron svg {
     .planner-cell {
         align-items: center;
         gap: 4px;
-        min-height: 52px;
+        min-height: 56px;
         padding: 6px 2px;
         border-radius: 10px;
     }
 
-    .planner-cell-head {
-        justify-content: center;
-    }
-
-    .planner-cell-desktop {
+    .planner-cell-net,
+    .planner-cell-note {
         display: none;
     }
 
-    .planner-cell-mobile {
-        display: block;
+    .planner-cell-dots {
+        gap: 3px;
         min-height: 8px;
     }
 
-    .planner-cell-dots {
-        display: flex;
-        gap: 3px;
-        justify-content: center;
+    .planner-dialog {
+        align-items: flex-end;
+        padding: 0;
     }
 
-    .planner-details-panel {
-        padding: 12px;
+    .planner-dialog-card {
+        max-width: none;
+        max-height: 88dvh;
+        border-radius: 20px 20px 0 0;
+        border-bottom: 0;
+        padding-bottom: env(safe-area-inset-bottom);
     }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
     .planner-sheet,
+    .planner-dialog-card,
     .planner-item-body {
         animation: none;
     }

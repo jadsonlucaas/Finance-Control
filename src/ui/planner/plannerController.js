@@ -56,6 +56,7 @@ export function createPlannerController(dependencies = {}) {
     read: async () => ({ records: target.allRecords || [] }),
     subscribe: null
   };
+  const monthSummary = typeof dependencies.monthSummary === 'function' ? dependencies.monthSummary : null;
   const now = dependencies.now || (() => new Date().toISOString());
   const toast = dependencies.toast || ((message, isError) => target.showToast?.(message, isError));
   const subscriptions = new Set();
@@ -102,7 +103,15 @@ export function createPlannerController(dependencies = {}) {
     resetOwnerState(ownerUid);
     const payload = await readSource.read({ month: state.month });
     state.model = buildModel(payload || {});
-    presenter.render({ model: state.model, selectedDate: state.selectedDate });
+    let summary = null;
+    if (monthSummary) {
+      try {
+        summary = await monthSummary(state.month);
+      } catch {
+        summary = null;
+      }
+    }
+    presenter.render({ model: state.model, selectedDate: state.selectedDate, summary });
     return state.model;
   }
 

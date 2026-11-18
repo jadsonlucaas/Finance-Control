@@ -886,10 +886,16 @@ test('active Planner UI lazy loads persisted records and opens details by real i
   await page.evaluate(() => window.openPlannerModal());
   await expect(page.locator('#planner-modal')).toBeVisible();
   await expect(page.locator('#planner-summary')).toContainText('R$ 60,00');
-  await expect(page.locator('#planner-selected-date-details')).toContainText('R$ 120,00');
+  // Mes limpo: os detalhes so aparecem na janela do dia escolhido.
+  await expect(page.locator('#planner-day-dialog')).toBeHidden();
+  await page.locator('[data-select-planner-date="2026-06-12"]').click();
+  await expect(page.locator('#planner-day-dialog')).toBeVisible();
   await expect(page.locator('#planner-selected-date-details')).toContainText('Feriado local');
+  await page.locator('#planner-day-dialog .planner-dialog-head [data-planner-close-day]').click();
+  await expect(page.locator('#planner-day-dialog')).toBeHidden();
 
   await page.locator('[data-select-planner-date="2026-06-10"]').click();
+  await expect(page.locator('#planner-selected-date-details')).toContainText('R$ 120,00');
   await expect(page.locator('[data-planner-source-id="planner-expense-a"]')).toBeVisible();
   await expect(page.locator('[data-planner-source-id="planner-expense-b"]')).toBeVisible();
   await page.locator('[data-planner-source-id="planner-expense-a"] [data-planner-action="mark-paid"]').click();
@@ -949,8 +955,14 @@ test('Planner local events and holidays are isolated by owner on the same browse
     window.currentUserProfile = { uid: 'uid-a', email: 'ana@example.test', role: 'user', status: 'active' };
     window.financeApp.plannerStorage.resetPlannerView();
     await window.openPlannerModal();
+    // Detalhes ficam na janela de cada dia: junta os dois dias usados no teste.
+    const dayText = async (date) => {
+      await window.selectPlannerDate(date);
+      return document.getElementById('planner-selected-date-details').textContent;
+    };
+    const details = `${await dayText('2026-06-12')} ${await dayText('2026-06-13')}`;
     return {
-      details: document.getElementById('planner-selected-date-details').textContent,
+      details,
       ownerAHolidays: window.financeApp.plannerStorage.holidayStore.list({ ownerUid: 'uid-a' }),
       ownerBHolidays,
       v1Planner: window.localStorage.getItem('finance-control-planner-events-v1'),

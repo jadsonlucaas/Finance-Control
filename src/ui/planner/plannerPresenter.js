@@ -1,12 +1,12 @@
 import { formatCurrency as formatDisplayCurrency } from '../../core/formatters.js';
 
 /*
- * Planner mensal (v2): usa os tokens de tema (claro/escuro) definidos em styles/shell.css.
- * - Celular: celulas compactas com pontos coloridos por tipo e a agenda do dia logo abaixo.
- * - Computador: celulas com descricao e valor (ou resumo por tipo quando o dia tem muitos itens)
- *   e lista de detalhes com seta para expandir cada item (ou todos de uma vez).
+ * Planner mensal (v3): usa os tokens de tema (claro/escuro) definidos em styles/shell.css.
+ * - O mes fica limpo: cada dia mostra so pontos coloridos por tipo (e o saldo do dia no computador).
+ * - Tocar num dia abre uma janela com os itens daquele dia; cada item tem seta para os detalhes.
+ * - "Novo evento" abre o formulario em outra janela.
  */
-const MODAL_VERSION = '2';
+const MODAL_VERSION = '3';
 const KIND_ORDER = ['expense', 'income', 'holiday', 'commitment', 'hour_extra', 'bank_hours'];
 
 function currency(value = 0) {
@@ -118,7 +118,7 @@ function modalMarkup() {
         <header class="planner-header">
           <div class="planner-heading-text">
             <h2 id="planner-heading" class="planner-heading">Planner mensal</h2>
-            <p class="planner-subheading">Contas, entradas, feriados e compromissos do mês</p>
+            <p class="planner-subheading">Escolha um dia para ver o que vence, entra ou acontece nele</p>
           </div>
           <button type="button" class="planner-icon-button" data-close-modal="planner-modal" aria-label="Fechar">${ICONS.close}</button>
         </header>
@@ -132,56 +132,62 @@ function modalMarkup() {
             <button type="button" class="planner-icon-button" data-shift-planner-month="1" aria-label="Próximo mês">${ICONS.next}</button>
           </div>
           <dl id="planner-summary" class="planner-summary"></dl>
+          <button type="button" class="planner-primary-button planner-new-event-button" data-planner-new-event>${ICONS.plus}<span>Novo evento</span></button>
         </div>
-        <div class="planner-body">
-          <section class="planner-calendar" aria-label="Calendário do mês">
-            <div class="planner-weekdays" aria-hidden="true">
-              <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+        <section class="planner-calendar" aria-label="Calendário do mês">
+          <div class="planner-weekdays" aria-hidden="true">
+            <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+          </div>
+          <div id="planner-calendar-grid" class="planner-grid"></div>
+          <p class="planner-legend" aria-hidden="true">
+            <span><i class="planner-dot" data-kind="expense"></i>Saídas</span>
+            <span><i class="planner-dot" data-kind="income"></i>Entradas</span>
+            <span><i class="planner-dot" data-kind="holiday"></i>Feriados</span>
+            <span><i class="planner-dot" data-kind="commitment"></i>Outros</span>
+          </p>
+        </section>
+      </div>
+      <div id="planner-day-dialog" class="planner-dialog hidden">
+        <div class="planner-dialog-scrim" data-planner-close-day></div>
+        <div class="planner-dialog-card" role="dialog" aria-modal="true" aria-labelledby="planner-detail-title">
+          <div class="planner-dialog-head">
+            <div class="planner-dialog-heading">
+              <h3 id="planner-detail-title" class="planner-dialog-title"></h3>
+              <p id="planner-selected-date-label" class="planner-dialog-meta"></p>
             </div>
-            <div id="planner-calendar-grid" class="planner-grid"></div>
-            <p class="planner-legend" aria-hidden="true">
-              <span><i class="planner-dot" data-kind="expense"></i>Saídas</span>
-              <span><i class="planner-dot" data-kind="income"></i>Entradas</span>
-              <span><i class="planner-dot" data-kind="holiday"></i>Feriados</span>
-              <span><i class="planner-dot" data-kind="commitment"></i>Outros</span>
-            </p>
-          </section>
-          <aside class="planner-side">
-            <section class="planner-panel planner-details-panel">
-              <div class="planner-panel-head">
-                <div>
-                  <h3 id="planner-detail-title" class="planner-panel-title">Agenda do mês</h3>
-                  <p id="planner-selected-date-label" class="planner-panel-meta"></p>
-                </div>
-                <div class="planner-panel-actions">
-                  <button type="button" id="planner-clear-date" class="planner-text-button hidden">Ver mês</button>
-                  <button type="button" class="planner-text-button planner-expand-all" data-planner-expand-all aria-expanded="false">
-                    <span data-planner-expand-label>Expandir</span>${ICONS.chevron}
-                  </button>
-                </div>
-              </div>
-              <div id="planner-selected-date-details" class="planner-details"></div>
-            </section>
-            <details class="planner-panel planner-new-event">
-              <summary class="planner-new-event-summary">
-                <span class="planner-new-event-icon">${ICONS.plus}</span>
-                <span class="planner-panel-title">Novo evento</span>
-                <span class="planner-chevron">${ICONS.chevron}</span>
-              </summary>
-              <div class="planner-form">
-                <label class="planner-field"><span>Data</span><input id="planner-date" type="date"></label>
-                <label class="planner-field"><span>Tipo</span>
-                  <select id="planner-type">
-                    <option value="commitment">Compromisso</option>
-                    <option value="holiday">Feriado</option>
-                  </select>
-                </label>
-                <label class="planner-field"><span>Título</span><input id="planner-title" type="text" placeholder="Ex.: Consulta médica"></label>
-                <label class="planner-field"><span>Observação</span><textarea id="planner-note" rows="3"></textarea></label>
-                <button type="button" class="planner-primary-button" data-legacy-click="savePlannerEvent">Salvar evento</button>
-              </div>
-            </details>
-          </aside>
+            <button type="button" class="planner-icon-button" data-planner-close-day aria-label="Fechar dia">${ICONS.close}</button>
+          </div>
+          <div class="planner-dialog-tools">
+            <span id="planner-day-net" class="planner-day-net"></span>
+            <button type="button" class="planner-text-button planner-expand-all" data-planner-expand-all aria-expanded="false">
+              <span data-planner-expand-label>Expandir</span>${ICONS.chevron}
+            </button>
+          </div>
+          <div id="planner-selected-date-details" class="planner-details"></div>
+          <div class="planner-dialog-foot">
+            <button type="button" class="planner-secondary-button" data-planner-new-event>${ICONS.plus}<span>Adicionar evento neste dia</span></button>
+          </div>
+        </div>
+      </div>
+      <div id="planner-new-event-dialog" class="planner-dialog planner-dialog-top hidden">
+        <div class="planner-dialog-scrim" data-planner-close-new-event></div>
+        <div class="planner-dialog-card" role="dialog" aria-modal="true" aria-labelledby="planner-new-event-title">
+          <div class="planner-dialog-head">
+            <h3 id="planner-new-event-title" class="planner-dialog-title">Novo evento</h3>
+            <button type="button" class="planner-icon-button" data-planner-close-new-event aria-label="Cancelar">${ICONS.close}</button>
+          </div>
+          <div class="planner-form">
+            <label class="planner-field"><span>Data</span><input id="planner-date" type="date"></label>
+            <label class="planner-field"><span>Tipo</span>
+              <select id="planner-type">
+                <option value="commitment">Compromisso</option>
+                <option value="holiday">Feriado</option>
+              </select>
+            </label>
+            <label class="planner-field"><span>Título</span><input id="planner-title" type="text" placeholder="Ex.: Consulta médica"></label>
+            <label class="planner-field"><span>Observação</span><textarea id="planner-note" rows="3"></textarea></label>
+            <button type="button" class="planner-primary-button" data-legacy-click="savePlannerEvent">Salvar evento</button>
+          </div>
         </div>
       </div>
     </div>`;
@@ -205,29 +211,6 @@ function ensureModal(documentRef) {
 
 /* ---------- Calendario ---------- */
 
-function renderDesktopCell(events = []) {
-  if (!events.length) return '';
-  if (events.length <= 2) {
-    return events.map((event) => {
-      const amount = signedAmount(event) ? `<span class="planner-chip-amount">${escapeHtml(currency(event.amount))}</span>` : '';
-      return `<span class="planner-chip" data-kind="${kindKey(event)}" title="${escapeHtml(event.title)}"><span class="planner-chip-title">${escapeHtml(event.title)}</span>${amount}</span>`;
-    }).join('');
-  }
-  return groupByKind(events).map((group) => {
-    const amount = group.kind === 'expense' || group.kind === 'income'
-      ? `<span class="planner-chip-amount">${escapeHtml(currency(group.amount))}</span>`
-      : '';
-    return `<span class="planner-chip planner-chip-group" data-kind="${group.kind}"><span class="planner-chip-title">${group.count} ${escapeHtml(kindLabel(group.kind, group.count).toLowerCase())}</span>${amount}</span>`;
-  }).join('');
-}
-
-function renderMobileCell(events = []) {
-  if (!events.length) return '';
-  const dots = groupByKind(events).slice(0, 3)
-    .map((group) => `<i class="planner-dot" data-kind="${group.kind}"></i>`).join('');
-  return `<span class="planner-cell-dots">${dots}</span>`;
-}
-
 function describeDay(date, events = []) {
   if (!events.length) return formatDate(date);
   const parts = groupByKind(events).map((group) => `${group.count} ${kindLabel(group.kind, group.count).toLowerCase()}`);
@@ -239,15 +222,21 @@ function renderCalendarDay({ day, date, events = [], selectedDate, currentDate }
   if (date === selectedDate) classes.push('is-selected');
   if (date === currentDate) classes.push('is-today');
   if (events.length) classes.push('has-events');
+  const dots = groupByKind(events).slice(0, 4)
+    .map((group) => `<i class="planner-dot" data-kind="${group.kind}"></i>`).join('');
+  const net = dayNet(events);
+  const note = net
+    ? `<span class="planner-cell-net" data-tone="${net < 0 ? 'negative' : 'positive'}">${escapeHtml(currency(net))}</span>`
+    : (events[0] ? `<span class="planner-cell-note">${escapeHtml(events[0].title)}</span>` : '');
   return `
-    <button type="button" data-select-planner-date="${escapeHtml(date)}" class="${classes.join(' ')}" aria-pressed="${date === selectedDate}" aria-label="${escapeHtml(describeDay(date, events))}">
-      <span class="planner-cell-head"><span class="planner-cell-day">${day}</span></span>
-      <span class="planner-cell-desktop">${renderDesktopCell(events)}</span>
-      <span class="planner-cell-mobile">${renderMobileCell(events)}</span>
+    <button type="button" data-select-planner-date="${escapeHtml(date)}" class="${classes.join(' ')}" aria-label="${escapeHtml(describeDay(date, events))}">
+      <span class="planner-cell-day">${day}</span>
+      ${dots ? `<span class="planner-cell-dots">${dots}</span>` : ''}
+      ${note}
     </button>`;
 }
 
-/* ---------- Lista de detalhes ---------- */
+/* ---------- Itens do dia ---------- */
 
 function renderActions(event = {}) {
   if (event.source === 'planner_local' && event.actions?.canDelete) {
@@ -261,13 +250,13 @@ function renderActions(event = {}) {
   ].join('');
 }
 
-function renderEventDetail(event = {}, { open = false, showDate = false } = {}) {
+function renderEventDetail(event = {}, { open = false } = {}) {
   const kind = kindKey(event);
   const signed = signedAmount(event);
   const amount = signed
     ? `<span class="planner-item-amount" data-tone="${signed < 0 ? 'negative' : 'positive'}">${escapeHtml(currency(event.amount))}</span>`
     : '';
-  const subline = [showDate ? formatDate(event.date) : '', kindLabel(kind), event.status].filter(Boolean).map(escapeHtml).join(' · ');
+  const subline = [kindLabel(kind), event.status].filter(Boolean).map(escapeHtml).join(' · ');
   const facts = [
     ['Pessoa', event.person],
     ['Grupo', event.macro],
@@ -301,61 +290,32 @@ function renderEventDetail(event = {}, { open = false, showDate = false } = {}) 
     </details>`;
 }
 
-function renderEmpty(message) {
-  return `<p class="planner-empty">${escapeHtml(message)}</p>`;
-}
-
-function renderDayGroup(date, events = [], documentRef) {
-  const net = dayNet(events);
-  const netMarkup = net
-    ? `<span class="planner-day-net" data-tone="${net < 0 ? 'negative' : 'positive'}">${escapeHtml(currency(net))}</span>`
-    : '';
-  return `
-    <section class="planner-day-group">
-      <button type="button" class="planner-day-head" data-planner-pick-date="${escapeHtml(date)}" aria-label="${escapeHtml(`Ver só ${formatDate(date)}`)}">
-        <span class="planner-day-date">${escapeHtml(date.slice(8, 10))}</span>
-        <span class="planner-day-weekday">${escapeHtml(weekdayLabel(date, documentRef))}</span>
-        ${netMarkup}
-      </button>
-      <div class="planner-day-items">${events.map((event) => renderEventDetail(event)).join('')}</div>
-    </section>`;
-}
-
-function renderMonthAgenda(model = {}, documentRef) {
-  const events = model.events || [];
-  if (!events.length) return renderEmpty('Nada marcado neste mês. Use "Novo evento" para adicionar um compromisso ou feriado.');
-  const byDate = new Map();
-  events.forEach((event) => {
-    const date = event.date || '';
-    if (!byDate.has(date)) byDate.set(date, []);
-    byDate.get(date).push(event);
-  });
-  return [...byDate.entries()].map(([date, items]) => renderDayGroup(date, items, documentRef)).join('');
-}
-
-function renderDayAgenda(model = {}, selectedDate = '') {
-  const events = model.byDay?.[selectedDate] || [];
-  if (!events.length) return renderEmpty('Nada marcado neste dia.');
+function renderDayAgenda(events = []) {
+  if (!events.length) return '<p class="planner-empty">Nada marcado neste dia.</p>';
   // Dia com poucos itens ja abre os detalhes (acoes a um toque); com muitos, fica compacto.
   const open = events.length <= 3;
   return events.map((event) => renderEventDetail(event, { open })).join('');
 }
 
-function renderSummary(model = {}) {
-  const income = model.summary?.income || 0;
-  const expense = model.summary?.expense || 0;
-  const balance = model.summary?.balance || 0;
+function renderSummary(summary = {}) {
+  const income = summary.income || 0;
+  const expense = summary.expense || 0;
+  const balance = summary.balance || 0;
   return `
     <div class="planner-stat" data-tone="positive"><dt>Entradas</dt><dd>${escapeHtml(currency(income))}</dd></div>
     <div class="planner-stat" data-tone="negative"><dt>Saídas</dt><dd>${escapeHtml(currency(expense))}</dd></div>
     <div class="planner-stat" data-tone="${balance < 0 ? 'negative' : 'neutral'}"><dt>Saldo previsto</dt><dd>${escapeHtml(currency(balance))}</dd></div>`;
 }
 
+function expandableItems(modal) {
+  return [...modal.querySelectorAll('#planner-selected-date-details details.planner-item')]
+    .filter((item) => item.querySelector('.planner-item-body'));
+}
+
 function syncExpandAll(modal) {
   const button = modal.querySelector('[data-planner-expand-all]');
-  const items = [...modal.querySelectorAll('#planner-selected-date-details details.planner-item')]
-    .filter((item) => item.querySelector('.planner-item-body'));
   if (!button) return;
+  const items = expandableItems(modal);
   const allOpen = items.length > 0 && items.every((item) => item.open);
   button.classList.toggle('hidden', items.length === 0);
   button.setAttribute('aria-expanded', String(allOpen));
@@ -371,11 +331,17 @@ export function syncPlannerExpandAll(documentRef = globalThis.document) {
 export function togglePlannerDetails(documentRef = globalThis.document) {
   const modal = documentRef?.getElementById?.('planner-modal');
   if (!modal) return;
-  const items = [...modal.querySelectorAll('#planner-selected-date-details details.planner-item')]
-    .filter((item) => item.querySelector('.planner-item-body'));
+  const items = expandableItems(modal);
   const shouldOpen = !items.every((item) => item.open);
   items.forEach((item) => { item.open = shouldOpen; });
   syncExpandAll(modal);
+}
+
+export function setPlannerNewEventOpen(documentRef = globalThis.document, open = true) {
+  const dialog = documentRef?.getElementById?.('planner-new-event-dialog');
+  if (!dialog) return;
+  dialog.classList.toggle('hidden', !open);
+  if (open) documentRef.getElementById('planner-title')?.focus?.();
 }
 
 export function createPlannerPresenter({ document: documentRef = globalThis.document } = {}) {
@@ -385,7 +351,9 @@ export function createPlannerPresenter({ document: documentRef = globalThis.docu
       ensureModal(documentRef).classList.remove('hidden');
     },
     hide() {
-      documentRef.getElementById('planner-modal')?.classList.add('hidden');
+      const modal = documentRef.getElementById('planner-modal');
+      modal?.classList.add('hidden');
+      modal?.querySelector('#planner-new-event-dialog')?.classList.add('hidden');
     },
     render(state = {}) {
       const model = state.model || state.data || state;
@@ -397,11 +365,12 @@ export function createPlannerPresenter({ document: documentRef = globalThis.docu
       const monthLabel = modal.querySelector('#planner-month-label');
       const dateInput = modal.querySelector('#planner-date');
       const grid = modal.querySelector('#planner-calendar-grid');
+      const dayDialog = modal.querySelector('#planner-day-dialog');
       const title = modal.querySelector('#planner-detail-title');
       const selectedLabel = modal.querySelector('#planner-selected-date-label');
       const details = modal.querySelector('#planner-selected-date-details');
+      const dayNetEl = modal.querySelector('#planner-day-net');
       const summary = modal.querySelector('#planner-summary');
-      const clearDate = modal.querySelector('#planner-clear-date');
 
       if (monthInput) monthInput.value = month;
       if (monthLabel) monthLabel.textContent = monthName(month, documentRef);
@@ -417,18 +386,27 @@ export function createPlannerPresenter({ document: documentRef = globalThis.docu
       }).join('');
 
       if (grid) grid.innerHTML = blanks + days;
-      if (summary) summary.innerHTML = renderSummary(model);
-      if (title) title.textContent = selectedDate ? weekdayLabel(selectedDate, documentRef) || 'Itens do dia' : 'Agenda do mês';
+      if (summary) summary.innerHTML = renderSummary(state.summary || model.summary || {});
+
+      const events = selectedDate ? model.byDay?.[selectedDate] || [] : [];
+      if (dayDialog) {
+        dayDialog.classList.toggle('hidden', !selectedDate);
+        dayDialog.querySelectorAll('[data-planner-close-day]').forEach((button) => {
+          button.dataset.plannerPickDate = selectedDate;
+        });
+      }
+      if (title) title.textContent = selectedDate ? `${weekdayLabel(selectedDate, documentRef)}, ${selectedDate.slice(8, 10)}` : '';
       if (selectedLabel) {
-        const count = selectedDate ? (model.byDay?.[selectedDate] || []).length : (model.events || []).length;
-        const scope = selectedDate ? formatDate(selectedDate) : monthName(month, documentRef);
-        selectedLabel.textContent = `${scope} · ${count} ${count === 1 ? 'item' : 'itens'}`;
+        selectedLabel.textContent = selectedDate
+          ? `${formatDate(selectedDate)} · ${events.length} ${events.length === 1 ? 'item' : 'itens'}`
+          : '';
       }
-      if (clearDate) {
-        clearDate.classList.toggle('hidden', !selectedDate);
-        clearDate.dataset.plannerPickDate = selectedDate;
+      if (dayNetEl) {
+        const net = dayNet(events);
+        dayNetEl.textContent = net ? `Saldo do dia: ${currency(net)}` : '';
+        dayNetEl.dataset.tone = net < 0 ? 'negative' : 'positive';
       }
-      if (details) details.innerHTML = selectedDate ? renderDayAgenda(model, selectedDate) : renderMonthAgenda(model, documentRef);
+      if (details) details.innerHTML = selectedDate ? renderDayAgenda(events) : '';
       syncExpandAll(modal);
     }
   };

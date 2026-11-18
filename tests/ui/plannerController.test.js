@@ -51,6 +51,34 @@ function presenter() {
 }
 
 describe('planner controller', () => {
+  it('uses the Dashboard month totals for the summary and falls back when they fail', async () => {
+    const ui = presenter();
+    const monthSummary = vi.fn(async (month) => ({ income: 5000, expense: 1200, balance: 3800, month }));
+    const controller = createPlannerController({
+      document: documentStub(),
+      storage: storage(),
+      ownerProvider: () => 'owner-a',
+      presenter: ui,
+      monthSummary,
+      readSource: { read: async () => ({ records: [] }), subscribe: null }
+    });
+    await controller.open();
+    expect(monthSummary).toHaveBeenCalledWith('2026-06');
+    expect(ui.render.mock.calls.at(-1)[0].summary).toEqual({ income: 5000, expense: 1200, balance: 3800, month: '2026-06' });
+
+    const failing = presenter();
+    const broken = createPlannerController({
+      document: documentStub(),
+      storage: storage(),
+      ownerProvider: () => 'owner-a',
+      presenter: failing,
+      monthSummary: async () => { throw new Error('sem dados'); },
+      readSource: { read: async () => ({ records: [] }), subscribe: null }
+    });
+    await broken.open();
+    expect(failing.render.mock.calls.at(-1)[0].summary).toBeNull();
+  });
+
   it('loads records through a local read source and renders the planner read model', async () => {
     const ui = presenter();
     const controller = createPlannerController({
