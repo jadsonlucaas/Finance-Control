@@ -16,6 +16,7 @@
     --on-accent: #ffffff;
     /* Segunda cor da marca: so em linhas finas e no degrade do cartao de destaque. */
     --brand-accent-2: 99 91 255;
+    --shell-topbar-height: 72px;
     --brand-hairline: linear-gradient(90deg, rgb(var(--color-accent)) 0%, rgb(var(--brand-accent-2)) 100%);
     --hero-gradient: linear-gradient(135deg, #0a6f97 0%, #1f4fa8 58%, #4b46c8 100%);
     --hero-cta-text: #123a7a;
@@ -541,6 +542,7 @@ textarea:focus-visible {
     #sidebar {
         transform: none !important;
         box-shadow: none !important;
+        border-width: 0 1px 0 0 !important;
     }
 
     #sidebar-overlay,
@@ -565,6 +567,24 @@ textarea:focus-visible {
     .mobile-header {
         padding-left: 36px !important;
         padding-right: 36px !important;
+    }
+
+    /* Topo e cabecalho do menu lateral com a mesma altura: a linha da marca fica continua. */
+    .mobile-header,
+    #sidebar > div:first-child {
+        box-sizing: border-box;
+        height: var(--shell-topbar-height);
+        min-height: var(--shell-topbar-height);
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    #sidebar > div:first-child > div:first-child {
+        min-width: 0;
+    }
+
+    #sidebar > div:first-child > div:first-child > span {
+        line-height: 1.2;
     }
 }
 
