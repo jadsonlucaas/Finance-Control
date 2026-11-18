@@ -16,6 +16,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
+import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -45,6 +46,8 @@ async function clearAuthEmulator() {
 async function createActiveAccount(label) {
   const email = emailFor(label);
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
+  await grantPremiumAccess(testEnv, credential.user.uid);
   const profile = {
     uid: credential.user.uid,
     email,
@@ -87,6 +90,7 @@ async function signOutUi(page) {
     await overlay.click();
     await expect(overlay).toHaveClass(/hidden/);
   }
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-logout').click();
   await expect(page.locator('#auth-screen')).toBeVisible();
   await expect(page.locator('#app')).toBeHidden();
@@ -95,7 +99,8 @@ async function signOutUi(page) {
 async function openTab(page, tab) {
   const sidebar = page.locator('#sidebar');
   const isHidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-  if (isHidden) await page.locator('#btn-mobile-menu').click();
+  // No computador o menu lateral fica fixo; o botao de menu so existe em telas menores.
+  if (isHidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
   await expect(sidebar).toBeVisible();
   await page.locator(`[data-tab="${tab}"]`).click();
   await expect(page.locator(`#view-${tab}`)).toBeVisible();
@@ -402,7 +407,7 @@ test('invalid hour interval is rejected in the active UI before persistence', as
   await fillBankHourForm(page, { endTime: '08:00', note: 'Intervalo invalido local', expectValidPreview: false });
   await page.locator('#btn-save-hour-control').click();
   await expect(page.locator('#hour-control-modal')).toBeVisible();
-  await expect(page.locator('#toast')).toContainText(/intervalo de horas valido/i);
+  await expect(page.locator('#toast')).toContainText(/intervalo de horas v[aá]lido/i);
   expect(await readHourRecordsAs(userA)).toHaveLength(0);
   expect(await readHourAuditLogsAs(userA)).toHaveLength(0);
 });

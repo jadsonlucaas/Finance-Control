@@ -359,5 +359,23 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Manter investimentos/reservas fora da leitura de custo operacional.': 'Mantener inversiones/reservas fuera del coste operativo.',
   'Prioridade: recuperar saldo projetado para zero antes de assumir novos compromissos.': 'Prioridad: llevar el saldo previsto a cero antes de asumir nuevos compromisos.',
   'Prioridade: preservar o saldo positivo e reforçar reserva com excedente recorrente.': 'Prioridad: mantener el saldo positivo y reforzar la reserva con el excedente.',
-  'Falha ao renderizar gráficos do PDF': 'Error al generar los gráficos del PDF'
+  'Falha ao renderizar gráficos do PDF': 'Error al generar los gráficos del PDF',
+  // --- Trajetoria do saldo (Inicio) ---
+  'Saldo até hoje': 'Saldo hasta hoy',
+  'Saldo do mês': 'Saldo del mes',
+  'Previsão para o fim do mês:': 'Previsión para fin de mes:',
+  'Maior conta a vencer:': 'Mayor pago pendiente:',
+  'hoje': 'hoy',
+  'Mês no azul': 'Mes en positivo',
+  'Atenção ao saldo': 'Atención al saldo',
+  'A pagar no mês': 'Por pagar este mes',
+  'contas em aberto': 'pagos pendientes',
+  'conta em aberto': 'pago pendiente',
+  'Nada em aberto neste mês': 'Nada pendiente este mes',
+  'Ver contas': 'Ver pagos',
+  'Acesso rápido': 'Acceso rápido',
+  'Novo gasto': 'Nuevo gasto',
+  'Nova entrada': 'Nuevo ingreso',
+  'Buscar no menu': 'Buscar en el menú',
+  'Lançamentos': 'Movimientos'
 });

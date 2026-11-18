@@ -1,19 +1,26 @@
 :root {
-    --color-bg: 248 250 252;
+    /* Identidade visual: tema escuro e o padrao (ver [data-theme="dark"]); este e o claro.
+       Um destaque (ciano/azul-petroleo), cartoes com borda fina. Texto >= 4.5:1. */
+    --color-bg: 244 246 250;
     --color-surface: 255 255 255;
-    --color-surface-light: 241 245 249;
-    --color-accent: 8 145 178;
-    --color-accent-dark: 14 116 144;
-    --color-danger: 220 38 38;
-    --color-success: 5 150 105;
-    --color-warn: 217 119 6;
-    --color-text-primary: 15 23 42;
-    --color-text-secondary: 100 116 139;
-    --glass-bg: rgba(255, 255, 255, 0.8);
-    --glass-panel-bg: rgba(255, 255, 255, 0.92);
-    --glass-border: rgba(148, 163, 184, 0.24);
-    --field-bg: rgba(255, 255, 255, 0.9);
-    --field-border: rgba(148, 163, 184, 0.28);
+    --color-surface-light: 236 240 246;
+    --color-accent: 8 112 150;
+    --color-accent-dark: 6 90 122;
+    --color-danger: 196 43 60;
+    --color-success: 14 128 82;
+    --color-warn: 168 92 0;
+    --color-text-primary: 13 19 34;
+    --color-text-secondary: 74 85 110;
+    --color-border: 222 228 238;
+    --radius-card: 16px;
+    --radius-control: 12px;
+    --shadow-card: 0 1px 3px rgba(13, 19, 34, 0.05);
+    --shadow-overlay: 0 12px 32px rgba(15, 23, 42, 0.16);
+    --glass-bg: rgb(var(--color-surface));
+    --glass-panel-bg: rgb(var(--color-surface));
+    --glass-border: rgb(var(--color-border));
+    --field-bg: #ffffff;
+    --field-border: rgb(208 216 230);
     --field-text: #0f172a;
     --body-gradient-a: rgba(8, 145, 178, 0.12);
     --body-gradient-b: rgba(14, 165, 233, 0.1);
@@ -22,42 +29,46 @@
     --chart-grid-color: rgba(15, 23, 42, 0.22);
     --chart-muted-color: #94a3b8;
     --chart-divider-color: rgba(148, 163, 184, 0.3);
-    --chart-positive-color: #047857;
-    --chart-negative-color: #b91c1c;
-    --theme-text-secondary: #64748b;
+    --chart-positive-color: #0e8052;
+    --chart-negative-color: #c42b3c;
+    --theme-text-secondary: #4a556e;
 }
 
 [data-theme="dark"] {
-    --color-bg: 4 11 24;
-    --color-surface: 13 23 39;
-    --color-surface-light: 24 38 59;
-    --color-accent: 45 212 191;
-    --color-accent-dark: 20 184 166;
-    --color-danger: 248 113 113;
-    --color-success: 52 211 153;
-    --color-warn: 251 191 36;
-    --color-text-primary: 235 245 255;
-    --color-text-secondary: 148 163 184;
-    --glass-bg: rgba(13, 23, 39, 0.88);
-    --glass-panel-bg: rgba(10, 19, 34, 0.95);
-    --glass-border: rgba(71, 85, 105, 0.34);
-    --field-bg: rgba(17, 30, 49, 0.96);
-    --field-border: rgba(71, 85, 105, 0.48);
-    --field-text: #eff6ff;
+    --color-bg: 13 19 34;
+    --color-surface: 19 26 43;
+    --color-surface-light: 27 35 56;
+    --color-accent: 91 216 245;
+    --color-accent-dark: 56 189 222;
+    --color-danger: 255 138 148;
+    --color-success: 94 230 168;
+    --color-warn: 246 190 90;
+    --color-text-primary: 232 237 247;
+    --color-text-secondary: 166 178 204;
+    --color-border: 37 47 69;
+    --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgb(var(--color-surface));
+    --glass-panel-bg: rgb(var(--color-surface));
+    --glass-border: rgb(var(--color-border));
+    --field-bg: rgb(16 23 39);
+    --field-border: rgb(45 57 82);
+    --field-text: #e8edf7;
     --body-gradient-a: rgba(45, 212, 191, 0.18);
     --body-gradient-b: rgba(14, 165, 233, 0.14);
-    --scrollbar-thumb: #475569;
-    --chart-label-color: #eff6ff;
-    --chart-grid-color: rgba(71, 85, 105, 0.28);
+    --scrollbar-thumb: #334160;
+    --chart-label-color: #e8edf7;
+    --chart-grid-color: rgba(160, 176, 214, 0.14);
     --chart-muted-color: #cbd5e1;
     --chart-divider-color: rgba(100, 116, 139, 0.28);
-    --chart-positive-color: #34d399;
-    --chart-negative-color: #f87171;
-    --theme-text-secondary: #94a3b8;
+    --chart-positive-color: #5ee6a8;
+    --chart-negative-color: #ff8a94;
+    --theme-text-secondary: #a6b2cc;
 }
 
 html {
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -65,10 +76,7 @@ html {
 
 body {
     box-sizing: border-box;
-    background: radial-gradient(circle at 15% 50%, var(--body-gradient-a), transparent 30%),
-                radial-gradient(circle at 85% 30%, var(--body-gradient-b), transparent 30%),
-                rgb(var(--color-bg));
-    background-attachment: fixed;
+    background: rgb(var(--color-bg));
     overflow-x: hidden;
     color: rgb(var(--color-text-primary));
     transition: background-color 0.25s ease, color 0.25s ease;
@@ -120,7 +128,7 @@ body {
 }
 
 .card-hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     position: relative;
     overflow: hidden;
     cursor: pointer;
@@ -133,29 +141,24 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(rgba(255,255,255,0.03), transparent);
+    background: none;
     pointer-events: none;
 }
 
 .card-hover:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 18px 40px rgba(2, 8, 23, 0.28);
-    border-color: rgba(var(--color-accent) / 0.36);
+    border-color: rgba(var(--color-accent) / 0.45) !important;
 }
 
 .glass {
     background: var(--glass-bg) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 10px 30px rgba(2, 8, 23, 0.14);
+    box-shadow: var(--shadow-card);
 }
 
 .glass-panel {
     background: var(--glass-panel-bg) !important;
-    backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 18px 40px rgba(2, 8, 23, 0.22);
+    box-shadow: var(--shadow-overlay);
 }
 
 .dashboard-summary-card {
@@ -180,7 +183,7 @@ textarea {
     background: var(--field-bg) !important;
     border: 1px solid var(--field-border) !important;
     color: var(--field-text) !important;
-    border-radius: 8px !important;
+    border-radius: var(--radius-control) !important;
     padding: 8px 12px !important;
     font-size: 14px !important;
     transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
@@ -488,11 +491,11 @@ strong {
     .dashboard-period-shell {
         width: min(100%, 760px);
         display: block;
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        background: rgba(255, 255, 255, 0.42);
+        border: 1px solid rgb(var(--color-border));
+        background: rgb(var(--color-surface-light) / 0.5);
         border-radius: 20px;
         padding: 14px 16px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+        box-shadow: none;
     }
 
     .dashboard-period-grid {
@@ -507,8 +510,8 @@ strong {
         flex-direction: column;
         gap: 6px;
         border-radius: 16px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgb(var(--color-border));
+        background: rgb(var(--color-surface));
         padding: 10px 12px;
         min-width: 0;
     }
@@ -786,11 +789,11 @@ strong {
 
     .dashboard-period-shell {
         width: 100%;
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        background: rgba(255, 255, 255, 0.42);
+        border: 1px solid rgb(var(--color-border));
+        background: rgb(var(--color-surface-light) / 0.5);
         border-radius: 20px;
         padding: 14px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+        box-shadow: none;
     }
 
     .dashboard-period-grid {
@@ -804,8 +807,8 @@ strong {
         flex-direction: column;
         gap: 6px;
         border-radius: 16px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgb(var(--color-border));
+        background: rgb(var(--color-surface));
         padding: 10px 12px;
         min-width: 0;
     }
@@ -1465,10 +1468,10 @@ strong {
 
     .finance-record-row {
         padding: 14px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid rgba(148, 163, 184, 0.12);
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+        border-radius: var(--radius-card);
+        background: rgb(var(--color-surface));
+        border: 1px solid rgb(var(--color-border));
+        box-shadow: none;
     }
 
     #dashboard-expense-category-list .mobile-list-actions {

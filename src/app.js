@@ -1,5 +1,11 @@
 import '../styles/app.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/sora/500.css';
+import '@fontsource/sora/600.css';
 import '../styles/style.css';
+import '../styles/shell.css';
 import { installSignupSuggestions } from './ui/auth/signupSuggestions.js';
 import { installLocale } from './ui/i18n/installLocale.js';
 import { installHistoryWindowUi } from './ui/history/historyWindowUi.js';
@@ -58,6 +64,7 @@ import { installRecordListRendererGlobals } from './ui/records/recordListRendere
 import { installFinancialCrudControllers } from './ui/records/financialCrudControllerInstaller.js';
 import { createResilienceViewPilots } from './ui/resilience/resiliencePilots.js';
 import { installInitialTemplates } from './ui/templates/installInitialTemplates.js';
+import { installAppShell } from './ui/shell/appShell.js';
 
 function markBootstrap(name, target = globalThis) {
   try {
@@ -103,6 +110,7 @@ export function bootstrapApp() {
   installImportPipelineGlobals(globalThis);
   installLegacyEventBindings(globalThis);
   installModalKeyboard(globalThis);
+  installAppShell(globalThis);
   installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);
   installRecordFormValidationGlobals(globalThis);

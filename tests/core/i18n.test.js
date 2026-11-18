@@ -5,7 +5,7 @@ import { ES_ES } from '../../src/i18n/es-ES.js';
 afterEach(async () => { await setLocale('pt-BR'); });
 
 describe('idioma da interface', () => {
-  it('pt-BR e o padrao e nao traduz nada', async () => {
+  it('pt-BR e o padrao e nao traduz texto ja correto', async () => {
     expect(getLocale()).toBe('pt-BR');
     expect(translateText('Criar conta')).toBe('Criar conta');
   });

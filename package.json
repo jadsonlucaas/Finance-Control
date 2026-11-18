@@ -51,6 +51,7 @@
     "user-admin:query-check": "node scripts/user-admin-query-check.mjs",
     "smoke": "node tests/smoke/smoke.mjs",
     "test": "vitest run",
+    "i18n:pt-br": "node scripts/build-pt-br-display-catalog.mjs",
     "test:auth-flow": "vitest run --config vitest.auth-flow.config.js",
     "test:e2e-local": "playwright test --config=playwright.e2e-local.config.js",
     "test:rules": "vitest run --config vitest.rules.config.js",
@@ -71,6 +72,8 @@
     "vitest": "^3.0.9"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/sora": "^5.3.0",
     "@opentelemetry/api": "^1.10.0",
     "@sentry/browser": "^11.10.0",
     "chart.js": "^4.5.1",

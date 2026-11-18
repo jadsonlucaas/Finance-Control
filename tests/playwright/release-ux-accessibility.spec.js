@@ -227,6 +227,7 @@ async function openCriticalScreen(page, screen) {
         };
       };
     });
+    await page.locator('#btn-account-menu').click();
     await page.locator('#btn-export-pdf').click();
   } else if (screen === 'admin-usuarios') {
     await showAdminAppWithMockData(page);
@@ -368,6 +369,8 @@ test('primary header actions are keyboard activatable and keep focusable control
   await page.locator('#btn-new-record-header').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-novo')).toBeVisible();
+
+  await page.locator('#btn-account-menu').click();
 
   await page.locator('#theme-toggle').focus();
   await page.keyboard.press('Enter');

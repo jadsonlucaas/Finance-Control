@@ -7,6 +7,10 @@
     <title>Controle Financeiro Pessoal</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230ea5e9'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='16' font-weight='700' text-anchor='middle' fill='white'%3E$%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <script>
+        // Aplica o tema antes de desenhar a tela (evita piscar claro no tema escuro).
+        try { document.documentElement.dataset.theme = localStorage.getItem('finance-control-theme-v1') === 'light' ? 'light' : 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+    </script>
     <script type="module" src="/src/app.js"></script>
 </head>
 
@@ -21,14 +25,20 @@
                     <div class="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
                         <i data-lucide="wallet" class="w-4 h-4 text-accent"></i>
                     </div>
-                    <span class="font-bold text-textPrimary text-lg">Menu</span>
+                    <span class="font-display font-semibold text-textPrimary text-base">Controle Financeiro</span>
                 </div>
                 <button id="btn-sidebar-close" type="button" title="Fechar menu" aria-label="Fechar menu" class="p-1 rounded-lg hover:bg-surfaceLight text-textSecondary hover:text-textPrimary transition-colors">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
+            <div class="sidebar-search">
+                <label class="sidebar-search-field">
+                    <i data-lucide="search" class="w-4 h-4" aria-hidden="true"></i>
+                    <input id="sidebar-search" type="search" autocomplete="off" placeholder="Buscar no menu" aria-label="Buscar no menu">
+                </label>
+            </div>
             <nav class="flex-1 overflow-y-auto p-3 space-y-1" id="main-tabs">
-                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-accent/10 text-accent" data-tab="dashboard"><span class="flex h-8 w-8 shrink-0 items-center justify-center"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></span><span class="min-w-0">Dashboard</span></button>
+                <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-accent/10 text-accent" data-tab="dashboard"><span class="flex h-8 w-8 shrink-0 items-center justify-center"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></span><span class="min-w-0">Início</span></button>
                 <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="saidas"><span class="flex h-8 w-8 shrink-0 items-center justify-center"><i data-lucide="arrow-up-right" class="w-5 h-5 text-danger"></i></span><span class="min-w-0">Saídas</span></button>
                 <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="entradas"><span class="flex h-8 w-8 shrink-0 items-center justify-center"><i data-lucide="arrow-down-left" class="w-5 h-5 text-success"></i></span><span class="min-w-0">Entradas</span></button>
                 <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-textSecondary hover:bg-surfaceLight hover:text-textPrimary" data-tab="parcelamentos"><span class="flex h-8 w-8 shrink-0 items-center justify-center"><svg aria-hidden="true" viewBox="0 0 64 64" class="w-5 h-5 text-accent" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="52" height="52" rx="13" stroke="currentColor" stroke-width="3"/><path d="M27 20.5 45.6 14a3.5 3.5 0 0 1 4.5 2.1l5 13.8a3.5 3.5 0 0 1-2.1 4.5L34.4 41" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 26.5h25" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M13.5 38.5 20 35l8.5-13.5c1.3-2.1 4-2.8 6.1-1.5 2.1 1.3 2.7 4 1.4 6.1l-2.9 4.8 8.5-2.3c2.2-.6 4.4.7 5 2.8.6 2-.5 4.1-2.5 4.9l-14.8 5.8-8.4 8.3" fill="currentColor" fill-opacity=".22"/><path d="M13.5 38.5 20 35l8.5-13.5c1.3-2.1 4-2.8 6.1-1.5 2.1 1.3 2.7 4 1.4 6.1l-2.9 4.8 8.5-2.3c2.2-.6 4.4.7 5 2.8.6 2-.5 4.1-2.5 4.9l-14.8 5.8-8.4 8.3" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="min-w-0">Parcelamentos</span></button>
@@ -55,21 +65,36 @@
                 <h1 id="app-title" class="mobile-title text-lg font-bold text-textPrimary">Controle Financeiro</h1>
             </div>
             <div class="mobile-header-actions flex items-center gap-2">
-                <button id="theme-toggle" type="button"
-                    class="text-xs bg-surfaceLight hover:bg-surfaceLight/80 px-3 py-1.5 rounded-lg text-textSecondary hover:text-textPrimary flex items-center gap-1 transition-colors font-medium"
-                    title="Alternar entre modo claro e escuro">
-                    <i data-lucide="moon" class="w-4 h-4"></i>
-                    <span class="mobile-action-label" id="theme-toggle-label">Modo escuro</span>
-                </button>
                 <button id="btn-new-record-header" type="button"
-                    class="text-xs bg-accent hover:bg-accentDark px-3 py-1.5 rounded-lg text-white flex items-center gap-1 transition-colors font-semibold"><i
-                        data-lucide="plus-circle" class="w-4 h-4"></i><span class="mobile-action-label">Novo lançamento</span></button>
-                <button id="btn-export-pdf" type="button"
-                    class="text-xs bg-surfaceLight hover:bg-surfaceLight/80 px-3 py-1.5 rounded-lg text-textSecondary hover:text-accent flex items-center gap-1 transition-colors"><i
-                        data-lucide="file-text" class="w-4 h-4"></i><span class="mobile-action-label">Relatório PDF</span></button>
+                    class="header-new-record text-sm bg-accent hover:bg-accentDark px-4 rounded-xl text-white flex items-center gap-2 transition-colors font-medium"><i
+                        data-lucide="plus" class="w-4 h-4"></i><span class="mobile-action-label">Novo lançamento</span></button>
+                <div class="account-menu-wrap">
+                    <button id="btn-account-menu" type="button" class="account-menu-button" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" aria-label="Conta e preferências" title="Conta e preferências">
+                        <span id="account-avatar" class="account-avatar" aria-hidden="true">?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 account-menu-chevron"></i>
+                    </button>
+                    <div id="account-menu" class="account-menu hidden" role="menu" aria-label="Conta e preferências">
+                        <button id="theme-toggle" type="button" role="menuitem"
+                            class="account-menu-item"
+                            title="Alternar entre modo claro e escuro">
+                            <i data-lucide="moon" class="w-4 h-4"></i>
+                            <span class="mobile-action-label" id="theme-toggle-label">Modo escuro</span>
+                        </button>
+                        <button id="btn-export-pdf" type="button" role="menuitem"
+                            class="account-menu-item"><i
+                                data-lucide="file-text" class="w-4 h-4"></i><span class="mobile-action-label">Relatório PDF</span></button>
+                    </div>
+                </div>
             </div>
         </header>
-        <main class="flex-1 overflow-auto p-4" id="main-content"></main><!-- Delete confirmation overlay -->
+        <main class="flex-1 overflow-auto p-4" id="main-content"></main>
+        <nav id="bottom-nav" class="bottom-nav" aria-label="Navegação principal">
+            <button type="button" class="bottom-nav-item" data-bottom-tab="dashboard" aria-current="page"><i data-lucide="house" class="w-5 h-5"></i><span>Início</span></button>
+            <button type="button" class="bottom-nav-item" data-bottom-tab="saidas"><i data-lucide="list" class="w-5 h-5"></i><span>Lançamentos</span></button>
+            <button type="button" id="btn-bottom-new-record" class="bottom-nav-new" aria-label="Novo lançamento"><i data-lucide="plus" class="w-6 h-6"></i></button>
+            <button type="button" class="bottom-nav-item" data-bottom-tab="orcamentos"><i data-lucide="pie-chart" class="w-5 h-5"></i><span>Orçamentos</span></button>
+            <button type="button" class="bottom-nav-item" data-bottom-tab="configuracoes"><i data-lucide="settings" class="w-5 h-5"></i><span>Ajustes</span></button>
+        </nav><!-- Delete confirmation overlay -->
         <div id="delete-overlay" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-[420]">
             <div class="bg-surface rounded-xl p-5 border border-surfaceLight max-w-sm mx-4">
                 <p class="text-sm mb-4">Tem certeza que deseja excluir este lançamento?</p>

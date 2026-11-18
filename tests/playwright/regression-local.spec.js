@@ -966,84 +966,6 @@ test('Planner local events and holidays are isolated by owner on the same browse
   expect(isolated.v1Holiday).toBeNull();
 });
 
-test('expense spreadsheet import does not recreate the same duplicated row', async ({ page }) => {
-  await showAppWithMockData(page, [
-    { id: 'person-base', type: 'pessoa', person: 'Ana', salary_base: 5000 },
-    { id: 'macro-base', type: 'macro', macro_category: 'FIXO' },
-    { id: 'cat-base', type: 'categoria', macro_category: 'FIXO', category_name: 'Moradia' }
-  ]);
-
-  const importState = await page.evaluate(async () => {
-    window.switchTab('configuracoes');
-    window.__xlsxImportCreateManyCalls = 0;
-    const originalCreateMany = window.dataSdk.createMany;
-    window.dataSdk.createMany = async (payloads) => {
-      window.__xlsxImportCreateManyCalls += 1;
-      return originalCreateMany(payloads);
-    };
-    window.financeApp?.FinanceRepository?.setSdk?.(window.dataSdk);
-    window.XLSX = {
-      read: () => ({ SheetNames: ['Saidas'], Sheets: { Saidas: {} } }),
-      utils: {
-        sheet_to_json: () => {
-          const row = {
-            Data: '2026-07-18',
-            Classe: 'Inicio do mes',
-            Categoria_macro: 'FIXO',
-            Categoria: 'Moradia',
-            Descricao: 'Duplicidade regressao',
-            Descrição: 'Duplicidade regressao',
-            Parcela: '',
-            'Valor Orcado': 'R$ 321,00',
-            'Valor Orçado': 'R$ 321,00',
-            STATUS: 'Pago',
-            Pagamento: 'Pix',
-            'Quem paga': 'Ana',
-            'Data competencia': '2026-07'
-          };
-          row[`Descri${String.fromCharCode(0x00c3)}${String.fromCharCode(0x00a7)}${String.fromCharCode(0x00c3)}${String.fromCharCode(0x00a3)}o`] = 'Duplicidade regressao';
-          row[`Valor Or${String.fromCharCode(0x00c3)}${String.fromCharCode(0x00a7)}ado`] = 'R$ 321,00';
-          return [row];
-        }
-      }
-    };
-
-    const attachFile = () => {
-      const input = document.getElementById('import-saidas-file');
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(new File(['regression'], 'saidas-regression.xlsx', {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      }));
-      input.files = dataTransfer.files;
-    };
-
-    attachFile();
-    await window.importSaidasSpreadsheet(false);
-    attachFile();
-    await window.importSaidasSpreadsheet(false);
-
-    const imported = window.__regressionRecords.filter((record) =>
-      record.type === 'saida' && record.description === 'Duplicidade regressao'
-    );
-    return {
-      count: imported.length,
-      amount: imported[0]?.amount,
-      source: imported[0]?.import_source,
-      sourceChannel: imported[0]?.source_channel,
-      createManyCalls: window.__xlsxImportCreateManyCalls,
-      report: document.getElementById('import-report-summary')?.textContent || ''
-    };
-  });
-
-  expect(importState).toMatchObject({
-    count: 1,
-    amount: 321,
-    source: 'saidas_xlsx',
-    sourceChannel: 'spreadsheet_import',
-    createManyCalls: 1
-  });
-});
-
 test('bank import preview commits through idempotent batch without duplicate records', async ({ page }) => {
   await showAppWithMockData(page, [
     { id: 'person-base', type: 'pessoa', person: 'Ana', salary_base: 5000, owner_uid: 'uid-a' },
@@ -1401,6 +1323,7 @@ test('active PDF export UI lazy loads report model and keeps downloads owner-sco
   });
 
   await expect(page.locator('#report-export-panel')).toBeHidden();
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-export-pdf').click();
   await page.waitForFunction(() => window.financeApp?.reportExportActiveUi?.installed === true);
   await page.waitForFunction(() => window.__pdfSaveCalls?.length === 1);
@@ -1421,6 +1344,7 @@ test('active PDF export UI lazy loads report model and keeps downloads owner-sco
     window.__pdfSaveCalls = [];
     window.ensurePdfLibraries = async () => { throw new Error('LOAD_FAILED:PDF'); };
   });
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-export-pdf').click();
   await expect(page.locator('#report-export-state')).toContainText(/Nao foi possivel|Relatorio/i);
 
@@ -1442,6 +1366,7 @@ test('active PDF export UI lazy loads report model and keeps downloads owner-sco
       };
     };
   });
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-export-pdf').click();
   await page.waitForFunction(() => window.__pdfSaveCalls?.length === 1);
   const switched = await page.evaluate(() => JSON.stringify(window.financeApp.reportExportActiveUi.controller.getState().data.report));

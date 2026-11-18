@@ -16,6 +16,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
+import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -61,6 +62,8 @@ async function clearAuthEmulator() {
 async function createActiveAccount(label) {
   const email = emailFor(label);
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
+  await grantPremiumAccess(testEnv, credential.user.uid);
   const profile = {
     uid: credential.user.uid,
     email,
@@ -117,6 +120,7 @@ async function signIn(page, account) {
 }
 
 async function signOutUi(page) {
+  await page.locator('#btn-account-menu').click();
   await page.locator('#btn-logout').click();
   await expect(page.locator('#auth-screen')).toBeVisible();
   await expect(page.locator('#app')).toBeHidden();
@@ -125,7 +129,8 @@ async function signOutUi(page) {
 async function openTab(page, tab) {
   const sidebar = page.locator('#sidebar');
   const isHidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-  if (isHidden) await page.locator('#btn-mobile-menu').click();
+  // No computador o menu lateral fica fixo; o botao de menu so existe em telas menores.
+  if (isHidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
   await expect(sidebar).toBeVisible();
   await page.locator(`[data-tab="${tab}"]`).click();
   await expect(page.locator(`#view-${tab}`)).toBeVisible();

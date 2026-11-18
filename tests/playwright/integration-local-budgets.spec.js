@@ -4,6 +4,7 @@ import { deleteApp, initializeApp } from 'firebase/app';
 import { connectAuthEmulator, createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
+import { acceptCurrentLegalTerms } from './helpers/legalConsent.js';
 
 // Orcamentos: tela no Dashboard, tempo real entre duas abas e mudancas vindas de
 // fora (como o WhatsApp gravando um lancamento pela whatsapp-api).
@@ -30,6 +31,7 @@ async function clearAuthEmulator() {
 async function createAccount(label) {
   const email = `${label}-${Date.now()}@example.test`;
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
   await signOut(setupAuth);
   return { uid: credential.user.uid, email, password: PASSWORD };
 }
