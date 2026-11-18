@@ -373,7 +373,14 @@ export function installHourControlActiveUi(target = globalThis) {
     }
 
     const saveButton = byId(target, 'btn-save-hour-control');
-    if (saveButton) saveButton.disabled = true;
+    // So o texto do botao muda durante a gravacao; a logica de salvar segue igual.
+    const savedLabel = saveButton?.textContent || '';
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.setAttribute('aria-busy', 'true');
+      const translator = target.financeI18n?.translate;
+      saveButton.textContent = typeof translator === 'function' ? translator('Salvando...') : 'Salvando...';
+    }
     const payload = {
       ...input,
       salaryBase: resolveSalary(target, input),
@@ -394,7 +401,11 @@ export function installHourControlActiveUi(target = globalThis) {
       }
       return result;
     } finally {
-      if (saveButton) saveButton.disabled = false;
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.removeAttribute('aria-busy');
+        if (savedLabel) saveButton.textContent = savedLabel;
+      }
     }
   }
 
