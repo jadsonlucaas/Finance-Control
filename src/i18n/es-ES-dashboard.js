@@ -12,6 +12,7 @@ export const DASHBOARD_PATTERNS = Object.freeze([
   [/^Saldo do dia: (.+)$/, 'Saldo del día: $1'],
   [/^(\d{2}\/\d{2}\/\d{4}) · (\d+) (?:item|itens)$/, (_, date, count) => `${date} · ${count} ${count === '1' ? 'elemento' : 'elementos'}`],
   [/^Gastos diários: (.+)$/, 'Gastos diarios: $1'],
+  [/^(\d+) (?:entrada|entradas) · (.+)$/, (_, count, total) => `${count} ${count === '1' ? 'ingreso' : 'ingresos'} · ${total}`],
   [/^(\d+) lançamento\(s\) • competência (.+)$/, '$1 movimiento(s) • periodo $2'],
   [/^Entrada consolidada - (.+)$/, (_, cycle) => `Ingreso consolidado - ${cycle === 'Quinzena' ? 'Quincena' : cycle === 'Início do mês' ? 'Inicio de mes' : cycle}`]
 ]);
@@ -407,5 +408,21 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Buscar no menu': 'Buscar en el menú',
   'Lançamentos': 'Movimientos',
   'Recolher menu': 'Contraer menú',
-  'Exibir menu': 'Mostrar menú'
+  'Exibir menu': 'Mostrar menú',
+  // --- Entradas avulsas ---
+  'Entradas avulsas': 'Ingresos puntuales',
+  'Nova entrada avulsa': 'Nuevo ingreso puntual',
+  'Editar entrada avulsa': 'Editar ingreso puntual',
+  'Freelas, vendas, presentes e outras receitas fora do salário.': 'Trabajos extra, ventas, regalos y otros ingresos fuera del salario.',
+  'Nenhuma entrada avulsa neste mês.': 'No hay ingresos puntuales en este mes.',
+  'Nenhuma entrada avulsa cadastrada.': 'Aún no hay ingresos puntuales.',
+  'Ex.: Freela de design': 'Ej.: Trabajo de diseño',
+  'Fechar': 'Cerrar',
+  'Informe a descrição.': 'Indica la descripción.',
+  'Informe um valor maior que zero.': 'Indica un importe mayor que cero.',
+  'Informe a data.': 'Indica la fecha.',
+  'Informe a pessoa.': 'Indica la persona.',
+  'Confira os campos.': 'Revisa los campos.',
+  'Não foi possível salvar agora. Tente novamente.': 'No se pudo guardar ahora. Inténtalo de nuevo.',
+  'Não foi possível excluir. Tente novamente.': 'No se pudo eliminar. Inténtalo de nuevo.'
 });
