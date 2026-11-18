@@ -2778,3 +2778,9 @@ details[open] > summary .planner-chevron svg {
         animation: none;
     }
 }
+
+/* Botao Salvar do controle de horas enquanto grava. */
+#btn-save-hour-control[aria-busy="true"] {
+    opacity: 0.75;
+    cursor: progress;
+}
