@@ -1005,8 +1005,16 @@ strong {
         flex: 1 1 calc(50% - 4px);
         min-height: 42px;
         justify-content: center;
-        border: 1px solid rgba(148, 163, 184, 0.14);
-        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid rgb(var(--color-border));
+        background: rgb(var(--color-surface-light) / 0.6);
+    }
+
+    /* Ciclo escolhido continua destacado no celular. */
+    #form-cycle-group-saida button.bg-accent,
+    #form-cycle-group-entrada button.bg-accent {
+        border-color: transparent;
+        background: rgb(var(--color-accent));
+        color: var(--on-accent);
     }
 
     .finance-modal-shell {
@@ -1029,9 +1037,8 @@ strong {
         z-index: 2;
         margin: -16px -16px 12px !important;
         padding: 16px 16px 12px;
-        background: linear-gradient(180deg, rgba(247, 250, 252, 0.98) 0%, rgba(247, 250, 252, 0.92) 100%);
-        backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+        background: rgb(var(--color-surface));
+        border-bottom: 1px solid rgb(var(--color-border));
     }
 
     .finance-modal-close {
@@ -1140,8 +1147,8 @@ strong {
         min-height: 24px;
         padding: 4px 8px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.78);
-        border: 1px solid rgba(148, 163, 184, 0.14);
+        background: rgb(var(--color-surface-light) / 0.7);
+        border: 1px solid rgb(var(--color-border));
         font-size: 0.68rem;
         font-weight: 600;
         color: var(--theme-text-secondary);
