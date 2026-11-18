@@ -1,20 +1,6 @@
-import { dashboardAggregationItems } from '../../domain/dashboard.js';
 import { appState } from '../../state/appState.js';
 import { getDashboardAggregations, getDashboardTrendData } from './dashboardData.js';
-
-const DASHBOARD_CHART_COLORS = ['#38bdf8', '#fbbf24', '#34d399', '#fb7185', '#a78bfa', '#2dd4bf', '#f97316', '#22c55e', '#e879f9', '#94a3b8'];
-
-function resizeDashboardSubcategoryChart(itemCount) {
-  const canvas = document.getElementById('chart-category-detail');
-  const container = canvas?.parentElement;
-  if (!container) return;
-
-  container.classList.add('dashboard-subcategory-chart');
-  const rows = Math.max(Number(itemCount) || 1, 1);
-  const rowHeight = window.innerWidth < 768 ? 44 : 38;
-  const chartHeight = Math.max(300, rows * rowHeight + 76);
-  container.style.height = `${chartHeight}px`;
-}
+import { renderDashboardBreakdowns } from './dashboardBreakdowns.js';
 
 function destroyDashboardChart(key) {
   if (appState.chartInstances[key]) {
@@ -42,151 +28,11 @@ export function upsertDashboardChart(key, canvas, config) {
 }
 
 export function renderDashboardChartsFromAggregations(aggregations = getDashboardAggregations()) {
-  if (typeof Chart !== 'function') return;
-  window.ensureDashboardChartLayout?.();
-  const labelColor = typeof window.getThemeTextSecondaryColor === 'function' ? window.getThemeTextSecondaryColor() : '#94a3b8';
-  const categoryItems = dashboardAggregationItems(aggregations.porCategoria, aggregations.registrosPorCategoria);
-  const subcategoryItems = dashboardAggregationItems(aggregations.porSubcategoria, aggregations.registrosPorSubcategoria);
-  const personItems = dashboardAggregationItems(aggregations.porPessoa, aggregations.registrosPorPessoa);
-
-  const detailTitle = document.getElementById('chart-category-detail')?.closest('.glass')?.querySelector('h3');
-  if (detailTitle) detailTitle.textContent = `Detalhe por Subcategoria - Total ${window.fmt(aggregations.total)}`;
-
-  const categoryCanvas = document.getElementById('chart-category');
-  if (categoryCanvas) {
-    upsertDashboardChart('category', categoryCanvas, {
-      type: 'doughnut',
-      plugins: [window.dashboardDataLabelPlugin].filter(Boolean),
-      data: {
-        labels: categoryItems.length ? categoryItems.map((item) => item.label) : ['Sem dados'],
-        datasets: [{
-          data: categoryItems.length ? categoryItems.map((item) => item.value) : [1],
-          backgroundColor: categoryItems.length ? DASHBOARD_CHART_COLORS : ['rgba(148, 163, 184, 0.18)'],
-          borderWidth: 0,
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        layout: { padding: 8 },
-        plugins: {
-          dashboardDataLabelPlugin: { mode: 'doughnut-percentage' },
-          legend: {
-            position: 'bottom',
-            labels: { color: labelColor, usePointStyle: true, pointStyle: 'circle', boxWidth: 8 }
-          },
-          tooltip: {
-            callbacks: {
-              label(context) {
-                if (!categoryItems.length) return 'Sem dados';
-                const value = Number(context.raw) || 0;
-                const percent = aggregations.total ? ((value / aggregations.total) * 100).toFixed(1).replace('.', ',') : '0,0';
-                return `${context.label}: ${window.fmt(value)} (${percent}%)`;
-              }
-            }
-          }
-        },
-        onClick(event, elements) {
-          if (!elements.length || !categoryItems.length) return;
-          const item = categoryItems[elements[0].index];
-          window.openDashboardSaidasDetail?.(`Categoria: ${item.label}`, item.records);
-        }
-      }
-    });
-  }
-
-  const subcategoryCanvas = document.getElementById('chart-category-detail');
-  if (subcategoryCanvas) {
-    resizeDashboardSubcategoryChart(subcategoryItems.length || 1);
-    destroyDashboardChart('subcategory');
-    upsertDashboardChart('categoryDetail', subcategoryCanvas, {
-      type: 'bar',
-      plugins: [window.dashboardDataLabelPlugin].filter(Boolean),
-      data: {
-        labels: subcategoryItems.length ? subcategoryItems.map((item) => item.label) : ['Sem dados'],
-        datasets: [{
-          label: 'Subcategorias',
-          data: subcategoryItems.length ? subcategoryItems.map((item) => item.value) : [0],
-          backgroundColor: subcategoryItems.length ? '#38bdf8' : 'rgba(148, 163, 184, 0.18)',
-          borderRadius: 8,
-          borderWidth: 0,
-          barPercentage: 0.68,
-          categoryPercentage: 0.8
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 4, right: 42, bottom: 4, left: 4 } },
-        plugins: {
-          legend: { display: false },
-          dashboardDataLabelPlugin: { mode: 'bar-currency-horizontal', color: '#e2e8f0' },
-          tooltip: {
-            callbacks: {
-              label(context) {
-                if (!subcategoryItems.length) return 'Sem dados';
-                const value = Number(context.raw) || 0;
-                const percent = aggregations.total ? ((value / aggregations.total) * 100).toFixed(1).replace('.', ',') : '0,0';
-                return `${window.fmt(value)} (${percent}%)`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: { grid: { display: false, drawBorder: false }, ticks: { display: false } },
-          y: { grid: { display: false, drawBorder: false }, ticks: { color: labelColor, font: { size: 11 }, autoSkip: false } }
-        },
-        onClick(event, elements) {
-          if (!elements.length || !subcategoryItems.length) return;
-          const item = subcategoryItems[elements[0].index];
-          window.openDashboardSaidasDetail?.(`Subcategoria: ${item.label}`, item.records);
-        }
-      }
-    });
-  }
-
-  const personCanvas = document.getElementById('chart-person');
-  if (personCanvas) {
-    upsertDashboardChart('person', personCanvas, {
-      type: 'bar',
-      plugins: [window.dashboardDataLabelPlugin].filter(Boolean),
-      data: {
-        labels: personItems.length ? personItems.map((item) => item.label) : ['Sem dados'],
-        datasets: [{
-          label: 'Gastos por pessoa',
-          data: personItems.length ? personItems.map((item) => item.value) : [0],
-          backgroundColor: personItems.length ? '#38bdf8' : 'rgba(148, 163, 184, 0.18)',
-          borderColor: personItems.length ? '#0284c7' : 'transparent',
-          borderWidth: 1,
-          borderRadius: 4,
-          barPercentage: 0.6,
-          categoryPercentage: 0.7
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { right: 18 } },
-        plugins: {
-          legend: { display: false },
-          dashboardDataLabelPlugin: { mode: 'bar-currency-horizontal' }
-        },
-        scales: {
-          x: { grid: { display: false, drawBorder: false }, ticks: { display: false } },
-          y: { ticks: { color: labelColor, font: { size: 11 } }, grid: { display: false } }
-        },
-        onClick(event, elements) {
-          if (!elements.length || !personItems.length) return;
-          const item = personItems[elements[0].index];
-          window.openDashboardSaidasDetail?.(`Pessoa: ${item.label}`, item.records);
-        }
-      }
-    });
-  }
+  // Categoria, pessoa e subcategoria sao listas em HTML (ver dashboardBreakdowns.js), nao canvas.
+  destroyDashboardChart('category');
+  destroyDashboardChart('categoryDetail');
+  destroyDashboardChart('person');
+  renderDashboardBreakdowns(aggregations);
 }
 
 function formatCurrency(value) {

@@ -1068,9 +1068,11 @@ async function main() {
     const startBefore = await page.locator('#f-comp-start').inputValue();
     assert(trendTitleBefore.length > 0, 'Dashboard trend chart title should render.');
     const hasDashboardCharts = await page.evaluate(() =>
-      Boolean(window.chartInstances?.trend || window.chartInstances?.category || window.chartInstances?.person)
+      Boolean(document.querySelector('#dash-category-breakdown')?.childElementCount
+        && document.querySelector('#dash-person-breakdown')?.childElementCount
+        && document.querySelector('#dash-subcategory-breakdown')?.childElementCount)
     );
-    assert(hasDashboardCharts, 'Chart.js should create dashboard chart instances.');
+    assert(hasDashboardCharts, 'Dashboard breakdowns (categoria, pessoa, subcategoria) should render.');
 
     await page.evaluate(() => window.shiftDashboardCompetenceRange?.(1));
     await waitTwoFrames(page);

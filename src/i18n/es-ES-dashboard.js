@@ -434,5 +434,20 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'previsão': 'previsión',
   'Clique para ver os gastos': 'Haz clic para ver los gastos',
   'Toque de novo para ver os gastos': 'Toca de nuevo para ver los gastos',
-  'Saldo e gastos por dia. Use as setas para trocar o dia e Enter para ver os gastos.': 'Saldo y gastos por día. Usa las flechas para cambiar de día y Enter para ver los gastos.'
+  'Saldo e gastos por dia. Use as setas para trocar o dia e Enter para ver os gastos.': 'Saldo y gastos por día. Usa las flechas para cambiar de día y Enter para ver los gastos.',
+  // --- Distribuicao dos gastos ---
+  'Por categoria': 'Por categoría',
+  'Por pessoa': 'Por persona',
+  'Por subcategoria': 'Por subcategoría',
+  'Selecione uma linha para ver os lançamentos': 'Selecciona una fila para ver los movimientos',
+  'Nenhum gasto no período filtrado.': 'No hay gastos en el período filtrado.',
+  'dos gastos são': 'de los gastos son',
+  'dos gastos estão em': 'de los gastos están en',
+  'fixos': 'fijos',
+  'variáveis': 'variables',
+  'concentra': 'concentra el',
+  'dos gastos': 'de los gastos',
+  'dos gastos estão nas 3 maiores subcategorias': 'de los gastos están en las 3 subcategorías principales',
+  'do total': 'del total',
+  'Ver lançamentos': 'Ver movimientos'
 });
