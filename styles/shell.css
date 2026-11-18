@@ -1247,11 +1247,59 @@ textarea:focus-visible {
 /* ---------- Campos de data no iPhone (todas as telas) ----------
  * Mesmo motivo do campo de mes: sem appearance:none o Safari do iOS ignora a largura. */
 input[type="date"],
-input[type="month"] {
+input[type="month"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="week"] {
     -webkit-appearance: none;
     appearance: none;
     min-width: 0;
     max-width: 100%;
+    min-height: 44px;
+    text-align: left;
+}
+
+input[type="date"]::-webkit-date-and-time-value,
+input[type="month"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="week"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+}
+
+/* ---------- Campos de formulario: um padrao so ----------
+ * Todo campo cabe na caixa onde esta (nunca empurra a tela para o lado) e os campos de
+ * formulario (w-full) tem a mesma altura, seja texto, lista, data ou hora. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+select,
+textarea {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+
+input.w-full:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+select.w-full {
+    min-height: 44px;
+}
+
+/* Item de grade nao cresce alem da coluna por causa do conteudo (campo de hora no iOS). */
+.grid > * {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    /* Modais antigos: a margem lateral fica so no fundo escuro (16px), como no resto do app. */
+    .fixed.inset-0.p-4 > .mx-4 {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    /* Caixa de modal com rolagem: so rola para baixo, nunca para o lado. */
+    .fixed.inset-0 > .overflow-y-auto {
+        overflow-x: hidden;
+    }
 }
 
 /* Filtros De/Ate de Lancamentos: o campo fica dentro da caixa, sem borda propria. */
