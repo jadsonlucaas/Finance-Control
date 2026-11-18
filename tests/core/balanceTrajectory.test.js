@@ -52,3 +52,33 @@ describe('trajetoria do saldo no mes', () => {
     expect(result.projectedEnd).toBe(0);
   });
 });
+
+describe('barras de gastos do dia no grafico do saldo', async () => {
+  const { dailyBars, trajectoryPaths } = await import('../../src/ui/dashboard/balanceTrajectoryCard.js');
+  const trajectory = buildBalanceTrajectory({ month: '2026-11', today: '2026-11-16', saidas: [] });
+  const values = new Array(30).fill(0);
+  values[0] = 6000;
+  values[13] = 300;
+  values[19] = 150;
+
+  it('desenha so os dias com gasto, o maior ocupando a faixa de baixo inteira', () => {
+    const { bars } = dailyBars(values, trajectory, 600, 168);
+    expect(bars.map((bar) => bar.day)).toEqual([1, 14, 20]);
+    const base = 168 - 26;
+    bars.forEach((bar) => expect(bar.y + bar.height).toBeCloseTo(base, 5));
+    expect(bars[0].height).toBeGreaterThan(bars[1].height);
+    expect(bars[1].height).toBeGreaterThanOrEqual(2);
+    expect(bars.find((bar) => bar.day === 20).future).toBe(true);
+    expect(bars.find((bar) => bar.day === 14).future).toBe(false);
+  });
+
+  it('barras ficam alinhadas com os pontos da linha do saldo', () => {
+    const { bars } = dailyBars(values, trajectory, 600, 168);
+    const { coords } = trajectoryPaths(trajectory, 600, 168);
+    bars.forEach((bar) => expect(bar.x + bar.width / 2).toBeCloseTo(coords[bar.day - 1][0], 5));
+  });
+
+  it('sem gastos nao desenha barras', () => {
+    expect(dailyBars(new Array(30).fill(0), trajectory, 600, 168).bars).toEqual([]);
+  });
+});

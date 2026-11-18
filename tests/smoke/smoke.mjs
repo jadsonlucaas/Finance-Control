@@ -827,23 +827,21 @@ async function assertDailyChartDetailModal(page) {
   });
   await waitTwoFrames(page);
 
-  await page.waitForFunction(() => {
-    const chart = window.chartInstances?.trend;
-    return Boolean(chart?.data?.datasets?.[0]?.data?.[14] === 2100);
-  }, { timeout: 10_000 });
-  await page.locator('#chart-trend').scrollIntoViewIfNeeded();
+  // Com um mes so, os gastos do dia ficam como barras no grafico do saldo (cartao do topo).
+  await page.waitForFunction(() => Boolean(document.querySelector('#dashboard-trajectory [data-bar-day="15"]')), { timeout: 10_000 });
+  const trendHidden = await page.evaluate(() => document.getElementById('chart-trend')?.closest('.glass')?.classList.contains('hidden'));
+  assert(trendHidden, 'The separate daily chart should be hidden when the balance chart shows daily expenses.');
+  await page.locator('#dashboard-trajectory [data-trajectory-day="15"]').scrollIntoViewIfNeeded();
   await waitTwoFrames(page);
 
   const clickTarget = await page.evaluate(() => {
-    const chart = window.chartInstances.trend;
-    const bar = chart.getDatasetMeta(0).data[14];
-    const canvasRect = chart.canvas.getBoundingClientRect();
-    const point = bar.getCenterPoint();
-    return {
-      x: canvasRect.left + point.x,
-      y: canvasRect.top + point.y
-    };
+    const rect = document.querySelector('#dashboard-trajectory [data-trajectory-day="15"]').getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   });
+  await page.mouse.move(clickTarget.x, clickTarget.y);
+  await waitTwoFrames(page);
+  const tipText = await page.locator('#dashboard-trajectory [data-trajectory-tip]').innerText();
+  assert(tipText.includes('15/04') && tipText.includes('R$ 2.100,00'), `Hovering a day should show its values. Tip: ${tipText}`);
   await page.mouse.click(clickTarget.x, clickTarget.y);
   await waitTwoFrames(page);
 
@@ -862,7 +860,7 @@ async function assertDailyChartDetailModal(page) {
     };
   });
 
-  assert(modalState.visible, 'Daily expense detail modal should open after clicking a populated day.');
+  assert(modalState.visible, 'Daily expense detail modal should open after clicking a populated day in the balance chart.');
   assert(modalState.title.includes('15/04'), `Daily expense modal title should reference 15/04. State: ${JSON.stringify(modalState)}`);
   assert(modalState.subtitle.includes('2 despesa'), `Daily expense modal should show the records count. State: ${JSON.stringify(modalState)}`);
   assert(modalState.summary.includes('R$ 2.100,00'), `Daily expense modal total should match the clicked bar total. State: ${JSON.stringify(modalState)}`);

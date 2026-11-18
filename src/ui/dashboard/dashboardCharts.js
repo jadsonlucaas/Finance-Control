@@ -394,6 +394,17 @@ export function renderTrendChartByDashboardFilter() {
       : 'Fluxo Financeiro Mensal';
   }
 
+  // Com um mes so, os gastos do dia ficam no grafico do saldo (cartao do topo); este bloco some.
+  const trendCard = trendCanvas.closest('.glass');
+  const heroShowsDaily = data.mode === 'daily'
+    && !document.getElementById('dashboard-trajectory')?.classList.contains('hidden')
+    && Boolean(document.getElementById('dashboard-trajectory'));
+  trendCard?.classList.toggle('hidden', heroShowsDaily);
+  if (heroShowsDaily) {
+    destroyDashboardChart('trend');
+    return;
+  }
+
   renderDashboardTrendInsights(data);
   upsertDashboardTrendChart(trendCanvas, buildDashboardTrendConfig(data));
 }

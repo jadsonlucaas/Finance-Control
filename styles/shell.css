@@ -720,8 +720,149 @@ textarea:focus-visible {
     outline-color: #ffffff;
 }
 
+.hero-plot-wrap {
+    position: relative;
+    min-width: 0;
+}
+
 .hero-plot {
     min-width: 0;
+    border-radius: 12px;
+    touch-action: pan-y;
+    cursor: crosshair;
+}
+
+.hero-plot:focus-visible {
+    outline: 1.5px solid rgb(255 255 255 / 0.45);
+    outline-offset: 4px;
+}
+
+.trajectory-hit {
+    fill: transparent;
+    pointer-events: all;
+}
+
+.trajectory-bar {
+    fill: rgb(255 168 184 / 0.5);
+    transition: fill var(--motion-150) var(--ease-out);
+}
+
+.trajectory-bar.is-future {
+    fill: rgb(255 168 184 / 0.24);
+}
+
+.trajectory-bar.is-active {
+    fill: rgb(255 190 202 / 0.95);
+}
+
+.trajectory-guide {
+    stroke: rgb(255 255 255 / 0.55);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0;
+    vector-effect: non-scaling-stroke;
+}
+
+.trajectory-hover-dot {
+    fill: #ffffff;
+    stroke: var(--hero-dot-fill);
+    stroke-width: 2;
+    opacity: 0;
+}
+
+.trajectory-guide.is-visible,
+.trajectory-hover-dot.is-visible {
+    opacity: 1;
+}
+
+.trajectory-tip {
+    position: absolute;
+    top: -6px;
+    z-index: 2;
+    min-width: 170px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    background: rgb(10 18 40 / 0.94);
+    color: #ffffff;
+    box-shadow: 0 8px 24px rgb(4 8 18 / 0.35);
+    pointer-events: none;
+    animation: hero-in var(--motion-150) var(--ease-out);
+}
+
+.trajectory-tip.hidden {
+    display: none;
+}
+
+.trajectory-tip-day {
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.trajectory-tip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: rgb(255 255 255 / 0.85);
+    white-space: nowrap;
+}
+
+.trajectory-tip-row strong {
+    margin-left: auto;
+    padding-left: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+}
+
+.trajectory-tip-row strong.is-negative {
+    color: #ffb4bf;
+}
+
+.trajectory-tip-hint {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: rgb(255 255 255 / 0.6);
+}
+
+.trajectory-tip-hint:empty {
+    display: none;
+}
+
+.trajectory-key {
+    display: inline-block;
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.trajectory-key.is-line {
+    height: 2px;
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+.trajectory-key.is-bar {
+    background: rgb(255 168 184 / 0.75);
+}
+
+.trajectory-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.trajectory-legend > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .trajectory-chart {
@@ -1922,6 +2063,12 @@ details[open] > summary .planner-chevron svg {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .trajectory-tip,
+    .trajectory-bar {
+        animation: none;
+        transition: none;
+    }
+
     .planner-sheet,
     .planner-dialog-card,
     .planner-item-body {
