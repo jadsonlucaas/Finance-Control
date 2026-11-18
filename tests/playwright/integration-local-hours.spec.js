@@ -16,6 +16,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
+import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -45,6 +46,8 @@ async function clearAuthEmulator() {
 async function createActiveAccount(label) {
   const email = emailFor(label);
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
+  await grantPremiumAccess(testEnv, credential.user.uid);
   const profile = {
     uid: credential.user.uid,
     email,
@@ -404,7 +407,7 @@ test('invalid hour interval is rejected in the active UI before persistence', as
   await fillBankHourForm(page, { endTime: '08:00', note: 'Intervalo invalido local', expectValidPreview: false });
   await page.locator('#btn-save-hour-control').click();
   await expect(page.locator('#hour-control-modal')).toBeVisible();
-  await expect(page.locator('#toast')).toContainText(/intervalo de horas valido/i);
+  await expect(page.locator('#toast')).toContainText(/intervalo de horas v[aá]lido/i);
   expect(await readHourRecordsAs(userA)).toHaveLength(0);
   expect(await readHourAuditLogsAs(userA)).toHaveLength(0);
 });

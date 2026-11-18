@@ -16,6 +16,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
+import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -53,6 +54,8 @@ async function clearAuthEmulator() {
 async function createActiveAccount(label) {
   const email = emailFor(label);
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
+  await grantPremiumAccess(testEnv, credential.user.uid);
   const owner = { owner_uid: credential.user.uid, owner_email: email };
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'users', credential.user.uid), {

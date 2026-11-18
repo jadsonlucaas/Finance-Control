@@ -4,6 +4,7 @@ import { deleteApp, initializeApp } from 'firebase/app';
 import { connectAuthEmulator, createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
+import { acceptCurrentLegalTerms } from './helpers/legalConsent.js';
 
 // Janela de historico: ao abrir, o app carrega so os ultimos 12 meses (mais contas
 // em aberto, parcelamentos e cadastros). Meses antigos entram sob demanda.
@@ -31,6 +32,7 @@ async function clearAuthEmulator() {
 async function createAccount(label) {
   const email = `${label}-${Date.now()}@example.test`;
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
   await signOut(setupAuth);
   return { uid: credential.user.uid, email, password: PASSWORD };
 }
@@ -63,8 +65,6 @@ async function seed(account) {
     const db = context.firestore();
     const put = (id, data) => setDoc(doc(db, 'users', account.uid, 'finance_records', id), data);
     await setDoc(doc(db, 'users', account.uid), { uid: account.uid, email: account.email, role: 'user', status: 'active', created_at: NOW, updated_at: NOW, last_login_at: NOW });
-    // Termos ja aceitos: o aviso de aceite nao cobre a tela durante o teste.
-    await setDoc(doc(db, 'legal_consents', account.uid), { uid: account.uid, terms_version: 'termos-2026-11-v1', privacy_version: 'privacidade-2026-11-v1', source: 'signup', locale: 'pt-BR', accepted_at: NOW, updated_at: NOW });
     await put('recente', expense(account, 'recente', competenceOffset(0)));
     await put('futuro', expense(account, 'futuro', competenceOffset(3), { status: 'Pago' }));
     await put('antigo_pago', expense(account, 'antigo_pago', old));

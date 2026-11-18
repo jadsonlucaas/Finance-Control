@@ -23,6 +23,7 @@ import {
   buildBackupChecksum
 } from '../../src/application/backup/financeBackupUseCases.js';
 import { buildOperationFingerprint } from '../../src/application/gateway/idempotency.js';
+import { acceptCurrentLegalTerms } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -74,6 +75,7 @@ async function clearAuthEmulator() {
 async function createActiveAccount(label) {
   const email = emailFor(label);
   const credential = await createUserWithEmailAndPassword(setupAuth, email, PASSWORD);
+  await acceptCurrentLegalTerms(testEnv, credential.user.uid);
   const profile = {
     uid: credential.user.uid,
     email,
