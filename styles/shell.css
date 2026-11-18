@@ -1039,3 +1039,33 @@ textarea:focus-visible {
         transition: none !important;
     }
 }
+
+/* ---------- Campo de mes no iPhone ----------
+ * O Safari do iOS da ao input type=month uma largura propria e ignora width:100%; sem
+ * appearance:none o campo passa da borda da caixa. */
+.dashboard-period-input {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    box-sizing: border-box;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 0 12px !important;
+}
+
+.dashboard-period-input::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    /* No celular a caixa externa some: fica so o rotulo e o campo. */
+    .dashboard-period-stepper .dashboard-period-field {
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        gap: 4px;
+    }
+}
