@@ -24,6 +24,13 @@ function amountOf(record) {
   return Number.isFinite(value) ? Math.abs(value) : 0;
 }
 
+// Entradas do Dashboard chegam ja calculadas (salario, quinzena, HE): o valor do cartao e
+// cardLiquido/liquido, o mesmo que o total "Entradas" usa. amount fica para lancamentos simples.
+function incomeOf(record) {
+  const value = Number(record?.cardLiquido ?? record?.liquido ?? record?.amount);
+  return Number.isFinite(value) ? Math.abs(value) : 0;
+}
+
 function recordDay(record, month, lastDay, preferDue) {
   const first = preferDue ? record?.due_date : record?.occurred_date;
   const second = preferDue ? record?.occurred_date : record?.due_date;
@@ -49,7 +56,7 @@ export function buildBalanceTrajectory({ month, today, entradas = [], saidas = [
   let openCount = 0;
   for (const record of entradas) {
     if (OPEN_STATUSES.has(record?.status)) continue;
-    const value = amountOf(record);
+    const value = incomeOf(record);
     if (!value) continue;
     delta[recordDay(record, month, lastDay, false)] += value;
   }

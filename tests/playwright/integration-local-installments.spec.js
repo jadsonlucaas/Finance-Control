@@ -16,7 +16,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
-import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
+import { acceptCurrentLegalTerms, openDashboardRecordList, closeDashboardRecordList, grantPremiumAccess } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -329,9 +329,11 @@ test('installment series payment persists and stays isolated across A -> B -> A 
   await page.evaluate(() => window.switchTab('dashboard'));
   await setDashboardPeriodForSeptember(page);
   await expect(page.locator('#summary-cards')).toContainText('R$ 33,33');
-  await expect(page.locator('#recent-list')).toContainText(DESCRIPTION);
-  await expect(page.locator('#recent-list')).toContainText('Parcela 1/3');
-  await expect(page.locator('#recent-list')).not.toContainText('Parcela 2/3');
+  const dashboardList = await openDashboardRecordList(page);
+  await expect(dashboardList).toContainText(DESCRIPTION);
+  await expect(dashboardList).toContainText('Parcela 1/3');
+  await expect(dashboardList).not.toContainText('Parcela 2/3');
+  await closeDashboardRecordList(page);
 
   await page.evaluate(() => window.switchTab('parcelamentos'));
   await expect(page.locator('#parcelamentos-total-comprometido')).toContainText('R$ 66,67');

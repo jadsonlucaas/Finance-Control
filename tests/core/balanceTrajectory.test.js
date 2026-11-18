@@ -35,6 +35,17 @@ describe('trajetoria do saldo no mes', () => {
     expect(future.projectedEnd).toBe(-80);
   });
 
+  it('usa o liquido das entradas calculadas, como o total Entradas do Dashboard', () => {
+    const result = buildBalanceTrajectory({
+      month: '2026-11',
+      today: '2026-11-18',
+      entradas: [{ type: 'entrada', person: 'Jadson', cardLiquido: 5268.74, liquido: 9999, competence: '2026-11' }],
+      saidas: [saida(1393.29, 'Pago', '2026-11-05'), saida(2806, 'Em aberto', '2026-11-10')]
+    });
+    expect(result.current).toBe(1069.45);
+    expect(result.projectedEnd).toBe(1069.45);
+  });
+
   it('ignora mes invalido e entradas ainda nao recebidas', () => {
     expect(buildBalanceTrajectory({ month: '11/2026', today: '2026-11-16' })).toBeNull();
     const result = buildBalanceTrajectory({ month: '2026-11', today: '2026-11-16', entradas: [{ amount: 10, status: 'Em aberto', occurred_date: '2026-11-01' }] });

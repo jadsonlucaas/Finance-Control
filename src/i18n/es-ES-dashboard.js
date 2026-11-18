@@ -377,5 +377,7 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Novo gasto': 'Nuevo gasto',
   'Nova entrada': 'Nuevo ingreso',
   'Buscar no menu': 'Buscar en el menú',
-  'Lançamentos': 'Movimientos'
+  'Lançamentos': 'Movimientos',
+  'Recolher menu': 'Contraer menú',
+  'Exibir menu': 'Mostrar menú'
 });

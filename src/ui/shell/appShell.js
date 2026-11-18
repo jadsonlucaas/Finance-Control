@@ -6,6 +6,7 @@
  * menu da conta sao os mesmos de antes (#theme-toggle, #btn-export-pdf, #btn-logout), so
  * mudaram de lugar. Assim os bloqueios do plano e os eventos antigos continuam valendo.
  */
+const SIDEBAR_COLLAPSED_KEY = 'finance-control-sidebar-collapsed-v1';
 const LEDGER_TABS = new Set(['saidas', 'entradas']);
 
 export function bottomTabFor(tab) {
@@ -89,7 +90,40 @@ export function installAppShell(target = globalThis) {
     });
   });
 
-  const shell = { installed: true, setMenuOpen, isMenuOpen, paintAvatar };
+  // Computador: recolher o menu lateral para uma faixa so com icones (lembrado neste navegador).
+  const collapseButton = byId('btn-sidebar-collapse');
+  const root = documentRef.documentElement;
+  function setSidebarCollapsed(collapsed) {
+    root.classList.toggle('sidebar-collapsed', collapsed);
+    if (collapseButton) {
+      const label = collapsed ? 'Exibir menu' : 'Recolher menu';
+      collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      collapseButton.setAttribute('aria-label', label);
+      collapseButton.title = label;
+    }
+    // Na faixa recolhida o nome do item aparece ao passar o mouse.
+    byId('main-tabs')?.querySelectorAll('button[data-tab]').forEach((button) => {
+      if (collapsed) button.title = button.textContent.trim();
+      else button.removeAttribute('title');
+    });
+    try {
+      target.localStorage?.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch (error) {
+      // Sem armazenamento local (aba privada): so nao lembra a escolha.
+    }
+  }
+  let startCollapsed = false;
+  try {
+    startCollapsed = target.localStorage?.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  } catch (error) {
+    startCollapsed = false;
+  }
+  if (collapseButton) {
+    setSidebarCollapsed(startCollapsed);
+    collapseButton.addEventListener('click', () => setSidebarCollapsed(!root.classList.contains('sidebar-collapsed')));
+  }
+
+  const shell = { installed: true, setSidebarCollapsed, setMenuOpen, isMenuOpen, paintAvatar };
   target.financeApp = target.financeApp || {};
   target.financeApp.appShell = shell;
   return shell;
