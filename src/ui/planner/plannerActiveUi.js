@@ -1,5 +1,5 @@
 import { createPlannerController } from './plannerController.js';
-import { syncPlannerExpandAll, togglePlannerDetails } from './plannerPresenter.js';
+import { setPlannerNewEventOpen, syncPlannerExpandAll, togglePlannerDetails } from './plannerPresenter.js';
 
 function defineModernFlag(fn) {
   if (typeof fn !== 'function') return fn;
@@ -40,7 +40,19 @@ function bindPlannerActions(target, controller) {
       return;
     }
 
-    // Cabecalho do dia na agenda do mes e botao "Ver mes" filtram a lista pelo dia.
+    // "Novo evento" abre o formulario numa janela propria; o X ou o fundo fecham.
+    if (event.target.closest?.('[data-planner-new-event]')) {
+      event.preventDefault();
+      setPlannerNewEventOpen(documentRef, true);
+      return;
+    }
+    if (event.target.closest?.('[data-planner-close-new-event]')) {
+      event.preventDefault();
+      setPlannerNewEventOpen(documentRef, false);
+      return;
+    }
+
+    // X e fundo da janela do dia desmarcam o dia (fecha a janela).
     const pickDate = event.target.closest?.('[data-planner-pick-date]');
     if (pickDate) {
       event.preventDefault();
@@ -54,6 +66,25 @@ function bindPlannerActions(target, controller) {
     event.stopPropagation();
     controller.delegateExpenseAction(button.dataset.plannerAction, button.dataset.plannerEventId);
   });
+  // Esc fecha primeiro o formulario, depois a janela do dia; o Planner so fecha no proximo Esc.
+  documentRef.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const modal = documentRef.getElementById?.('planner-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    const form = documentRef.getElementById('planner-new-event-dialog');
+    const day = documentRef.getElementById('planner-day-dialog');
+    if (form && !form.classList.contains('hidden')) {
+      setPlannerNewEventOpen(documentRef, false);
+    } else if (day && !day.classList.contains('hidden')) {
+      const selected = controller.getState?.().selectedDate;
+      if (selected) controller.selectDate(selected);
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
   // "toggle" nao borbulha: escuta na captura para manter o rotulo Expandir/Recolher em dia.
   documentRef.addEventListener('toggle', (event) => {
     if (event.target?.classList?.contains('planner-item')) syncPlannerExpandAll(documentRef);
@@ -76,13 +107,18 @@ export function installPlannerActiveUi(target = globalThis, options = {}) {
     financialActions: options.financialActions,
     readSource: options.readSource || createReadSource(target),
     presenter: options.presenter,
+    monthSummary: options.monthSummary,
     now: options.now
   });
 
   target.openPlannerModal = defineModernFlag(() => controller.open());
   target.closePlannerModal = defineModernFlag(() => controller.close());
   target.renderPlannerModal = defineModernFlag(() => controller.render());
-  target.savePlannerEvent = defineModernFlag(() => controller.saveLocalEvent());
+  target.savePlannerEvent = defineModernFlag(async () => {
+    const result = await controller.saveLocalEvent();
+    if (result?.success) setPlannerNewEventOpen(target.document, false);
+    return result;
+  });
   target.deletePlannerEvent = defineModernFlag((id) => controller.deleteLocalEvent(id));
   target.shiftPlannerMonth = defineModernFlag((delta) => controller.shiftMonth(delta));
   target.selectPlannerDate = defineModernFlag((date) => controller.selectDate(date));

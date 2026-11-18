@@ -186,6 +186,43 @@ function buildDashboardReadModelFromLegacyAdapters() {
   }));
 }
 
+/**
+ * Totais do Dashboard para um unico mes (mesmas regras do Inicio: entradas consolidadas,
+ * saidas pagas + em aberto, saldo previsto). Usado pelo Planner para os numeros baterem.
+ */
+export function getDashboardMonthTotals(month = '') {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) return null;
+  const filters = { ...readDashboardFilterState(), start: month, end: month };
+  const model = buildDashboardReadModel({
+    records: queryFinanceRecordsForTarget({}, window),
+    filters,
+    referenceData: {
+      months: [month],
+      people: getWindowFunction('getPeopleRecords') ? getWindowFunction('getPeopleRecords')() : [],
+      generatedPercentageExpenses: getDashboardGeneratedPercentageSaidas(month, month)
+    },
+    options: {
+      consolidateEntry: getWindowFunction('consolidarEntradaMensal'),
+      mapEntryToCycleView: getWindowFunction('mapEntradaToCycleView'),
+      getSalaryInfo: getWindowFunction('getSalarioVigente'),
+      isFinancialEntradaRecord: getWindowFunction('isFinancialEntradaRecord')
+        ? getWindowFunction('isFinancialEntradaRecord')
+        : (record) => record?.type === 'entrada',
+      formatCompetence: getWindowFunction('formatCompetence')
+        ? getWindowFunction('formatCompetence')
+        : (value) => value,
+      filterOrphanPercentageExitRecords: getWindowFunction('filterOrphanPercentageExitRecords'),
+      dedupePercentageExitRecords: getWindowFunction('dedupePercentageExitRecords')
+    }
+  });
+  const totals = model.summary.totals;
+  return {
+    income: totals.totalEntradas,
+    expense: Math.round((totals.totalSaidasPagas + totals.totalAberto) * 100) / 100,
+    balance: totals.saldoProjetado
+  };
+}
+
 export function getDashboardBaseSaidas() {
   return buildDashboardReadModelFromLegacyAdapters().expenses;
 }

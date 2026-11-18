@@ -522,7 +522,9 @@ export function installPlannerLazyLoader(target = globalThis) {
         ownerProvider: createPlannerOwnerProvider(target),
         localEventStore: target.financeApp?.plannerStorage?.localEventStore,
         financialActions: createPlannerFinancialActions(target),
-        readSource: createPlannerReadSource(target)
+        readSource: createPlannerReadSource(target),
+        // Resumo do mes no Planner usa as mesmas regras do Dashboard (entradas consolidadas).
+        monthSummary: async (month) => (await import('./ui/dashboard/dashboardData.js')).getDashboardMonthTotals(month)
       }))
       .then((result) => {
         state.controller = result?.controller || state.controller;

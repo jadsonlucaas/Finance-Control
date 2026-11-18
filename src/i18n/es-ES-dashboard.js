@@ -9,6 +9,8 @@ export const DASHBOARD_PATTERNS = Object.freeze([
   [new RegExp(`^${MONTH} até ${MONTH}$`), '$1 hasta $2'],
   [/^Gerado em (.+) \| Periodo (.+) ate (.+)$/, (_, date, start, end) => `Generado el ${date} | Periodo ${start === 'inicio' ? 'inicio' : start} hasta ${end === 'fim' ? 'fin' : end}`],
   [/^Gerado em (.+)$/, 'Generado el $1'],
+  [/^Saldo do dia: (.+)$/, 'Saldo del día: $1'],
+  [/^(\d{2}\/\d{2}\/\d{4}) · (\d+) (?:item|itens)$/, (_, date, count) => `${date} · ${count} ${count === '1' ? 'elemento' : 'elementos'}`],
   [/^Gastos diários: (.+)$/, 'Gastos diarios: $1'],
   [/^(\d+) lançamento\(s\) • competência (.+)$/, '$1 movimiento(s) • periodo $2'],
   [/^Entrada consolidada - (.+)$/, (_, cycle) => `Ingreso consolidado - ${cycle === 'Quinzena' ? 'Quincena' : cycle === 'Início do mês' ? 'Inicio de mes' : cycle}`]
@@ -362,11 +364,11 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Falha ao renderizar gráficos do PDF': 'Error al generar los gráficos del PDF',
   // --- Planner mensal ---
   'Planner mensal': 'Planificador mensual',
-  'Contas, entradas, feriados e compromissos do mês': 'Pagos, ingresos, festivos y compromisos del mes',
+  'Escolha um dia para ver o que vence, entra ou acontece nele': 'Elige un día para ver qué vence, entra u ocurre en él',
+  'Fechar dia': 'Cerrar día',
+  'Adicionar evento neste dia': 'Añadir evento en este día',
   'Escolher mês': 'Elegir mes',
   'Calendário do mês': 'Calendario del mes',
-  'Agenda do mês': 'Agenda del mes',
-  'Ver mês': 'Ver mes',
   'Recolher': 'Contraer',
   'Novo evento': 'Nuevo evento',
   'Salvar evento': 'Guardar evento',
@@ -383,7 +385,6 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Recorrência': 'Recurrencia',
   'Banco de horas': 'Bolsa de horas',
   'Nada marcado neste dia.': 'Nada programado este día.',
-  'Nada marcado neste mês. Use "Novo evento" para adicionar um compromisso ou feriado.': 'Nada programado este mes. Usa "Nuevo evento" para añadir un compromiso o festivo.',
   // --- Trajetoria do saldo (Inicio) ---
   'Saldo até hoje': 'Saldo hasta hoy',
   'Saldo do mês': 'Saldo del mes',
