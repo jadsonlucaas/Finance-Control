@@ -43,6 +43,12 @@ function successful(result = {}) {
   return result.success === true || result.isOk === true || result.ok === true;
 }
 
+const ACTION_MESSAGES = {
+  'mark-paid': 'Marcado como pago!',
+  archive: 'Lançamento arquivado!',
+  delete: 'Excluído!'
+};
+
 export function createPlannerController(dependencies = {}) {
   const target = dependencies.target || globalThis;
   const documentRef = dependencies.document || target.document;
@@ -192,13 +198,23 @@ export function createPlannerController(dependencies = {}) {
       return { success: false, code: 'PLANNER_EVENT_NOT_FOUND' };
     }
     const input = { expenseId: event.sourceRecordId, id: event.sourceRecordId };
+    // O registro original vai nas opcoes para o plano B (gravacao direta) quando o gateway falta.
+    const options = { sourceReferenceId: 'planner', record: event.sourceRecord };
     let result = null;
-    if (action === 'mark-paid') result = await financialActions.markExpenseAsPaid?.(input, { sourceReferenceId: 'planner' });
-    if (action === 'update') result = await financialActions.updateExpense?.(input, { sourceReferenceId: 'planner' });
-    if (action === 'archive') result = await financialActions.archiveExpense?.(input, { sourceReferenceId: 'planner' });
-    if (action === 'delete') result = await financialActions.deleteExpense?.(input, { sourceReferenceId: 'planner' });
-    if (!result) return { success: false, code: 'PLANNER_ACTION_UNAVAILABLE' };
-    if (successful(result)) await load();
+    if (action === 'mark-paid') result = await financialActions.markExpenseAsPaid?.(input, options);
+    if (action === 'update') result = await financialActions.updateExpense?.(input, options);
+    if (action === 'archive') result = await financialActions.archiveExpense?.(input, options);
+    if (action === 'delete') result = await financialActions.deleteExpense?.(input, options);
+    if (!result) {
+      toast('Não foi possível concluir a ação. Tente novamente.', true);
+      return { success: false, code: 'PLANNER_ACTION_UNAVAILABLE' };
+    }
+    if (successful(result)) {
+      toast(ACTION_MESSAGES[action] || 'Pronto!');
+      await load();
+    } else {
+      toast('Não foi possível concluir a ação. Tente novamente.', true);
+    }
     return result;
   }
 
