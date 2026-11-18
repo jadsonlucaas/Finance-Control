@@ -64,7 +64,23 @@ function bindPlannerActions(target, controller) {
     if (!button) return;
     event.preventDefault();
     event.stopPropagation();
-    controller.delegateExpenseAction(button.dataset.plannerAction, button.dataset.plannerEventId);
+    if (button.disabled) return;
+    // Excluir pede um segundo toque ("Confirmar exclusao") antes de apagar.
+    if (button.dataset.plannerAction === 'delete' && button.dataset.confirming !== 'true') {
+      button.dataset.confirming = 'true';
+      button.textContent = 'Confirmar exclusão';
+      setTimeout(() => {
+        if (!button.isConnected || button.dataset.confirming !== 'true') return;
+        button.dataset.confirming = '';
+        button.textContent = 'Excluir';
+      }, 4000);
+      return;
+    }
+    button.disabled = true;
+    Promise.resolve(controller.delegateExpenseAction(button.dataset.plannerAction, button.dataset.plannerEventId))
+      .finally(() => {
+        if (button.isConnected) button.disabled = false;
+      });
   });
   // Esc fecha primeiro o formulario, depois a janela do dia; o Planner so fecha no proximo Esc.
   documentRef.addEventListener('keydown', (event) => {

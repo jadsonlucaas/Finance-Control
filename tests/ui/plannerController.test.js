@@ -51,6 +51,23 @@ function presenter() {
 }
 
 describe('planner controller', () => {
+  it('shows an error toast when a Planner expense action fails', async () => {
+    const toast = vi.fn();
+    const controller = createPlannerController({
+      document: documentStub(),
+      storage: storage(),
+      ownerProvider: () => 'owner-a',
+      presenter: presenter(),
+      toast,
+      financialActions: { archiveExpense: vi.fn(async () => ({ success: false, code: 'GATEWAY_UNAVAILABLE' })) },
+      readSource: { read: async () => ({ records: [{ id: 's9', type: 'saida', description: 'Luz', amount: 50, due_date: '2026-06-05', competence: '2026-06', status: 'Em aberto' }] }), subscribe: null }
+    });
+    await controller.open();
+    const result = await controller.delegateExpenseAction('archive', 'saida:s9');
+    expect(result.success).toBe(false);
+    expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('Não foi possível'), true);
+  });
+
   it('uses the Dashboard month totals for the summary and falls back when they fail', async () => {
     const ui = presenter();
     const monthSummary = vi.fn(async (month) => ({ income: 5000, expense: 1200, balance: 3800, month }));
@@ -148,9 +165,9 @@ describe('planner controller', () => {
     await controller.delegateExpenseAction('archive', 'saida:s1');
     await controller.delegateExpenseAction('delete', 'saida:s1');
 
-    expect(financialActions.markExpenseAsPaid).toHaveBeenCalledWith({ expenseId: 's1', id: 's1' }, { sourceReferenceId: 'planner' });
-    expect(financialActions.archiveExpense).toHaveBeenCalledWith({ expenseId: 's1', id: 's1' }, { sourceReferenceId: 'planner' });
-    expect(financialActions.deleteExpense).toHaveBeenCalledWith({ expenseId: 's1', id: 's1' }, { sourceReferenceId: 'planner' });
+    expect(financialActions.markExpenseAsPaid).toHaveBeenCalledWith({ expenseId: 's1', id: 's1' }, expect.objectContaining({ sourceReferenceId: 'planner', record: expect.objectContaining({ id: 's1', type: 'saida' }) }));
+    expect(financialActions.archiveExpense).toHaveBeenCalledWith({ expenseId: 's1', id: 's1' }, expect.objectContaining({ sourceReferenceId: 'planner', record: expect.objectContaining({ id: 's1', type: 'saida' }) }));
+    expect(financialActions.deleteExpense).toHaveBeenCalledWith({ expenseId: 's1', id: 's1' }, expect.objectContaining({ sourceReferenceId: 'planner', record: expect.objectContaining({ id: 's1', type: 'saida' }) }));
   });
 
   it('cleans subscriptions explicitly', () => {

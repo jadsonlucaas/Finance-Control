@@ -597,11 +597,23 @@ function createPlannerReadSource(target = globalThis) {
 }
 
 function createPlannerFinancialActions(target = globalThis) {
+  // Mesmo caminho do resto do app: tenta o gateway e, se ele nao estiver disponivel,
+  // grava direto pelo financeRecordMutations com o registro original (options.record).
+  const mutations = () => target.financeRecordMutations;
+  const quiet = { successMessage: '', errorMessage: '', uncertainMessage: '' };
+  const withFallback = (options = {}, buildFallback) => ({
+    ...options,
+    ...quiet,
+    fallback: options.record && mutations() ? () => buildFallback(options.record) : undefined
+  });
   return {
     updateExpense: (input, options) => target.financeApp?.financialCrud?.updateExpense?.(input, options),
-    markExpenseAsPaid: (input, options) => target.financeApp?.financialCrud?.markExpenseAsPaid?.(input, options),
-    archiveExpense: (input, options) => target.financeApp?.financialCrud?.archiveExpense?.(input, options),
-    deleteExpense: (input, options) => target.financeApp?.financialCrud?.deleteExpense?.(input, options)
+    markExpenseAsPaid: (input, options = {}) => target.financeApp?.financialCrud?.markExpenseAsPaid?.(input, withFallback(options,
+      (record) => mutations().updateRecord(mutations().buildPaidToggleRecord(record)))),
+    archiveExpense: (input, options = {}) => target.financeApp?.financialCrud?.archiveExpense?.(input, withFallback(options,
+      (record) => mutations().updateRecord(mutations().buildArchiveToggleRecord(record, { isArchivedRecord: target.isArchivedRecord })))),
+    deleteExpense: (input, options = {}) => target.financeApp?.financialCrud?.deleteExpense?.(input, withFallback(options,
+      (record) => mutations().deleteRecord(record)))
   };
 }
 

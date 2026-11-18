@@ -1070,6 +1070,54 @@ textarea:focus-visible {
     }
 }
 
+/* ---------- Campos de data no iPhone (todas as telas) ----------
+ * Mesmo motivo do campo de mes: sem appearance:none o Safari do iOS ignora a largura. */
+input[type="date"],
+input[type="month"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Filtros De/Ate de Lancamentos: o campo fica dentro da caixa, sem borda propria. */
+.saidas-date-filter {
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.saidas-date-filter input {
+    flex: 1 1 auto;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: rgb(var(--color-text-primary));
+    text-align: right;
+}
+
+.saidas-date-filter input::-webkit-date-and-time-value {
+    text-align: right;
+    margin: 0;
+}
+
+/* Etiquetas das linhas de lancamento (data, pessoa, cartao, parcela) legiveis nos dois temas. */
+.mobile-list-pill {
+    min-height: 24px;
+    padding: 2px 10px !important;
+    background: rgb(var(--color-surface-light) / 0.8) !important;
+    border: 1px solid rgb(var(--color-border) / 0.9) !important;
+    color: rgb(var(--color-text-secondary)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
 /* ---------- Planner mensal (v3) ----------
  * Mes limpo: dias com pontos por tipo (e saldo do dia no computador). Detalhes so na janela do dia.
  * Celular (< 768px): folha em tela cheia e janelas como folha inferior.

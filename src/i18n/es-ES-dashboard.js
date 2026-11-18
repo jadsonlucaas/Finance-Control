@@ -363,6 +363,9 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Prioridade: preservar o saldo positivo e reforçar reserva com excedente recorrente.': 'Prioridad: mantener el saldo positivo y reforzar la reserva con el excedente.',
   'Falha ao renderizar gráficos do PDF': 'Error al generar los gráficos del PDF',
   // --- Planner mensal ---
+  'Confirmar exclusão': 'Confirmar eliminación',
+  'Marcado como pago!': '¡Marcado como pagado!',
+  'Não foi possível concluir a ação. Tente novamente.': 'No se pudo completar la acción. Inténtalo de nuevo.',
   'Planner mensal': 'Planificador mensual',
   'Escolha um dia para ver o que vence, entra ou acontece nele': 'Elige un día para ver qué vence, entra u ocurre en él',
   'Fechar dia': 'Cerrar día',
