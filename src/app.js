@@ -31,6 +31,7 @@ import { createRetryPolicy } from './application/resilience/retryPolicy.js';
 import { createPercentageRuleMaterializationRunner } from './application/useCases/percentageRuleMaterializationUseCases.js';
 import { installMonthlyDetailSelectorGlobals } from './application/selectors/monthlyDetailSelectors.js';
 import { loadLegacyClassicScripts } from './legacy/classicScripts.js';
+import { installLooseEntriesSection } from './ui/entries/looseEntriesSection.js';
 import { installGlobalBridge } from './legacy/globalBridge.js';
 import { installLucideIconScheduler } from './legacy/iconScheduler.js';
 import { installRecordHelperGlobals } from './legacy/recordHelpers.js';
@@ -129,6 +130,7 @@ export function bootstrapApp() {
       installPlannerLazyLoader(globalThis);
       installSettingsLazyLoader(globalThis);
       installReportExportLazyLoader(globalThis);
+      installLooseEntriesSection(globalThis);
       markBootstrap('finance-shell-ready');
       scheduleFirstScreenReadyMark(globalThis);
       return installFirebaseServicesWhenReady(globalThis)
