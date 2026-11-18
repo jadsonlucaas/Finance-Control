@@ -83,25 +83,27 @@ export function viewDashboardTemplate() {
                     <div id="person-balance-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
                 </div>
 
-                <div id="dashboard-chart-grid" class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
-                    <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no grafico para filtrar">
-                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Distribuicao por Categoria</h3>
-                        <div class="chart-container">
-                            <canvas id="chart-category"></canvas>
-                        </div>
-                    </div>
-                    <div class="glass rounded-xl p-4" title="Distribuicao detalhada por subcategoria">
-                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Detalhe por Subcategoria</h3>
-                        <div class="chart-container">
-                            <canvas id="chart-category-detail"></canvas>
-                        </div>
-                    </div>
-                    <div class="glass rounded-xl p-4 cursor-pointer hover:border-accent/40 transition-colors" title="Clique no grafico para filtrar">
-                        <h3 class="text-sm font-semibold text-textSecondary mb-4">Gastos por Pessoa</h3>
-                        <div class="chart-container">
-                            <canvas id="chart-person"></canvas>
-                        </div>
-                    </div>
+                <div id="dashboard-chart-grid" class="breakdown-grid mb-4">
+                    <section class="breakdown-card breakdown-card-category" aria-labelledby="dash-category-title">
+                        <header class="breakdown-head">
+                            <h3 id="dash-category-title" class="breakdown-title">Por categoria</h3>
+                            <p class="breakdown-meta">Total <strong id="dash-breakdown-total"></strong></p>
+                        </header>
+                        <div id="dash-category-breakdown" class="breakdown-body"></div>
+                    </section>
+                    <section class="breakdown-card breakdown-card-person" aria-labelledby="dash-person-title">
+                        <header class="breakdown-head">
+                            <h3 id="dash-person-title" class="breakdown-title">Por pessoa</h3>
+                        </header>
+                        <div id="dash-person-breakdown" class="breakdown-body"></div>
+                    </section>
+                    <section class="breakdown-card breakdown-card-subcategory" aria-labelledby="dash-subcategory-title">
+                        <header class="breakdown-head">
+                            <h3 id="dash-subcategory-title" class="breakdown-title">Por subcategoria</h3>
+                            <p class="breakdown-meta">Selecione uma linha para ver os lançamentos</p>
+                        </header>
+                        <div id="dash-subcategory-breakdown" class="breakdown-body"></div>
+                    </section>
                 </div>
 
                 <div class="glass rounded-xl p-4 mb-4">
