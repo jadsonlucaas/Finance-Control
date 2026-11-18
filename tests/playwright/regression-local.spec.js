@@ -885,7 +885,7 @@ test('active Planner UI lazy loads persisted records and opens details by real i
 
   await page.evaluate(() => window.openPlannerModal());
   await expect(page.locator('#planner-modal')).toBeVisible();
-  await expect(page.locator('#planner-selected-date-details')).toContainText('R$ 60,00');
+  await expect(page.locator('#planner-summary')).toContainText('R$ 60,00');
   await expect(page.locator('#planner-selected-date-details')).toContainText('R$ 120,00');
   await expect(page.locator('#planner-selected-date-details')).toContainText('Feriado local');
 

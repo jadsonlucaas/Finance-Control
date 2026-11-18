@@ -1,4 +1,5 @@
 import { createPlannerController } from './plannerController.js';
+import { syncPlannerExpandAll, togglePlannerDetails } from './plannerPresenter.js';
 
 function defineModernFlag(fn) {
   if (typeof fn !== 'function') return fn;
@@ -32,12 +33,31 @@ function bindPlannerActions(target, controller) {
       return;
     }
 
+    // Seta "Expandir/Recolher" abre ou fecha os detalhes de todos os itens da lista.
+    if (event.target.closest?.('[data-planner-expand-all]')) {
+      event.preventDefault();
+      togglePlannerDetails(documentRef);
+      return;
+    }
+
+    // Cabecalho do dia na agenda do mes e botao "Ver mes" filtram a lista pelo dia.
+    const pickDate = event.target.closest?.('[data-planner-pick-date]');
+    if (pickDate) {
+      event.preventDefault();
+      controller.selectDate(pickDate.dataset.plannerPickDate);
+      return;
+    }
+
     const button = event.target.closest?.('[data-planner-action]');
     if (!button) return;
     event.preventDefault();
     event.stopPropagation();
     controller.delegateExpenseAction(button.dataset.plannerAction, button.dataset.plannerEventId);
   });
+  // "toggle" nao borbulha: escuta na captura para manter o rotulo Expandir/Recolher em dia.
+  documentRef.addEventListener('toggle', (event) => {
+    if (event.target?.classList?.contains('planner-item')) syncPlannerExpandAll(documentRef);
+  }, true);
   documentRef.documentElement.dataset.financePlannerModernActionsBound = 'true';
 }
 
