@@ -28,46 +28,85 @@ function money(value) {
   return typeof globalThis.fmt === 'function' ? globalThis.fmt(value) : String(value);
 }
 
-export function trajectoryPaths(trajectory, WIDTH = DEFAULT_WIDTH) {
+const PAD_X = 10;
+// Faixa de baixo onde ficam as barras de gastos do dia (fracao da area do grafico).
+const BAR_BAND = 0.42;
+
+function plotHeight() {
+  return globalThis.matchMedia?.('(min-width: 768px)')?.matches ? 190 : 150;
+}
+
+export function trajectoryPaths(trajectory, WIDTH = DEFAULT_WIDTH, height = HEIGHT) {
   const { points, lastDay, todayDay } = trajectory;
   const values = points.map((point) => point.balance);
   const min = Math.min(0, ...values);
   const max = Math.max(0, ...values);
   const span = max - min || 1;
-  const x = (day) => ((day - 1) / Math.max(lastDay - 1, 1)) * WIDTH;
-  const y = (value) => PAD_TOP + (1 - (value - min) / span) * (HEIGHT - PAD_TOP - PAD_BOTTOM);
+  const x = (day) => PAD_X + ((day - 1) / Math.max(lastDay - 1, 1)) * (WIDTH - PAD_X * 2);
+  const y = (value) => PAD_TOP + (1 - (value - min) / span) * (height - PAD_TOP - PAD_BOTTOM);
   const coords = points.map((point) => [x(point.day), y(point.balance)]);
   const toPath = (list) => list.map(([px, py], index) => `${index ? 'L' : 'M'}${px.toFixed(1)} ${py.toFixed(1)}`).join(' ');
   const realized = todayDay ? coords.slice(0, todayDay) : [];
   const projected = coords.slice(Math.max(todayDay - 1, 0));
   const zeroY = y(0);
   const area = realized.length
-    ? `${toPath(realized)} L${realized[realized.length - 1][0].toFixed(1)} ${zeroY.toFixed(1)} L0 ${zeroY.toFixed(1)} Z`
+    ? `${toPath(realized)} L${realized[realized.length - 1][0].toFixed(1)} ${zeroY.toFixed(1)} L${PAD_X} ${zeroY.toFixed(1)} Z`
     : '';
   return {
     realized: realized.length > 1 ? toPath(realized) : '',
     projected: projected.length > 1 && todayDay < lastDay ? toPath(projected) : '',
     area,
     zeroY,
+    coords,
+    x,
     today: todayDay ? { x: coords[todayDay - 1][0], y: coords[todayDay - 1][1] } : null
   };
 }
 
-function svgMarkup(trajectory, WIDTH = DEFAULT_WIDTH) {
-  const paths = trajectoryPaths(trajectory, WIDTH);
+/** Barras dos gastos do dia, na faixa de baixo, com escala propria. */
+export function dailyBars(dailyValues = [], trajectory, WIDTH = DEFAULT_WIDTH, height = HEIGHT) {
+  const { lastDay, todayDay } = trajectory;
+  const base = height - PAD_BOTTOM;
+  const band = (height - PAD_TOP - PAD_BOTTOM) * BAR_BAND;
+  const max = Math.max(0, ...dailyValues.map((value) => Number(value) || 0));
+  const step = (WIDTH - PAD_X * 2) / Math.max(lastDay - 1, 1);
+  const barWidth = Math.max(2, Math.min(14, step * 0.6));
+  const bars = [];
+  for (let day = 1; day <= lastDay; day += 1) {
+    const value = Number(dailyValues[day - 1]) || 0;
+    if (!(value > 0) || !max) continue;
+    const h = Math.max(2, (value / max) * band);
+    const cx = PAD_X + (day - 1) * step;
+    bars.push({ day, value, x: cx - barWidth / 2, y: base - h, width: barWidth, height: h, future: day > todayDay });
+  }
+  return { bars, step };
+}
+
+function svgMarkup(trajectory, WIDTH = DEFAULT_WIDTH, height = HEIGHT, dailyValues = []) {
+  const paths = trajectoryPaths(trajectory, WIDTH, height);
+  const { bars, step } = dailyBars(dailyValues, trajectory, WIDTH, height);
   const today = paths.today;
   const labelX = today ? Math.min(today.x + 8, WIDTH - 40) : 0;
+  const base = height - PAD_BOTTOM;
+  const hits = trajectory.points.map((point) => {
+    const cx = paths.x(point.day);
+    return `<rect class="trajectory-hit" data-trajectory-day="${point.day}" x="${(cx - step / 2).toFixed(1)}" y="0" width="${step.toFixed(1)}" height="${base}"></rect>`;
+  }).join('');
   return `
-    <svg class="trajectory-chart" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-hidden="true" focusable="false">
-      <line class="trajectory-zero" x1="0" x2="${WIDTH}" y1="${paths.zeroY.toFixed(1)}" y2="${paths.zeroY.toFixed(1)}"></line>
+    <svg class="trajectory-chart" viewBox="0 0 ${WIDTH} ${height}" width="${WIDTH}" height="${height}" aria-hidden="true" focusable="false">
+      <line class="trajectory-zero" x1="${PAD_X}" x2="${WIDTH - PAD_X}" y1="${paths.zeroY.toFixed(1)}" y2="${paths.zeroY.toFixed(1)}"></line>
+      ${bars.map((bar) => `<rect class="trajectory-bar${bar.future ? ' is-future' : ''}" data-bar-day="${bar.day}" x="${bar.x.toFixed(1)}" y="${bar.y.toFixed(1)}" width="${bar.width.toFixed(1)}" height="${bar.height.toFixed(1)}" rx="2"></rect>`).join('')}
       ${paths.area ? `<path class="trajectory-area" d="${paths.area}"></path>` : ''}
       ${paths.realized ? `<path class="trajectory-line" d="${paths.realized}"></path>` : ''}
       ${paths.projected ? `<path class="trajectory-forecast-line" d="${paths.projected}"></path>` : ''}
-      ${today ? `<line class="trajectory-today" x1="${today.x.toFixed(1)}" x2="${today.x.toFixed(1)}" y1="6" y2="${HEIGHT - PAD_BOTTOM}"></line>
+      ${today ? `<line class="trajectory-today" x1="${today.x.toFixed(1)}" x2="${today.x.toFixed(1)}" y1="6" y2="${base}"></line>
       <circle class="trajectory-dot" cx="${today.x.toFixed(1)}" cy="${today.y.toFixed(1)}" r="5"></circle>
-      <text class="trajectory-text" x="${labelX.toFixed(1)}" y="14"></text>` : ''}
-      <text class="trajectory-text" x="0" y="${HEIGHT - 6}">1</text>
-      <text class="trajectory-text" x="${WIDTH}" y="${HEIGHT - 6}" text-anchor="end">${trajectory.lastDay}</text>
+      <text class="trajectory-text" data-trajectory-today-label x="${labelX.toFixed(1)}" y="14"></text>` : ''}
+      <line class="trajectory-guide" data-trajectory-guide x1="0" x2="0" y1="6" y2="${base}"></line>
+      <circle class="trajectory-hover-dot" data-trajectory-hover-dot cx="0" cy="0" r="4.5"></circle>
+      <text class="trajectory-text" x="${PAD_X}" y="${height - 6}">1</text>
+      <text class="trajectory-text" x="${WIDTH - PAD_X}" y="${height - 6}" text-anchor="end">${trajectory.lastDay}</text>
+      <g class="trajectory-hits">${hits}</g>
     </svg>`;
 }
 
@@ -121,7 +160,16 @@ function ensureCard(documentRef) {
         <button type="button" class="hero-cta" data-trajectory-cta>Ver contas</button>
       </div>
     </div>
-    <div class="trajectory-plot hero-plot" data-trajectory-plot></div>`;
+    <div class="hero-plot-wrap">
+      <div class="trajectory-plot hero-plot" data-trajectory-plot tabindex="0" role="group" aria-label="Saldo e gastos por dia. Use as setas para trocar o dia e Enter para ver os gastos."></div>
+      <div class="trajectory-tip hidden" data-trajectory-tip role="status" aria-live="polite">
+        <p class="trajectory-tip-day" data-tip-day></p>
+        <p class="trajectory-tip-row"><span class="trajectory-key is-line" aria-hidden="true"></span><span data-tip-balance-label>Saldo</span><strong data-tip-balance></strong></p>
+        <p class="trajectory-tip-row"><span class="trajectory-key is-bar" aria-hidden="true"></span><span>Gastos do dia</span><strong data-tip-spent></strong></p>
+        <p class="trajectory-tip-hint" data-tip-hint></p>
+      </div>
+      <p class="trajectory-legend" aria-hidden="true"><span><span class="trajectory-key is-line"></span>Saldo</span><span><span class="trajectory-key is-bar"></span>Gastos do dia</span></p>
+    </div>`;
   anchor.parentElement.insertBefore(card, anchor);
   card.querySelector('[data-trajectory-cta]').addEventListener('click', () => {
     if (typeof globalThis.switchTab === 'function') globalThis.switchTab('saidas');
@@ -129,7 +177,7 @@ function ensureCard(documentRef) {
   return card;
 }
 
-export function renderBalanceTrajectoryCard({ entradas = [], saidas = [], documentRef = globalThis.document, today = localToday() } = {}) {
+export function renderBalanceTrajectoryCard({ entradas = [], saidas = [], daily = null, documentRef = globalThis.document, today = localToday() } = {}) {
   if (!documentRef) return null;
   renderQuickAccess(documentRef);
   const start = documentRef.getElementById('f-comp-start')?.value || '';
@@ -171,6 +219,8 @@ export function renderBalanceTrajectoryCard({ entradas = [], saidas = [], docume
   card.querySelector('[data-trajectory-cta]').classList.toggle('hidden', !trajectory.openCount);
   const plot = card.querySelector('[data-trajectory-plot]');
   plot.__trajectory = trajectory;
+  plot.__daily = daily && daily.month === trajectory.month ? daily : null;
+  bindPlotInteractions(plot);
   drawPlot(plot);
   // Redesenha na largura real (o SVG nao estica o texto) quando a tela muda de tamanho.
   if (!plot.__trajectoryObserved && typeof globalThis.ResizeObserver === 'function') {
@@ -232,7 +282,118 @@ function drawPlot(plot) {
   const trajectory = plot.__trajectory;
   if (!trajectory) return;
   const width = Math.max(Math.round(plot.clientWidth || DEFAULT_WIDTH), 200);
-  plot.innerHTML = svgMarkup(trajectory, width);
-  const todayLabel = plot.querySelector('text.trajectory-text');
+  plot.innerHTML = svgMarkup(trajectory, width, plotHeight(), plot.__daily?.values || []);
+  const todayLabel = plot.querySelector('[data-trajectory-today-label]');
   if (todayLabel && trajectory.todayDay) todayLabel.textContent = translate('hoje');
+  if (plot.__activeDay) setActiveDay(plot, plot.__activeDay, { keepTip: true });
+}
+
+function dayLabel(month, day) {
+  return `${String(day).padStart(2, '0')}/${month.slice(5)}`;
+}
+
+function dayRecords(plot, day) {
+  const daily = plot.__daily;
+  if (!daily) return [];
+  const key = daily.detailKeys?.[day - 1];
+  return (key && daily.recordsByDate?.[key]) || [];
+}
+
+/** Marca o dia no grafico e mostra saldo e gastos dele. */
+export function setActiveDay(plot, day, { keepTip = false } = {}) {
+  const trajectory = plot.__trajectory;
+  if (!trajectory) return;
+  const wrap = plot.parentElement;
+  const tip = wrap?.querySelector('[data-trajectory-tip]');
+  const guide = plot.querySelector('[data-trajectory-guide]');
+  const dot = plot.querySelector('[data-trajectory-hover-dot]');
+  if (!day) {
+    plot.__activeDay = 0;
+    guide?.classList.remove('is-visible');
+    dot?.classList.remove('is-visible');
+    plot.querySelectorAll('.trajectory-bar.is-active').forEach((bar) => bar.classList.remove('is-active'));
+    tip?.classList.add('hidden');
+    return;
+  }
+  const point = trajectory.points[day - 1];
+  if (!point) return;
+  plot.__activeDay = day;
+  const width = Math.max(Math.round(plot.clientWidth || DEFAULT_WIDTH), 200);
+  const paths = trajectoryPaths(trajectory, width, plotHeight());
+  const [cx, cy] = paths.coords[day - 1];
+  guide?.setAttribute('x1', cx.toFixed(1));
+  guide?.setAttribute('x2', cx.toFixed(1));
+  guide?.classList.add('is-visible');
+  dot?.setAttribute('cx', cx.toFixed(1));
+  dot?.setAttribute('cy', cy.toFixed(1));
+  dot?.classList.add('is-visible');
+  plot.querySelectorAll('.trajectory-bar').forEach((bar) => bar.classList.toggle('is-active', Number(bar.dataset.barDay) === day));
+  if (!tip) return;
+  const spent = Number(plot.__daily?.values?.[day - 1]) || 0;
+  tip.querySelector('[data-tip-day]').textContent = point.projected
+    ? `${dayLabel(trajectory.month, day)} · ${translate('previsão')}`
+    : dayLabel(trajectory.month, day);
+  tip.querySelector('[data-tip-balance-label]').textContent = point.projected ? translate('Saldo previsto') : translate('Saldo');
+  tip.querySelector('[data-tip-balance]').textContent = money(point.balance);
+  tip.querySelector('[data-tip-balance]').classList.toggle('is-negative', point.balance < 0);
+  tip.querySelector('[data-tip-spent]').textContent = spent > 0 ? money(spent) : translate('Sem gastos');
+  const canHover = Boolean(globalThis.matchMedia?.('(hover: hover)')?.matches);
+  tip.querySelector('[data-tip-hint]').textContent = dayRecords(plot, day).length
+    ? translate(canHover ? 'Clique para ver os gastos' : 'Toque de novo para ver os gastos')
+    : '';
+  tip.classList.remove('hidden');
+  // Caixa fica ao lado do dia (direita ou esquerda), sem cobrir o ponto nem sair do cartao.
+  const tipWidth = tip.offsetWidth || 180;
+  const right = cx + 14;
+  const left = right + tipWidth <= width ? right : Math.max(cx - 14 - tipWidth, 0);
+  tip.style.left = `${left.toFixed(0)}px`;
+  if (!keepTip) tip.dataset.day = String(day);
+}
+
+function openDayDetail(plot, day) {
+  const records = dayRecords(plot, day);
+  if (!records.length) return false;
+  const title = `${translate('Gastos do dia')}: ${dayLabel(plot.__trajectory.month, day)}`;
+  const subtitle = `${records.length} despesa(s) no dia selecionado`;
+  const sorted = typeof globalThis.sortRecordsNewestFirst === 'function' ? globalThis.sortRecordsNewestFirst(records) : records;
+  globalThis.openDashboardExpenseRecordsModal?.(title, subtitle, sorted);
+  return true;
+}
+
+function bindPlotInteractions(plot) {
+  if (plot.__trajectoryBound) return;
+  plot.__trajectoryBound = true;
+  const dayFromEvent = (event) => Number(event.target?.closest?.('[data-trajectory-day]')?.dataset.trajectoryDay) || 0;
+  plot.addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'mouse') return;
+    const day = dayFromEvent(event);
+    if (day && day !== plot.__activeDay) setActiveDay(plot, day);
+  });
+  plot.addEventListener('pointerleave', (event) => {
+    if (event.pointerType === 'mouse') setActiveDay(plot, 0);
+  });
+  plot.addEventListener('click', (event) => {
+    const day = dayFromEvent(event);
+    if (!day) return;
+    // Mouse: o clique abre os gastos do dia. Toque: o 1o toque mostra os valores, o 2o abre.
+    const mouse = event.pointerType === 'mouse' || (!event.pointerType && event.detail > 0 && plot.__activeDay === day);
+    if ((mouse || plot.__activeDay === day) && openDayDetail(plot, day)) return;
+    setActiveDay(plot, day);
+  });
+  plot.addEventListener('keydown', (event) => {
+    const trajectory = plot.__trajectory;
+    if (!trajectory) return;
+    const current = plot.__activeDay || trajectory.todayDay || 1;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const next = Math.min(Math.max(current + (event.key === 'ArrowRight' ? 1 : -1), 1), trajectory.lastDay);
+      setActiveDay(plot, plot.__activeDay ? next : current);
+    } else if (event.key === 'Enter' && plot.__activeDay) {
+      event.preventDefault();
+      openDayDetail(plot, plot.__activeDay);
+    } else if (event.key === 'Escape') {
+      setActiveDay(plot, 0);
+    }
+  });
+  plot.addEventListener('blur', () => setActiveDay(plot, 0));
 }

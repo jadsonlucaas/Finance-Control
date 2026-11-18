@@ -19,7 +19,8 @@ import {
   getDashboardAggregations,
   getDashboardBaseEntradas,
   getDashboardBaseSaidas,
-  getDashboardTotals
+  getDashboardTotals,
+  getDashboardTrendData
 } from './dashboardData.js';
 import { renderBalanceTrajectoryCard } from './balanceTrajectoryCard.js';
 
@@ -266,7 +267,13 @@ export function renderDashboardSummaryFromBase(aggregations = getDashboardAggreg
   const summary = document.getElementById('summary-cards');
   if (!summary) return;
   try {
-    renderBalanceTrajectoryCard({ entradas: getDashboardBaseEntradas(), saidas: getDashboardBaseSaidas() });
+    const trend = getDashboardTrendData();
+    renderBalanceTrajectoryCard({
+      entradas: getDashboardBaseEntradas(),
+      saidas: getDashboardBaseSaidas(),
+      // Gastos do dia entram como barras no grafico do saldo (mesmos numeros do antigo "Gastos Diarios").
+      daily: trend?.mode === 'daily' ? trend.daily : null
+    });
   } catch (error) {
     // O cartao de trajetoria e complementar: se falhar, os numeros do mes continuam na tela.
     console.warn('Falha ao desenhar a trajetoria do saldo', error);

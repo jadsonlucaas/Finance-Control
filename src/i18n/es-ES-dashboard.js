@@ -12,6 +12,9 @@ export const DASHBOARD_PATTERNS = Object.freeze([
   [/^Saldo do dia: (.+)$/, 'Saldo del día: $1'],
   [/^(\d{2}\/\d{2}\/\d{4}) · (\d+) (?:item|itens)$/, (_, date, count) => `${date} · ${count} ${count === '1' ? 'elemento' : 'elementos'}`],
   [/^Gastos diários: (.+)$/, 'Gastos diarios: $1'],
+  [/^Gastos do dia: (.+)$/, 'Gastos del día: $1'],
+  [/^(\d+) despesa\(s\) no dia selecionado$/, '$1 gasto(s) en el día seleccionado'],
+  [/^(\d{2}\/\d{2}) · previsão$/, '$1 · previsión'],
   [/^(\d+) (?:entrada|entradas) · (.+)$/, (_, count, total) => `${count} ${count === '1' ? 'ingreso' : 'ingresos'} · ${total}`],
   [/^(\d+) lançamento\(s\) • competência (.+)$/, '$1 movimiento(s) • periodo $2'],
   [/^Entrada consolidada - (.+)$/, (_, cycle) => `Ingreso consolidado - ${cycle === 'Quinzena' ? 'Quincena' : cycle === 'Início do mês' ? 'Inicio de mes' : cycle}`]
@@ -424,5 +427,12 @@ export const DASHBOARD_MESSAGES = Object.freeze({
   'Informe a pessoa.': 'Indica la persona.',
   'Confira os campos.': 'Revisa los campos.',
   'Não foi possível salvar agora. Tente novamente.': 'No se pudo guardar ahora. Inténtalo de nuevo.',
-  'Não foi possível excluir. Tente novamente.': 'No se pudo eliminar. Inténtalo de nuevo.'
+  'Não foi possível excluir. Tente novamente.': 'No se pudo eliminar. Inténtalo de nuevo.',
+  // --- Grafico do saldo com gastos do dia ---
+  'Gastos do dia': 'Gastos del día',
+  'Sem gastos': 'Sin gastos',
+  'previsão': 'previsión',
+  'Clique para ver os gastos': 'Haz clic para ver los gastos',
+  'Toque de novo para ver os gastos': 'Toca de nuevo para ver los gastos',
+  'Saldo e gastos por dia. Use as setas para trocar o dia e Enter para ver os gastos.': 'Saldo y gastos por día. Usa las flechas para cambiar de día y Enter para ver los gastos.'
 });
