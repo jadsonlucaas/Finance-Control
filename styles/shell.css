@@ -915,3 +915,127 @@ textarea:focus-visible {
         font-size: 0.875rem !important;
     }
 }
+
+/* ---------- Periodo do Inicio: setas de mes anterior e seguinte ---------- */
+
+.dashboard-period-stepper {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+}
+
+.dashboard-period-stepper .dashboard-period-grid {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dashboard-period-step {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    background: rgb(var(--color-surface));
+    border: 1px solid rgb(var(--color-border));
+    color: rgb(var(--color-text-primary));
+    transition: border-color var(--motion-150) var(--ease-out);
+}
+
+.dashboard-period-step:hover {
+    border-color: rgb(var(--color-accent) / 0.6);
+    color: rgb(var(--color-accent));
+}
+
+@media (max-width: 767.98px) {
+    .dashboard-period-stepper {
+        gap: 6px;
+    }
+
+    .dashboard-period-step {
+        width: 40px;
+        height: 44px;
+    }
+
+    /* No celular "De" e "Ate" ficam um em cima do outro, para o mes caber inteiro. */
+    .dashboard-period-stepper .dashboard-period-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px !important;
+    }
+}
+
+/* ---------- Menu lateral recolhivel (computador) ---------- */
+
+.sidebar-collapse-button {
+    display: none;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: rgb(var(--color-text-secondary));
+    transition: transform var(--motion-200) var(--ease-out);
+}
+
+.sidebar-collapse-button:hover {
+    background: rgb(var(--color-surface-light));
+    color: rgb(var(--color-text-primary));
+}
+
+@media (min-width: 1024px) {
+    :root {
+        --shell-sidebar-collapsed-width: 76px;
+    }
+
+    .sidebar-collapse-button {
+        display: inline-flex;
+    }
+
+    .sidebar-collapsed #sidebar {
+        width: var(--shell-sidebar-collapsed-width);
+    }
+
+    .sidebar-collapsed #app {
+        padding-left: var(--shell-sidebar-collapsed-width);
+    }
+
+    .sidebar-collapsed #sidebar > div:first-child {
+        padding-left: 8px;
+        padding-right: 8px;
+        justify-content: center;
+    }
+
+    .sidebar-collapsed #sidebar > div:first-child > div:first-child,
+    .sidebar-collapsed .sidebar-search {
+        display: none;
+    }
+
+    .sidebar-collapsed .sidebar-collapse-button {
+        transform: rotate(180deg);
+    }
+
+    .sidebar-collapsed #main-tabs {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .sidebar-collapsed #main-tabs button {
+        justify-content: center !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        gap: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .sidebar-collapsed #main-tabs button > span:not(:first-child) {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar-collapse-button,
+    .dashboard-period-step {
+        transition: none !important;
+    }
+}

@@ -21,7 +21,8 @@ export function viewDashboardTemplate() {
                     </div>
 
                     <div class="mobile-filter-bar dashboard-filter-shell flex flex-wrap gap-2 mt-4 items-center">
-                        <div class="dashboard-period-shell">
+                        <div class="dashboard-period-shell dashboard-period-stepper">
+                            <button type="button" id="btn-dashboard-prev-month" class="dashboard-period-step" aria-label="Mes anterior" title="Mes anterior"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
                             <div class="dashboard-period-grid">
                                 <label class="dashboard-period-field">
                                     <span>De</span>
@@ -32,6 +33,7 @@ export function viewDashboardTemplate() {
                                     <input type="month" id="f-comp-end" class="dashboard-period-input text-sm bg-transparent border-0 ring-0 focus:ring-0 text-textPrimary py-1.5 cursor-pointer">
                                 </label>
                             </div>
+                            <button type="button" id="btn-dashboard-next-month" class="dashboard-period-step" aria-label="Próximo mês" title="Próximo mês"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
                         </div>
                         <div id="dashboard-active-filters" class="dashboard-active-filters flex flex-wrap gap-2"></div>
                         <p data-history-window-notice class="history-window-notice text-xs text-textSecondary" aria-live="polite" hidden></p>
@@ -110,7 +112,7 @@ export function viewDashboardTemplate() {
                     </div>
                 </div>
 
-                <div class="glass rounded-xl p-4" id="recent-container">
+                <div class="glass rounded-xl p-4 hidden" id="recent-container">
                     <div class="flex justify-between items-center mb-3">
                         <h3 id="recent-title" class="text-sm font-semibold text-textSecondary">Lancamentos Recentes</h3>
                         <button id="btn-clear-card" type="button" class="hidden text-xs text-accent hover:text-accentLight hover:underline px-2 py-1">Limpar selecao</button>

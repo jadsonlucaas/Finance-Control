@@ -16,7 +16,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
-import { acceptCurrentLegalTerms } from './helpers/legalConsent.js';
+import { acceptCurrentLegalTerms, openDashboardRecordList, closeDashboardRecordList } from './helpers/legalConsent.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -354,7 +354,9 @@ test('monthly recurrence series persists by UI and stays isolated across A -> B 
 
     await showDashboardForMonth(page, expected.competence);
     await expect(page.locator('#summary-cards')).toContainText('R$ 40,00');
-    await expect(page.locator('#recent-list')).toContainText(DESCRIPTION);
+    const dashboardList = await openDashboardRecordList(page);
+    await expect(dashboardList).toContainText(DESCRIPTION);
+    await closeDashboardRecordList(page);
   }
 
   await page.reload({ waitUntil: 'load' });

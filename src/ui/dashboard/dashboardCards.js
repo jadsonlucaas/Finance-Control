@@ -315,37 +315,11 @@ export function renderDashboardPersonBalanceCards() {
   }
 }
 
-export function renderDashboardRecentListFromBase(aggregations = getDashboardAggregations()) {
-  const title = document.getElementById('recent-title');
-  const list = document.getElementById('recent-list');
-  if (!title || !list) return;
-  let records = aggregations.base;
-  let label = 'Saidas no filtro atual';
-  if (appState.focusedDashboardCard === 'aberto') {
-    records = records.filter((record) => record.status === 'Em aberto');
-    label = 'Saidas em aberto no filtro atual';
-  } else if (appState.focusedDashboardCard === 'saidas') {
-    records = records.filter((record) => record.status === 'Pago');
-    label = 'Saidas pagas no filtro atual';
-  }
-  title.textContent = label;
-  const sorted = window.sortRecordsNewestFirst(records).slice(0, appState.focusedDashboardCard ? 50 : 10);
-  if (sorted.length) {
-    renderRecordRowsProgressively(list, sorted, {
-      fmt: window.fmt,
-      formatCompetence: window.formatCompetence,
-      isArchivedRecord: window.isArchivedRecord,
-      isReferenceSalaryRecord: window.isReferenceSalaryRecord,
-      initialCount: 12,
-      chunkSize: 24,
-      onProgress: () => scheduleIconRender(list, window.lucide),
-      onComplete: () => scheduleIconRender(list, window.lucide)
-    });
-  } else {
-    renderEmptyMessage(list, 'Sem saidas correspondentes');
-  }
-  const clear = document.getElementById('btn-clear-card');
-  if (clear) clear.classList.toggle('hidden', !appState.focusedDashboardCard);
+// O Inicio nao mostra mais "Saidas no filtro atual" (pedido de 18/11). A mesma lista continua
+// no "Ver detalhes" do cartao Saldo e em "Abrir lista"/"Ver pendencias".
+export function renderDashboardRecentListFromBase() {
+  document.getElementById('recent-container')?.classList.add('hidden');
+  document.getElementById('recent-list')?.replaceChildren();
 }
 
 export function ensureDashboardExpenseCategoryModal() {

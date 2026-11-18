@@ -31,3 +31,20 @@ export async function grantPremiumAccess(testEnv, uid, { at = '2026-11-01T00:00:
     await setDoc(doc(context.firestore(), 'whatsapp_comp_access', uid), { uid, status: 'active', granted_by: 'e2e-setup', granted_at: at });
   });
 }
+
+/**
+ * O Inicio nao mostra mais a lista "Saidas no filtro atual". As saidas do filtro ficam no
+ * "Ver detalhes" do cartao Saldo. Abre essa janela e devolve a lista; fechar com
+ * closeDashboardRecordList.
+ */
+export async function openDashboardRecordList(page) {
+  await page.locator('[data-dashboard-detail="saidas-filtro"]').click();
+  const list = page.locator('#dashboard-expense-category-list');
+  await list.waitFor({ state: 'visible' });
+  return list;
+}
+
+export async function closeDashboardRecordList(page) {
+  await page.locator('#btn-close-expense-modal').click();
+  await page.locator('#dashboard-expense-category-modal').waitFor({ state: 'hidden' });
+}
