@@ -379,6 +379,8 @@
                 if (authMode !== 'login') toggleAuthMode('login');
                 app.classList.add('hidden');
                 authScreen.classList.remove('hidden');
+                window.financeAppBoot?.resetFirstData?.();
+                window.financeAppBoot?.endAppBoot?.();
                 renderManagedUsers();
                 return;
             }
@@ -420,6 +422,8 @@
                 syncFinanceAuthContext();
                 setAccessNotice('', '');
                 authScreen.classList.add('hidden');
+                // Ate chegar a primeira leitura dos lancamentos, o conteudo fica atras do carregamento.
+                window.financeAppBoot?.beginDataPending?.();
                 app.classList.remove('hidden');
                 applyRoleVisibility();
                 requestAnimationFrame(() => initSdk());
@@ -446,6 +450,7 @@
                     || 'Seu login foi realizado, mas não foi possível carregar seu perfil.');
             } finally {
                 setAuthLoading(false);
+                window.financeAppBoot?.endAppBoot?.();
                 lucide.createIcons();
             }
         }

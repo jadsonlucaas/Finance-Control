@@ -16,8 +16,17 @@ export function activateTab(tab, target = globalThis, views = DEFAULT_VIEWS) {
     button.setAttribute('aria-current', button.dataset.bottomTab === bottomTab ? 'page' : 'false');
   });
 
+  const previous = views.find((view) => {
+    const element = documentRef.getElementById('view-' + view);
+    return element && !element.classList.contains('hidden');
+  });
   views.forEach((view) => {
     const element = documentRef.getElementById('view-' + view);
     if (element) element.classList.toggle('hidden', view !== tab);
   });
+  // Tela nova sempre abre no topo (antes herdava a rolagem da tela anterior).
+  if (previous !== tab) {
+    const main = documentRef.getElementById('main-content');
+    if (main) main.scrollTop = 0;
+  }
 }

@@ -2784,3 +2784,115 @@ details[open] > summary .planner-chevron svg {
     opacity: 0.75;
     cursor: progress;
 }
+
+/* ---------- Abertura sem piscar ----------
+ * app-booting: enquanto confere a sessao, so a tela de carregamento aparece (nada de login
+ * piscando ao atualizar a pagina). finance-data-pending: o conteudo espera a primeira
+ * leitura dos lancamentos em vez de mostrar R$ 0,00. Ver src/ui/shell/appBoot.js. */
+#boot-splash {
+    display: none;
+}
+
+html.app-booting #boot-splash,
+html.finance-data-pending #main-content::before,
+html.finance-view-loading #main-content::before {
+    display: flex;
+}
+
+#main-content .view-loading {
+    visibility: hidden;
+}
+
+html.app-booting #boot-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: rgb(var(--color-bg));
+    color: rgb(var(--color-text-secondary));
+}
+
+html.app-booting #auth-root,
+html.app-booting #app {
+    visibility: hidden;
+}
+
+.boot-splash-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    border: 1px solid rgb(var(--color-accent) / 0.45);
+    color: rgb(var(--color-accent));
+}
+
+.boot-splash-bar {
+    position: relative;
+    width: 120px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(var(--color-border));
+}
+
+.boot-splash-bar > span {
+    animation: boot-progress 1.2s var(--ease-out) infinite;
+}
+
+.boot-splash-bar > span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    border-radius: inherit;
+    background: var(--brand-hairline);
+}
+
+/* Conteudo esperando os dados: as telas ficam invisiveis e uma linha fina corre no topo. */
+html.finance-data-pending #main-content,
+html.finance-view-loading #main-content {
+    position: relative;
+}
+
+html.finance-data-pending #main-content > * {
+    visibility: hidden;
+}
+
+html.finance-data-pending #main-content::before,
+html.finance-view-loading #main-content::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, rgb(var(--color-accent)) 50%, transparent 100%) 0 0 / 40% 100% no-repeat;
+    animation: data-pending-progress 1.2s var(--ease-out) infinite;
+}
+
+@keyframes data-pending-progress {
+    from { background-position: -70% 0; }
+    to { background-position: 170% 0; }
+}
+
+@keyframes boot-progress {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boot-splash-bar > span,
+    html.finance-data-pending #main-content::before,
+    html.finance-view-loading #main-content::before {
+        animation: none;
+        opacity: 0.6;
+    }
+
+    .boot-splash-bar > span {
+        width: 100%;
+    }
+}

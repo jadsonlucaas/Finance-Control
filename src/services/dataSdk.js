@@ -632,6 +632,8 @@ export function createDataSdkService({
 
     const applySnapshot = () => {
       latestUserRecords = mergeRecordSets([...sets.values()]);
+      // Lancamentos do usuario chegaram: a tela ja pode sair do carregamento (ver ui/shell/appBoot.js).
+      target.__financeUserRecordsPending = false;
       const cacheInfo = writeCachedUserRecords(target, uid, latestUserRecords);
       setFinanceCacheState(target, {
         source: 'firebase',
@@ -679,6 +681,9 @@ export function createDataSdkService({
           historyReady.then(resolveReady);
           return;
         }
+        // Erro de leitura: a tela sai do carregamento e mostra o que tiver (com o aviso de erro de sempre).
+        target.__financeUserRecordsPending = false;
+        target.financeAppBoot?.markFirstDataReceived?.();
         resolveReady(publishHistoryState({ ...historyState, loading: false, error: error?.code || 'FIRESTORE_LISTEN_ERROR' }));
       });
       recordUnsubscribes.push(unsubscribe);
@@ -729,6 +734,9 @@ export function createDataSdkService({
       cleanupOnSignOut();
 
       const cachedUserRecords = readCachedUserRecords(target, user.uid);
+      // Enquanto os lancamentos do usuario nao chegam, as categorias compartilhadas sozinhas
+      // nao tiram a tela do carregamento (evita mostrar R$ 0,00 por um instante).
+      target.__financeUserRecordsPending = !cachedUserRecords.records.length;
       if (cachedUserRecords.records.length) {
         latestUserRecords = cachedUserRecords.records;
         setFinanceCacheState(target, {
