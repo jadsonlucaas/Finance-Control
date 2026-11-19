@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
+import { openSaidasFilters, openTab } from './helpers/navigation.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -126,16 +127,6 @@ async function signOutUi(page) {
   await expect(page.locator('#app')).toBeHidden();
 }
 
-async function openTab(page, tab) {
-  const sidebar = page.locator('#sidebar');
-  const isHidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-  // No computador o menu lateral fica fixo; o botao de menu so existe em telas menores.
-  if (isHidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
-  await expect(sidebar).toBeVisible();
-  await page.locator(`[data-tab="${tab}"]`).click();
-  await expect(page.locator(`#view-${tab}`)).toBeVisible();
-}
-
 async function openImport(page) {
   await openTab(page, 'importacao');
   await expect(page.locator('#modern-import-panel [data-import-modern-root]')).toBeVisible();
@@ -147,6 +138,7 @@ async function showSaidas(page) {
   await page.locator('#f-comp-end').fill(COMPETENCE);
   await openTab(page, 'saidas');
   await page.locator('#saidas-filter-all').click();
+  await openSaidasFilters(page);
   await page.locator('#saidas-person-filter').selectOption(PERSON);
 }
 

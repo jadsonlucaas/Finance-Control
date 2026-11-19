@@ -68,6 +68,11 @@ import { installFinancialCrudControllers } from './ui/records/financialCrudContr
 import { createResilienceViewPilots } from './ui/resilience/resiliencePilots.js';
 import { installInitialTemplates } from './ui/templates/installInitialTemplates.js';
 import { installAppShell } from './ui/shell/appShell.js';
+import { installAppName } from './core/brand.js';
+import { installAdvancedModules } from './ui/shell/advancedModules.js';
+import { installLedgerSwitch } from './ui/shell/ledgerSwitch.js';
+import { installEmptyStateActions } from './ui/components/emptyState.js';
+import { installListFilters } from './ui/shell/listFilters.js';
 
 function markBootstrap(name, target = globalThis) {
   try {
@@ -116,6 +121,11 @@ export function bootstrapApp() {
   installModalKeyboard(globalThis);
   installSettingsPanelCards(globalThis);
   installAppShell(globalThis);
+  installAppName(globalThis);
+  installLedgerSwitch(globalThis);
+  installEmptyStateActions(globalThis);
+  installListFilters(globalThis);
+  installAdvancedModules(globalThis);
   installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);
   installRecordFormValidationGlobals(globalThis);
@@ -664,11 +674,12 @@ function installPlannerStorageRuntime(target = globalThis) {
 
 // Escolha de plano (apos o cadastro) e volta do Stripe. Falha aqui nao derruba o app.
 function installPlanChooserLater(target = globalThis) {
-  Promise.all([import('./ui/billing/planChooserUi.js'), import('./ui/billing/planGate.js'), import('./ui/legal/legalConsentGate.js')])
-    .then(([chooser, gate, legal]) => {
+  Promise.all([import('./ui/billing/planChooserUi.js'), import('./ui/billing/planGate.js'), import('./ui/legal/legalConsentGate.js'), import('./ui/dashboard/gettingStarted.js')])
+    .then(([chooser, gate, legal, gettingStarted]) => {
       legal.installLegalConsentGate(target);
       chooser.installPlanChooser(target);
       gate.installPlanGate(target);
+      gettingStarted.installGettingStarted(target);
     })
     .catch((error) => {
       target.financeApp?.resilience?.errorReporter?.report?.({ error, operation: 'plan_chooser_ui' });

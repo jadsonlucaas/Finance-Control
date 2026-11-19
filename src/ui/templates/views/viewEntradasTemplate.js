@@ -1,9 +1,13 @@
+import { emptyStateHtml } from '../../components/emptyState.js';
+import { ledgerSwitchTemplate } from './ledgerSwitchTemplate.js';
+
 export function viewEntradasTemplate() {
   return `
 <!-- ENTRADAS LIST -->
             <section id="view-entradas" class="fade-in hidden">
                 <div class="entradas-header flex justify-between items-center mb-3 gap-3 flex-wrap">
                     <div class="entradas-header-copy">
+                        ${ledgerSwitchTemplate('entradas')}
                         <h2 class="font-semibold">Entradas</h2>
                         <p id="entradas-meta" class="text-xs text-textSecondary mt-1">Visao consolidada mensal por pessoa e competencia.</p>
                         <p data-history-window-notice class="history-window-notice text-xs text-textSecondary mt-1" aria-live="polite" hidden></p>
@@ -18,11 +22,11 @@ export function viewEntradasTemplate() {
                         <button
                             id="btn-new-entrada"
                             type="button"
-                            class="entradas-new-button bg-success hover:bg-success/80 text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
-                                data-lucide="plus" class="w-4 h-4"></i> Novo Ajuste</button>
+                            class="entradas-new-button bg-accent hover:bg-accentDark text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                                data-lucide="plus" class="w-4 h-4"></i> Nova entrada</button>
                     </div>
                 </div>
                 <div id="entradas-list" class="space-y-3"></div>
-                <p id="entradas-empty" class="text-textSecondary text-sm text-center py-8 hidden">Nenhuma entrada consolidada encontrada.</p>
+                ${emptyStateHtml({ id: 'entradas-empty', hidden: true, icon: 'wallet', title: 'Nenhuma entrada neste mês', text: 'Lance seu salário ou outra receita para ver quanto sobra no mês.', actionLabel: 'Nova entrada', actionClick: 'btn-new-entrada' })}
             </section>`;
 }

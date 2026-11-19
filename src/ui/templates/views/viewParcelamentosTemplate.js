@@ -6,7 +6,7 @@ export function viewParcelamentosTemplate() {
         <p class="text-sm text-textSecondary">Gerencie suas compras parceladas e compromissos futuros</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4" data-parcelamentos-metrics>
         <button type="button" data-parcelamentos-detail="comprometido" class="p-3 bg-surfaceLight rounded-xl border border-surfaceLight/50 flex items-center justify-between text-left cursor-pointer hover:border-accent/40 hover:bg-surfaceLight/80 transition-colors">
             <div>
                 <p class="text-xs text-textSecondary mb-0.5">Total Comprometido</p>

@@ -1,3 +1,4 @@
+import { emptyStateHtml } from '../../components/emptyState.js';
 export function viewControleHorasTemplate() {
   return `
 <section id="view-controle-horas" class="fade-in hidden">
@@ -21,7 +22,7 @@ export function viewControleHorasTemplate() {
                             </div>
                         </div>
                         <div id="controle-horas-list" class="space-y-3"></div>
-                        <p id="controle-horas-empty" class="text-textSecondary text-sm text-center py-8 hidden">Nenhum lançamento de horas cadastrado.</p>
+                        ${emptyStateHtml({ id: 'controle-horas-empty', hidden: true, icon: 'clock', title: 'Nenhum lançamento de horas', text: 'Registre horas extras e banco de horas para acompanhar o saldo de cada pessoa.' })}
                     </div>
                     <div class="glass rounded-xl p-4">
                         <div class="flex items-center justify-between gap-3 mb-4">

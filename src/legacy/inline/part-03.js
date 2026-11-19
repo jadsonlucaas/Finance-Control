@@ -37,7 +37,7 @@
         let selectedEntryDetailKey = '';
 
         const defaultConfig = {
-            app_title: 'Controle Financeiro',
+            app_title: (window.financeBrand && window.financeBrand.name) || 'Controle Financeiro',
             background_color: '#0b1120',
             surface_color: '#1e293b',
             text_color: '#e2e8f0',
@@ -137,6 +137,7 @@
             onDataChanged(data) {
                 allRecords = data;
                 window.__financeDataVersion = (window.__financeDataVersion || 0) + 1;
+                try { window.dispatchEvent(new CustomEvent('financeRecordsChanged')); } catch (e) { /* sem listeners */ }
                 if (bulkOperationState?.suspendLiveRender) {
                     deferredSnapshotData = data;
                     return;

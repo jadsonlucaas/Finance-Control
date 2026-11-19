@@ -66,7 +66,12 @@ describe('abertura sem piscar', () => {
     const target = fakeTarget();
     beginDataPending(target);
     vi.advanceTimersByTime(10000);
-    expect(target.document.documentElement.classList.has('finance-data-pending')).toBe(false);
+    const root = target.document.documentElement.classList;
+    expect(root.has('finance-data-pending')).toBe(false);
+    // Avisa que esta demorando (com "Tentar de novo") ate os dados chegarem.
+    expect(root.has('finance-data-slow')).toBe(true);
+    markFirstDataReceived(target);
+    expect(root.has('finance-data-slow')).toBe(false);
   });
 
   it('segura uma tela enquanto o modulo dela carrega', () => {

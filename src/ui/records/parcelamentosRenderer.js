@@ -1,3 +1,4 @@
+import { emptyStateHtml } from '../components/emptyState.js';
 import {
     getInstallmentCard,
     getInstallmentNo,
@@ -622,7 +623,9 @@ export function installParcelamentosRenderer(target = globalThis) {
                         </div>
                     </div>`;
             }).join('')
-            : '<div class="p-8 text-center text-textSecondary text-sm">Nenhum parcelamento encontrado com os filtros atuais.</div>';
+            : (summary.groupList.length
+                ? emptyStateHtml({ icon: 'search', title: 'Nenhum parcelamento com esses filtros', text: 'Troque o status, o cartão ou a pessoa para ver outras compras.' })
+                : emptyStateHtml({ icon: 'card', title: 'Nenhuma compra parcelada', text: 'Ao lançar uma saída com mais de uma parcela, ou mandar "comprei uma TV em 10x" no WhatsApp, ela aparece aqui.', actionLabel: 'Nova saída', actionClick: 'btn-new-record-header' }));
 
         bindParcelamentoFilters();
         bindParcelamentoDetails();

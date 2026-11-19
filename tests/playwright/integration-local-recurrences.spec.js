@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { acceptCurrentLegalTerms, openDashboardRecordList, closeDashboardRecordList } from './helpers/legalConsent.js';
+import { openSaidasFilters } from './helpers/navigation.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -271,6 +272,7 @@ async function showSaidasForMonth(page, month) {
   await page.evaluate(() => window.switchTab('saidas'));
   await expect(page.locator('#view-saidas')).toBeVisible();
   await page.locator('#saidas-filter-all').click();
+  await openSaidasFilters(page);
   await page.locator('#saidas-person-filter').selectOption(PERSON);
 }
 

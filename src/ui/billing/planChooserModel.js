@@ -72,7 +72,7 @@ function detailsForm(details = {}) {
       </div>
       <label class="flex items-start gap-2 text-xs text-textSecondary">
         <input data-plan-field="consent" type="checkbox" class="mt-0.5" ${details?.whatsapp_consent ? 'checked' : ''}>
-        <span>Aceito receber mensagens do Finance Control no WhatsApp (boas-vindas e alertas).</span>
+        <span>Aceito receber mensagens do assistente no WhatsApp (boas-vindas e alertas).</span>
       </label>
     </div>`;
 }
@@ -130,7 +130,7 @@ export function renderPlanChooser(state = {}) {
             <li>Tudo do Gratuito</li>
             <li>Assistente no WhatsApp com IA</li>
             <li>Alertas de vencimento</li>
-            <li>Parcelamentos, importação e controle de horas</li>
+            <li>Parcelamentos e importação de planilhas</li>
             <li>Planner e relatório em PDF</li>
           </ul>
           ${needsDetails ? detailsForm(state.draft || state.details) : ''}
