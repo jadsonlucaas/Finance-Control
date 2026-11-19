@@ -23,6 +23,16 @@ import {
 import { readFileSync } from 'node:fs';
 import { acceptCurrentLegalTerms } from './helpers/legalConsent.js';
 
+// Em Configurações cada parametrização é um cartão que abre numa janela;
+// abre a janela do painel que contém o controle antes de usá-lo.
+async function revealSettingsControl(page, selector) {
+  await page.evaluate((target) => {
+    const panel = document.querySelector(target)?.closest('[data-settings-card]');
+    if (panel && !panel.dataset.settingsOpen) window.financeApp?.settingsPanelCards?.open?.(panel);
+  }, selector);
+}
+
+
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
 const FIRESTORE_HOST = '127.0.0.1';
@@ -355,6 +365,8 @@ test('global references are read-only for common users and manipulated global wr
     canManageShared: false
   });
 
+  await revealSettingsControl(page, '#btn-add-macro');
+
   await page.locator('#btn-add-macro').click();
   await page.locator('#macro-input').fill(FORBIDDEN_GLOBAL);
   await page.evaluate(() => {
@@ -383,6 +395,8 @@ test('global references are read-only for common users and manipulated global wr
   expect(recordsAfterInvalid.some((record) => record.macro_category === INVALID_MACRO || record.macro_category === '')).toBe(false);
   await page.locator('#btn-close-add-macro-modal').click();
   await expect(page.locator('#add-macro-modal')).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#settings-panel-modal')).toBeHidden();
 
   await signOutUi(page);
   await signIn(page, userB);

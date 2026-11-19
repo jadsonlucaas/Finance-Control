@@ -2896,3 +2896,184 @@ html.finance-view-loading #main-content::before {
         width: 100%;
     }
 }
+
+/* Configurações: cada parametrização é um cartão que abre numa janela. */
+[data-settings-card]:not([data-settings-open]) {
+    padding: 0 !important;
+}
+
+[data-settings-card]:not([data-settings-open]) > :not(.settings-card-summary) {
+    display: none !important;
+}
+
+.settings-card-summary {
+    display: flex;
+    width: 100%;
+    min-height: 64px;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: inherit;
+    text-align: left;
+    color: rgb(var(--color-text-primary));
+    transition: background-color 150ms ease-out;
+}
+
+.settings-card-summary:hover {
+    background: rgb(var(--color-surface-light) / 0.5);
+}
+
+.settings-card-text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.settings-card-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.settings-card-desc {
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: rgb(var(--color-text-secondary));
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-card-chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: rgb(var(--color-text-secondary));
+    transition: transform 150ms ease-out, color 150ms ease-out;
+}
+
+.settings-card-summary:hover .settings-card-chevron {
+    color: rgb(var(--color-accent));
+    transform: translateX(2px);
+}
+
+.settings-panel-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgb(0 0 0 / 0.6);
+}
+
+.settings-panel-modal.hidden {
+    display: none;
+}
+
+.settings-panel-dialog {
+    display: flex;
+    width: 100%;
+    max-width: 48rem;
+    max-height: calc(100dvh - 32px);
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgb(var(--color-border));
+    border-radius: 16px;
+    background: rgb(var(--color-surface));
+    animation: settings-dialog-in 200ms ease-out;
+}
+
+.settings-panel-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 12px 12px 20px;
+    border-bottom: 1px solid rgb(var(--color-border));
+}
+
+.settings-panel-close {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: rgb(var(--color-text-secondary));
+}
+
+.settings-panel-close:hover {
+    background: rgb(var(--color-surface-light));
+    color: rgb(var(--color-text-primary));
+}
+
+.settings-panel-dialog-body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 20px 20px;
+}
+
+/* O painel dentro da janela perde a moldura e o título repetido. */
+.settings-panel-dialog-body > [data-settings-card] {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.settings-panel-dialog-body > [data-settings-card] > :first-child > h3,
+.settings-panel-dialog-body > [data-settings-card] > :first-child > :has(> h3) {
+    display: none;
+}
+
+.settings-panel-dialog-heading {
+    min-width: 0;
+}
+
+.settings-panel-dialog-heading p {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: rgb(var(--color-text-secondary));
+}
+
+#view-configuracoes .space-y-6 > [data-settings-card] + [data-settings-card] {
+    margin-top: 12px;
+}
+
+html.settings-panel-modal-open,
+html.settings-panel-modal-open body {
+    overflow: hidden;
+}
+
+@keyframes settings-dialog-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 639.98px) {
+    .settings-panel-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .settings-panel-dialog {
+        max-height: 92dvh;
+        border-radius: 16px 16px 0 0;
+        border-bottom: 0;
+    }
+
+    .settings-panel-dialog-body {
+        padding: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-panel-dialog { animation: none; }
+    .settings-card-chevron { transition: none; }
+}
