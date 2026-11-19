@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
-import { openTab } from './helpers/navigation.js';
+import { openSaidasFilters, openTab } from './helpers/navigation.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -138,6 +138,7 @@ async function showSaidas(page) {
   await page.locator('#f-comp-end').fill(COMPETENCE);
   await openTab(page, 'saidas');
   await page.locator('#saidas-filter-all').click();
+  await openSaidasFilters(page);
   await page.locator('#saidas-person-filter').selectOption(PERSON);
 }
 

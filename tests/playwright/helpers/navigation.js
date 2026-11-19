@@ -30,3 +30,10 @@ export async function openTab(page, tab) {
   await page.locator(`#main-tabs [data-tab="${tab}"]`).click();
   await expect(page.locator(`#view-${tab}`)).toBeVisible();
 }
+
+/** Saídas: os filtros ficam atrás do botão "Filtros" (Etapa 6). */
+export async function openSaidasFilters(page) {
+  const toggle = page.locator('#btn-saidas-filters');
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+  await expect(page.locator('#saidas-filter-grid')).toBeVisible();
+}

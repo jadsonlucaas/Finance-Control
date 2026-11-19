@@ -178,6 +178,11 @@ test('celular: barra inferior e chave de lançamentos cabem na tela', async ({ b
   await signIn(page, account);
   await page.locator('#bottom-nav [data-bottom-tab="saidas"]').click();
   await expect(page.locator('#view-saidas .ledger-switch')).toBeVisible();
+  // Filtros ficam recolhidos: a lista aparece logo depois da barra.
+  await expect(page.locator('#saidas-filter-grid')).toBeHidden();
+  await page.locator('#btn-saidas-filters').click();
+  await expect(page.locator('#saidas-filter-grid')).toBeVisible();
+  await page.locator('#btn-saidas-filters').click();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   await shot(page, 'mob-lancamentos');

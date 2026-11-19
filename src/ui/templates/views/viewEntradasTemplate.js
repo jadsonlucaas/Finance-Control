@@ -22,8 +22,8 @@ export function viewEntradasTemplate() {
                         <button
                             id="btn-new-entrada"
                             type="button"
-                            class="entradas-new-button bg-success hover:bg-success/80 text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
-                                data-lucide="plus" class="w-4 h-4"></i> Novo Ajuste</button>
+                            class="entradas-new-button bg-accent hover:bg-accentDark text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                                data-lucide="plus" class="w-4 h-4"></i> Nova entrada</button>
                     </div>
                 </div>
                 <div id="entradas-list" class="space-y-3"></div>

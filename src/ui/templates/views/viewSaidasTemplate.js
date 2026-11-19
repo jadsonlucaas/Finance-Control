@@ -19,7 +19,7 @@ export function viewSaidasTemplate() {
                             <button id="saidas-filter-all" type="button" class="px-3 py-1.5 text-xs rounded-md text-textSecondary">Todos</button>
                         </div>
 
-                        <div class="saidas-filter-grid">
+                        <div id="saidas-filter-grid" class="saidas-filter-grid">
                             <select id="saidas-payment-filter" class="text-xs rounded-lg border border-surfaceLight bg-surfaceLight/40 text-textSecondary px-3 py-1.5">
                                 <option value="">Todos pagamentos</option>
                             </select>
@@ -44,6 +44,12 @@ export function viewSaidasTemplate() {
                             </label>
                         </div>
 
+                        <button id="btn-saidas-filters" type="button" class="list-filters-toggle" aria-expanded="false" aria-controls="saidas-filter-grid">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg>
+                            <span>Filtros</span>
+                            <span class="list-filters-count" data-filters-count hidden></span>
+                        </button>
+
                         <div class="saidas-search-row">
                             <input
                                 id="saidas-search"
@@ -56,7 +62,7 @@ export function viewSaidasTemplate() {
                             id="btn-new-saida"
                             type="button"
                             class="saidas-new-button bg-accent hover:bg-accentDark text-bg text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1">
-                            <i data-lucide="plus" class="w-4 h-4"></i> Nova Saida
+                            <i data-lucide="plus" class="w-4 h-4"></i> Nova saída
                         </button>
                     </div>
                 </div>

@@ -72,6 +72,7 @@ import { installAppName } from './core/brand.js';
 import { installAdvancedModules } from './ui/shell/advancedModules.js';
 import { installLedgerSwitch } from './ui/shell/ledgerSwitch.js';
 import { installEmptyStateActions } from './ui/components/emptyState.js';
+import { installListFilters } from './ui/shell/listFilters.js';
 
 function markBootstrap(name, target = globalThis) {
   try {
@@ -123,6 +124,7 @@ export function bootstrapApp() {
   installAppName(globalThis);
   installLedgerSwitch(globalThis);
   installEmptyStateActions(globalThis);
+  installListFilters(globalThis);
   installAdvancedModules(globalThis);
   installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);

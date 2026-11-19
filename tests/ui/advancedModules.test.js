@@ -38,3 +38,11 @@ describe('menu lateral', () => {
     expect(sidebarTabFor('orcamentos')).toBe('orcamentos');
   });
 });
+
+describe('filtros de Saídas', async () => {
+  const { countActiveFilters } = await import('../../src/ui/shell/listFilters.js');
+  it('conta só os filtros preenchidos', () => {
+    expect(countActiveFilters(['', 'Jadson', undefined, '2026-11-01', '  '])).toBe(2);
+    expect(countActiveFilters([])).toBe(0);
+  });
+});
