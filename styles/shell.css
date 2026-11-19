@@ -3332,3 +3332,187 @@ html.finance-data-slow #main-content > #data-slow-notice {
         animation: none;
     }
 }
+
+/* Início: Primeiros passos (src/ui/dashboard/gettingStarted.js). */
+.getting-started {
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid rgb(var(--color-accent) / 0.35);
+    border-radius: var(--radius-lg, 16px);
+    background: rgb(var(--color-surface));
+}
+
+.getting-started-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.getting-started-heading {
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgb(var(--color-text-primary));
+}
+
+.getting-started-progress {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    color: rgb(var(--color-text-secondary));
+}
+
+.getting-started-dismiss {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    color: rgb(var(--color-text-secondary));
+}
+
+.getting-started-dismiss:hover {
+    background: rgb(var(--color-surface-light) / 0.6);
+    color: rgb(var(--color-text-primary));
+}
+
+.getting-started-bar {
+    height: 4px;
+    margin: 12px 0 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(var(--color-surface-light));
+}
+
+.getting-started-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: rgb(var(--color-accent));
+    transition: width 250ms ease-out;
+}
+
+.getting-started-list {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+@media (min-width: 1024px) {
+    .getting-started-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+    }
+}
+
+.getting-started-step {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: start;
+    gap: 4px 12px;
+    padding: 12px 0;
+}
+
+@media (min-width: 1024px) {
+    .getting-started-step {
+        grid-template-rows: auto 1fr;
+        padding: 12px;
+        border: 1px solid rgb(var(--color-surface-light));
+        border-radius: 12px;
+    }
+
+    .getting-started-action {
+        align-self: end;
+    }
+}
+
+.getting-started-mark {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(var(--color-surface-light));
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: rgb(var(--color-text-secondary));
+}
+
+.getting-started-step.is-done .getting-started-mark {
+    border-color: rgb(var(--color-accent));
+    background: rgb(var(--color-accent));
+    color: rgb(var(--color-bg));
+}
+
+.getting-started-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(var(--color-text-primary));
+}
+
+.getting-started-step.is-done .getting-started-title {
+    color: rgb(var(--color-text-secondary));
+    text-decoration: line-through;
+}
+
+.getting-started-text {
+    margin-top: 2px;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: rgb(var(--color-text-secondary));
+}
+
+.getting-started-step.is-done .getting-started-text {
+    display: none;
+}
+
+.getting-started-action {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 40px;
+    margin-top: 6px;
+    padding: 0 14px;
+    border: 1px solid rgb(var(--color-accent) / 0.5);
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(var(--color-accent));
+    transition: background-color 150ms ease-out;
+}
+
+.getting-started-action:hover {
+    background: rgb(var(--color-accent) / 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .getting-started-bar > span,
+    .getting-started-action {
+        transition: none;
+    }
+}
+
+/* Selo "Premium" no menu lateral: não encosta no nome do item. */
+#main-tabs button[data-tab] > .min-w-0 {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#main-tabs [data-premium-badge] {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgb(var(--color-accent) / 0.1);
+    color: rgb(var(--color-accent));
+}
+
+html.sidebar-collapsed #main-tabs [data-premium-badge] {
+    display: none;
+}

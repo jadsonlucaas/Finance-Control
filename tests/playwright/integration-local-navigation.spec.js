@@ -207,3 +207,40 @@ test('conta sem lançamentos vê estados vazios com ação', async ({ page }) =>
   await expect(page.locator('#parcelamentos-list .empty-state')).toContainText('Nenhuma compra parcelada');
   await shot(page, 'desk-parcelamentos-vazio');
 });
+
+test('primeiros passos: aparece para conta nova, marca o lançamento e pode ser ocultado', async ({ page }) => {
+  const account = await createAccount('nav-onboarding');
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users', account.uid), { uid: account.uid, email: account.email, role: 'user', status: 'active', created_at: NOW, updated_at: NOW, last_login_at: NOW });
+  });
+  await signIn(page, account);
+  // A janela de planos pode abrir sozinha para conta nova: escolhe o Gratuito.
+  const free = page.locator('[data-plan-action="free"]').first();
+  if (await free.isVisible().catch(() => false)) await free.click();
+
+  const card = page.locator('#getting-started-card');
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await expect(card.locator('[data-step="record"]')).not.toHaveClass(/is-done/);
+  await shot(page, 'desk-primeiros-passos');
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users', account.uid, 'finance_records', 'primeiro'), expense(account, 'primeiro'));
+  });
+  await expect(card.locator('[data-step="record"]')).toHaveClass(/is-done/);
+
+  await card.locator('[data-getting-started="dismiss"]').click();
+  await expect(card).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('finance-control-getting-started-v1')).dismissed)).toBe(true);
+});
+
+test('primeiros passos: conta com tudo feito não vê o cartão', async ({ page }) => {
+  const account = await createAccount('nav-onboarding-done');
+  await seed(account);
+  await grantPremiumAccess(testEnv, account.uid);
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'whatsapp_links', '+5511999990000'), { uid: account.uid, phone: '+5511999990000', linked_at: NOW, status: 'active' });
+  });
+  await signIn(page, account);
+  await page.waitForTimeout(3000);
+  await expect(page.locator('#getting-started-card')).toHaveCount(0);
+});

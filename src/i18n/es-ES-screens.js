@@ -378,5 +378,14 @@ export const SCREEN_MESSAGES = Object.freeze({
   'Nenhuma compra parcelada': 'Ninguna compra a plazos',
   'Ao lançar uma saída com mais de uma parcela, ou mandar "comprei uma TV em 10x" no WhatsApp, ela aparece aqui.': 'Al registrar un gasto con más de una cuota, o enviar "compré una TV en 10 cuotas" por WhatsApp, aparece aquí.',
   'Seus dados estão demorando para carregar.': 'Tus datos están tardando en cargar.',
-  'Confira a internet e tente de novo. Nada foi perdido.': 'Revisa la conexión e inténtalo de nuevo. No se perdió nada.'
+  'Confira a internet e tente de novo. Nada foi perdido.': 'Revisa la conexión e inténtalo de nuevo. No se perdió nada.',
+  'Primeiros passos': 'Primeros pasos',
+  'Ocultar': 'Ocultar',
+  'Registre seu primeiro lançamento': 'Registra tu primer movimiento',
+  'Um gasto ou uma entrada. O Início passa a mostrar seu saldo do mês.': 'Un gasto o un ingreso. El Inicio pasa a mostrar tu saldo del mes.',
+  'O Gratuito cobre lançamentos e o Início. O Premium libera o assistente no WhatsApp, alertas e parcelamentos.': 'El Gratuito cubre movimientos y el Inicio. El Premium activa el asistente de WhatsApp, avisos y compras a plazos.',
+  'Ver planos': 'Ver planes',
+  'Vincule seu WhatsApp': 'Vincula tu WhatsApp',
+  'Mande "gastei 20 no almoço" e o assistente registra para você.': 'Envía "gasté 20 en el almuerzo" y el asistente lo registra por ti.',
+  'Vincular WhatsApp': 'Vincular WhatsApp'
 });

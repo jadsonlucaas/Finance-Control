@@ -64,6 +64,11 @@ export function installPlanGate(target = globalThis, options = {}) {
       current = { plan: 'unknown', source: 'error' };
     }
     paintBadges();
+    try {
+      target.dispatchEvent?.(new target.CustomEvent('financePlanChanged', { detail: { plan: current.plan } }));
+    } catch {
+      // Ambiente sem CustomEvent (testes): ninguem escuta.
+    }
     return current;
   }
 
@@ -74,8 +79,10 @@ export function installPlanGate(target = globalThis, options = {}) {
         if (current.plan === 'free' && !existing) {
           const badge = documentRef.createElement('span');
           badge.setAttribute(BADGE_ATTR, '');
-          badge.className = 'ml-auto text-[10px] font-semibold uppercase tracking-wide text-accent bg-accent/10 rounded px-1.5 py-0.5';
-          badge.textContent = 'Premium';
+          // Cadeado pequeno (o nome do item continua inteiro no menu); "Premium" fica no title e para leitor de tela.
+          badge.className = 'premium-lock';
+          badge.title = 'Premium';
+          badge.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="sr-only">Premium</span>';
           button.appendChild(badge);
         } else if (current.plan !== 'free' && existing) {
           existing.remove();
