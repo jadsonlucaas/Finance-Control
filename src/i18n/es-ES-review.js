@@ -1,0 +1,120 @@
+/**
+ * Revisao geral do espanhol (19/11/2026): textos que ainda apareciam em portugues
+ * com a conta em es-ES. Chave = texto exato em portugues como esta no codigo.
+ */
+const MONTH = '((?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|ene|feb|may|sep|oct|dic)\\/\\d{4})';
+const CYCLES = { 'Início do mês': 'Inicio de mes', 'Inicio do mes': 'Inicio de mes', Quinzena: 'Quincena' };
+const cycle = (text) => CYCLES[text] || text;
+
+export const REVIEW_PATTERNS = Object.freeze([
+  [/^Recebe (.+) • Paga (.+)$/, 'Recibe $1 • Paga $2'],
+  [/^(\d+) de (\d+) concluídos$/, '$1 de $2 completados'],
+  [/^(\d+) lançamento\(s\) ativos e (\d+) arquivado\(s\)\.$/, '$1 movimiento(s) activos y $2 archivado(s).'],
+  [/^(\d+) de (\d+) exibidos • (\d+) ativos • (\d+) arquivados(.*)$/, '$1 de $2 mostrados • $3 activos • $4 archivados$5'],
+  [new RegExp(`^(\\d+) competência\\(s\\) consolidadas • ${MONTH} • (.+)$`), (_, n, month, c) => `${n} periodo(s) consolidados • ${month} • ${cycle(c)}`],
+  [/^(\d+) competência\(s\) consolidadas • líquido somado (.+)$/, '$1 periodo(s) consolidados • neto sumado $2'],
+  [/^(\d+) competência\(s\) consolidadas$/, '$1 periodo(s) consolidados'],
+  [/^(\d+) lancamento\(s\) - competencia (.+)$/, '$1 registro(s) - periodo $2'],
+  [/^Data (\d{2}\/\d{2}\/\d{4})$/, 'Fecha $1'],
+  [/^Teto faixa (\d+)$/, 'Tope tramo $1'],
+  [/^Tabela tradicional (\d{4})$/, 'Tabla tradicional $1'],
+  [/^IRRF (\d{4})$/, 'IRRF $1']
+]);
+
+export const REVIEW_MESSAGES = Object.freeze({
+  // --- Cabecalho, menu e Inicio ---
+  'Conta e preferências': 'Cuenta y preferencias',
+  'Navegação principal': 'Navegación principal',
+  'Lancamentos Recentes': 'Movimientos recientes',
+  'Lançamentos Recentes': 'Movimientos recientes',
+  '(feito)': '(hecho)',
+  'Sem pessoa': 'Sin persona',
+  'Início do mês': 'Inicio de mes',
+  // --- Categorias padrao ---
+  'Habitação': 'Vivienda',
+  'Assinaturas': 'Suscripciones',
+  'Educação': 'Educación',
+  'Lazer': 'Ocio',
+  'Vestuário': 'Ropa',
+  'Cuidados pessoais': 'Cuidado personal',
+  'Reserva de emergência': 'Fondo de emergencia',
+  'Investimentos': 'Inversiones',
+  'Empréstimo': 'Préstamo',
+  'Saúde': 'Salud',
+  // --- Entradas (descontos do salario) ---
+  'Valor a adicionar': 'Importe a añadir',
+  'Observação do novo desconto': 'Nota del nuevo descuento',
+  // --- Usuarios do sistema ---
+  'Você': 'Tú',
+  'Padrão': 'Estándar',
+  'Desativar': 'Desactivar',
+  'Ativar': 'Activar',
+  'Controle de papel e status de acesso.': 'Control de rol y estado de acceso.',
+  'Todos status': 'Todos los estados',
+  'Todos perfis': 'Todos los perfiles',
+  'Pendente': 'Pendiente',
+  'Owner': 'Propietario',
+  'Próxima': 'Siguiente',
+  'Assistente: cortesia': 'Asistente: cortesía',
+  'Revogar assistente': 'Revocar asistente',
+  'Liberar assistente': 'Activar asistente',
+  'Acesso ao assistente sem assinatura': 'Acceso al asistente sin suscripción',
+  'Buscar na página': 'Buscar en la página',
+  'Busca apenas nos usuários carregados nesta página.': 'Busca solo en los usuarios cargados en esta página.',
+  // --- Parametros INSS e IRRF ---
+  'Ajuste as faixas conforme os materiais oficiais usados pelo sistema.': 'Ajusta los tramos según los materiales oficiales que usa el sistema.',
+  'Salvar parâmetros': 'Guardar parámetros',
+  'Alíquota': 'Tipo',
+  'Limite isenção': 'Límite de exención',
+  'Limite máximo redução': 'Límite máximo de reducción',
+  'Valor fixo redução': 'Importe fijo de reducción',
+  'Fator redução': 'Factor de reducción',
+  'Redução máxima até a isenção': 'Reducción máxima hasta la exención',
+  // --- Pessoas, fontes de renda e regras percentuais ---
+  'Quem recebe e o salário base de cada um.': 'Quién cobra y el salario base de cada uno.',
+  'Cadastre ou exclua as opções que aparecem no campo Tipo de Entrada.': 'Añade o elimina las opciones que aparecen en el campo Tipo de ingreso.',
+  'Opcao padrao do sistema': 'Opción estándar del sistema',
+  'Opção padrão do sistema': 'Opción estándar del sistema',
+  'Nenhuma opção de entrada disponível.': 'No hay opciones de ingreso disponibles.',
+  'Ex: Freelance, aluguel, comissão': 'Ej.: Freelance, alquiler, comisión',
+  'Saídas mensais calculadas automaticamente sobre a receita de cada pessoa.': 'Gastos mensuales calculados automáticamente sobre los ingresos de cada persona.',
+  'Nome da regra': 'Nombre de la regla',
+  'Ex: Reserva mensal': 'Ej.: Ahorro mensual',
+  'Todas as pessoas': 'Todas las personas',
+  'Base de calculo': 'Base de cálculo',
+  'Receita trabalho liquida': 'Ingreso laboral neto',
+  'Receita trabalho bruta': 'Ingreso laboral bruto',
+  'Base trabalho': 'Base laboral',
+  'Categoria macro': 'Categoría principal',
+  'Status padrao': 'Estado por defecto',
+  'Status padrão': 'Estado por defecto',
+  'Salvar regra': 'Guardar regla',
+  'Nenhuma regra percentual cadastrada.': 'No hay reglas porcentuales.',
+  // --- Backup ---
+  'Backup e restore seguro': 'Copia de seguridad y restauración',
+  'Exporte um snapshot local e simule restore sem escrita real.': 'Exporta una copia local y simula la restauración sin escribir nada.',
+  'Nenhum backup gerado.': 'Ninguna copia generada.',
+  'Baixar backup JSON': 'Descargar copia JSON',
+  'Restore dry-run': 'Simulación de restauración',
+  'Validacao, conflitos e simulacao. Restauracao real exige backend confiavel e nao esta disponivel nesta versao.': 'Validación, conflictos y simulación. La restauración real requiere un servidor de confianza y no está disponible en esta versión.',
+  'Restore real bloqueado': 'Restauración real bloqueada',
+  'Validar arquivo': 'Validar archivo',
+  'Simular restore': 'Simular restauración',
+  'Restaurar agora indisponivel': 'Restaurar ahora (no disponible)',
+  'Nenhum arquivo validado.': 'Ningún archivo validado.',
+  // --- Importacao ---
+  'Importacao XLSX moderna': 'Importación XLSX',
+  'Preview e commit passam pelo pipeline idempotente canonico.': 'La vista previa y la importación no duplican movimientos.',
+  'Aguardando arquivo': 'Esperando archivo',
+  'Tipo XLSX': 'Tipo de XLSX',
+  'Arquivo XLSX': 'Archivo XLSX',
+  'Gerar preview XLSX': 'Generar vista previa XLSX',
+  'Confirmar importacao': 'Confirmar importación',
+  'Nenhum arquivo selecionado.': 'Ningún archivo seleccionado.',
+  'Linha': 'Fila',
+  'Selecione uma planilha sintetica ou exportacao autorizada para gerar o preview.': 'Selecciona una hoja de cálculo para generar la vista previa.',
+  'Selecione um CSV e gere o preview para revisar as saidas antes de importar.': 'Selecciona un CSV y genera la vista previa para revisar los gastos antes de importarlos.',
+  'Nenhum lote encontrado para o filtro atual.': 'No hay importaciones para este filtro.',
+  'Linhas lidas': 'Filas leídas',
+  'Prontas': 'Listas'
+});

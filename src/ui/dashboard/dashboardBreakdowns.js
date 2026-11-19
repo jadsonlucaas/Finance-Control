@@ -95,7 +95,7 @@ function rankRow(documentRef, item, maxValue, { prefix, slot = 1 } = {}) {
   fill.style.width = `${Math.max((item.value / (maxValue.max || 1)) * 100, 1.5).toFixed(2)}%`;
   track.append(fill);
   row.append(head, track);
-  row.setAttribute('aria-label', `${item.name}: ${money(item.value)}, ${percentLabel(item.value, maxValue.total)} ${translate('do total')}. ${translate('Ver lançamentos')}`);
+  row.setAttribute('aria-label', `${translate(item.name)}: ${money(item.value)}, ${percentLabel(item.value, maxValue.total)} ${translate('do total')}. ${translate('Ver lançamentos')}`);
   row.addEventListener('click', () => openDetail(prefix, item));
   return row;
 }
@@ -111,7 +111,7 @@ function renderCategories(container, data) {
   // Barra unica dividida pelas categorias (parte de um todo), com legenda clicavel embaixo.
   const bar = el(documentRef, 'div', 'breakdown-stack');
   bar.setAttribute('role', 'img');
-  bar.setAttribute('aria-label', items.map((item) => `${item.name} ${percentLabel(item.value, data.total)}`).join(', '));
+  bar.setAttribute('aria-label', items.map((item) => `${translate(item.name)} ${percentLabel(item.value, data.total)}`).join(', '));
   items.forEach((item, index) => {
     const segment = el(documentRef, 'span', 'breakdown-stack-segment');
     segment.style.flexGrow = String(item.value);
@@ -137,7 +137,7 @@ function renderCategories(container, data) {
     row.append(el(documentRef, 'span', 'breakdown-row-name', item.name));
     row.append(el(documentRef, 'span', 'breakdown-row-value', money(item.value)));
     row.append(el(documentRef, 'span', 'breakdown-row-share', percentLabel(item.value, data.total)));
-    row.setAttribute('aria-label', `${item.name}: ${money(item.value)}, ${percentLabel(item.value, data.total)}. ${translate('Ver lançamentos')}`);
+    row.setAttribute('aria-label', `${translate(item.name)}: ${money(item.value)}, ${percentLabel(item.value, data.total)}. ${translate('Ver lançamentos')}`);
     row.addEventListener('click', () => openDetail('Categoria', item));
     legend.append(row);
   });
