@@ -1237,6 +1237,7 @@
             function applySettingsAccordions() {
                 document.querySelectorAll('#view-configuracoes .space-y-6 > .bg-surface').forEach(enhanceSettingsPanelAccordion);
             }
+            window.financeApplySettingsAccordions = applySettingsAccordions;
 
             const _renderEntradasEnhanced = renderEntradas;
             renderEntradas = function () {
