@@ -31,7 +31,7 @@ export const MESSAGE_MESSAGES = Object.freeze({
   'Tudo do Gratuito': 'Todo lo del plan Gratuito',
   'Assistente no WhatsApp com IA': 'Asistente de WhatsApp con IA',
   'Alertas de vencimento': 'Avisos de vencimiento',
-  'Parcelamentos, importação e controle de horas': 'Compras a plazos, importación y control de horas',
+  'Parcelamentos e importação de planilhas': 'Compras a plazos e importación de hojas de cálculo',
   'Planner e relatório em PDF': 'Planificador e informe en PDF',
   'Abrindo o Stripe…': 'Abriendo Stripe…',
   'Testar 7 dias grátis': 'Probar 7 días gratis',

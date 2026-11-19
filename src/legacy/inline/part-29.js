@@ -76,7 +76,15 @@
                 if (currentValue && !options.some((name) => name.toLowerCase() === currentValue.toLowerCase())) {
                     options.push(currentValue);
                 }
-                select.innerHTML = options.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+                // Hora extra, DSR, INSS e IRPF são "módulos avançados": somem quando a chave está desligada
+                // (menos o valor já escolhido, para editar lançamentos antigos).
+                const advancedOff = document.documentElement.classList.contains('advanced-modules-off');
+                const advancedNames = ['hora extra', 'dsr', 'inss (dedução)', 'irpf (dedução)'];
+                select.innerHTML = options.map((name) => {
+                    const advanced = advancedNames.includes(String(name).toLowerCase());
+                    const hide = advanced && advancedOff && name.toLowerCase() !== currentValue.toLowerCase();
+                    return `<option value="${escapeHtml(name)}"${advanced ? ' data-advanced-module' : ''}${hide ? ' hidden disabled' : ''}>${escapeHtml(name)}</option>`;
+                }).join('');
                 if (currentValue) select.value = currentValue;
             }
 

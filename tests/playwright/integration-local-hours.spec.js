@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { acceptCurrentLegalTerms, grantPremiumAccess } from './helpers/legalConsent.js';
+import { openTab } from './helpers/navigation.js';
 
 const PROJECT_ID = 'demo-finance-control-local-e2e';
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -94,16 +95,6 @@ async function signOutUi(page) {
   await page.locator('#btn-logout').click();
   await expect(page.locator('#auth-screen')).toBeVisible();
   await expect(page.locator('#app')).toBeHidden();
-}
-
-async function openTab(page, tab) {
-  const sidebar = page.locator('#sidebar');
-  const isHidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-  // No computador o menu lateral fica fixo; o botao de menu so existe em telas menores.
-  if (isHidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
-  await expect(sidebar).toBeVisible();
-  await page.locator(`[data-tab="${tab}"]`).click();
-  await expect(page.locator(`#view-${tab}`)).toBeVisible();
 }
 
 async function openHourControl(page) {

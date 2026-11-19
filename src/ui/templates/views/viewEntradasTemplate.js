@@ -1,9 +1,12 @@
+import { ledgerSwitchTemplate } from './ledgerSwitchTemplate.js';
+
 export function viewEntradasTemplate() {
   return `
 <!-- ENTRADAS LIST -->
             <section id="view-entradas" class="fade-in hidden">
                 <div class="entradas-header flex justify-between items-center mb-3 gap-3 flex-wrap">
                     <div class="entradas-header-copy">
+                        ${ledgerSwitchTemplate('entradas')}
                         <h2 class="font-semibold">Entradas</h2>
                         <p id="entradas-meta" class="text-xs text-textSecondary mt-1">Visao consolidada mensal por pessoa e competencia.</p>
                         <p data-history-window-notice class="history-window-notice text-xs text-textSecondary mt-1" aria-live="polite" hidden></p>

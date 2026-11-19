@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/playwright',
-  testMatch: /(?:environment-isolation|integration-local-(finance|budgets|history-window|installments|recurrences|import-xlsx|hours|backup-restore|settings-references|user-admin)|release-readiness-smoke)\.spec\.js/,
+  testMatch: /(?:environment-isolation|integration-local-(finance|budgets|navigation|history-window|installments|recurrences|import-xlsx|hours|backup-restore|settings-references|user-admin)|release-readiness-smoke)\.spec\.js/,
   timeout: 90_000,
   fullyParallel: false,
   workers: 1,

@@ -137,6 +137,7 @@
             onDataChanged(data) {
                 allRecords = data;
                 window.__financeDataVersion = (window.__financeDataVersion || 0) + 1;
+                try { window.dispatchEvent(new CustomEvent('financeRecordsChanged')); } catch (e) { /* sem listeners */ }
                 if (bulkOperationState?.suspendLiveRender) {
                     deferredSnapshotData = data;
                     return;

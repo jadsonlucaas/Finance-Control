@@ -359,5 +359,10 @@ export const SCREEN_MESSAGES = Object.freeze({
   'Compra': 'Compra',
   'Progresso': 'Progreso',
   'Valor Total': 'Importe total',
-  'Ainda Falta': 'Pendiente'
+  'Ainda Falta': 'Pendiente',
+  'Módulos avançados': 'Módulos avanzados',
+  'Controle de horas, hora extra, DSR e parâmetros de INSS e IRRF. Para quem acompanha salário CLT.': 'Control de horas, horas extra, DSR y parámetros de INSS e IRRF. Para quien sigue un salario CLT (Brasil).',
+  'Importar planilha': 'Importar hoja de cálculo',
+  'Traga lançamentos de uma planilha do Excel ou CSV.': 'Trae movimientos desde una hoja de Excel o CSV.',
+  'Tipo de lançamento': 'Tipo de movimiento'
 });

@@ -69,6 +69,8 @@ import { createResilienceViewPilots } from './ui/resilience/resiliencePilots.js'
 import { installInitialTemplates } from './ui/templates/installInitialTemplates.js';
 import { installAppShell } from './ui/shell/appShell.js';
 import { installAppName } from './core/brand.js';
+import { installAdvancedModules } from './ui/shell/advancedModules.js';
+import { installLedgerSwitch } from './ui/shell/ledgerSwitch.js';
 
 function markBootstrap(name, target = globalThis) {
   try {
@@ -118,6 +120,8 @@ export function bootstrapApp() {
   installSettingsPanelCards(globalThis);
   installAppShell(globalThis);
   installAppName(globalThis);
+  installLedgerSwitch(globalThis);
+  installAdvancedModules(globalThis);
   installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);
   installRecordFormValidationGlobals(globalThis);

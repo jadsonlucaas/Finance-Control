@@ -1,9 +1,12 @@
+import { ledgerSwitchTemplate } from './ledgerSwitchTemplate.js';
+
 export function viewSaidasTemplate() {
   return `
 <!-- SAIDAS LIST -->
             <section id="view-saidas" class="fade-in hidden">
                 <div class="saidas-header flex justify-between items-center mb-3 gap-3 flex-wrap">
                     <div class="saidas-header-copy">
+                        ${ledgerSwitchTemplate('saidas')}
                         <h2 class="font-semibold">Saidas</h2>
                         <p id="saidas-meta" class="text-xs text-textSecondary mt-1"></p>
                         <p data-history-window-notice class="history-window-notice text-xs text-textSecondary mt-1" aria-live="polite" hidden></p>

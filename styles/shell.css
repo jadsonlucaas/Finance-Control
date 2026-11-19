@@ -3042,7 +3042,9 @@ html.finance-view-loading #main-content::before {
     color: rgb(var(--color-text-secondary));
 }
 
-#view-configuracoes .space-y-6 > [data-settings-card] + [data-settings-card] {
+#view-configuracoes .space-y-6 > [data-settings-card] + [data-settings-card],
+#view-configuracoes .space-y-6 > [data-settings-card] + .settings-extra-panel,
+#view-configuracoes .space-y-6 > .settings-extra-panel + .settings-extra-panel {
     margin-top: 12px;
 }
 
@@ -3076,4 +3078,110 @@ html.settings-panel-modal-open body {
 @media (prefers-reduced-motion: reduce) {
     .settings-panel-dialog { animation: none; }
     .settings-card-chevron { transition: none; }
+}
+
+/* Módulos avançados desligados: horas, H.E., DSR e INSS/IRRF somem do app. */
+html.advanced-modules-off [data-advanced-module],
+html.advanced-modules-off [data-settings-card="inss-irrf"],
+html.advanced-modules-off [data-settings-card="tipos-he"] {
+    display: none !important;
+}
+
+.settings-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.settings-toggle-row .settings-card-desc {
+    white-space: normal;
+}
+
+.settings-switch {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.settings-switch input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.settings-switch-track {
+    display: inline-flex;
+    width: 44px;
+    height: 26px;
+    align-items: center;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgb(var(--color-surface-light));
+    transition: background-color 150ms ease-out;
+}
+
+.settings-switch-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+    transition: transform 150ms ease-out;
+}
+
+.settings-switch input:checked + .settings-switch-track {
+    background: rgb(var(--color-accent));
+}
+
+.settings-switch input:checked + .settings-switch-track .settings-switch-thumb {
+    transform: translateX(18px);
+}
+
+.settings-switch input:focus-visible + .settings-switch-track {
+    outline: 2px solid rgb(var(--color-accent));
+    outline-offset: 2px;
+}
+
+/* Lançamentos: chave Saídas | Entradas. */
+.ledger-switch {
+    display: inline-flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    padding: 4px;
+    border: 1px solid rgb(var(--color-surface-light));
+    border-radius: 12px;
+    background: rgb(var(--color-surface));
+}
+
+.ledger-switch-item {
+    min-height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(var(--color-text-secondary));
+    transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.ledger-switch-item:hover {
+    color: rgb(var(--color-text-primary));
+}
+
+.ledger-switch-item[aria-pressed="true"] {
+    background: rgb(var(--color-accent) / 0.15);
+    color: rgb(var(--color-accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-switch-track,
+    .settings-switch-thumb,
+    .ledger-switch-item {
+        transition: none;
+    }
 }

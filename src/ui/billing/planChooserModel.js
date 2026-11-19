@@ -130,7 +130,7 @@ export function renderPlanChooser(state = {}) {
             <li>Tudo do Gratuito</li>
             <li>Assistente no WhatsApp com IA</li>
             <li>Alertas de vencimento</li>
-            <li>Parcelamentos, importação e controle de horas</li>
+            <li>Parcelamentos e importação de planilhas</li>
             <li>Planner e relatório em PDF</li>
           </ul>
           ${needsDetails ? detailsForm(state.draft || state.details) : ''}

@@ -181,15 +181,15 @@ export function viewNovoTemplate() {
                             <label class="text-xs text-textSecondary mb-1 block">Tipo de Entrada</label><select
                                 id="form-earning-type" class="w-full text-sm">
                                 <option>Salário</option>
-                                <option>Hora Extra</option>
-                                <option>DSR</option>
+                                <option data-advanced-module>Hora Extra</option>
+                                <option data-advanced-module>DSR</option>
                                 <option>13º</option>
                                 <option>Bônus</option>
                                 <option>Alimentação</option>
                                 <option>Café</option>
                                 <option>Outros Benefícios</option>
-                                <option>INSS (dedução)</option>
-                                <option>IRPF (dedução)</option>
+                                <option data-advanced-module>INSS (dedução)</option>
+                                <option data-advanced-module>IRPF (dedução)</option>
                                 <option>Outras Deduções</option>
                             </select>
                         </div>

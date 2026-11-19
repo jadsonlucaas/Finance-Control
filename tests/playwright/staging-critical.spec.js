@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openTab } from './helpers/navigation.js';
 
 const accounts = {
   A: { email: process.env.STAGING_A_EMAIL, password: process.env.STAGING_A_PASSWORD, uid: process.env.STAGING_A_UID },
@@ -100,20 +101,6 @@ function stagingXlsxBuffer(description, externalId) {
     { name: 'xl/_rels/workbook.xml.rels', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>' },
     { name: 'xl/worksheets/sheet1.xml', content: worksheetXml(rows) }
   ]);
-}
-
-async function openTab(page, tab) {
-  const sidebar = page.locator('#sidebar');
-  const isMobile = (page.viewportSize()?.width || 1280) < 1024;
-  if (isMobile) {
-    const hidden = await sidebar.evaluate((element) => element.classList.contains('-translate-x-full')).catch(() => true);
-    if (hidden && await page.locator('#btn-mobile-menu').isVisible()) await page.locator('#btn-mobile-menu').click();
-    await page.locator(`[data-tab="${tab}"]`).click();
-  } else {
-    await page.evaluate((targetTab) => window.switchTab(targetTab), tab);
-  }
-  await expect(page.locator(`#view-${tab}`)).toBeVisible();
-  if (isMobile) await expect(page.locator('#sidebar-overlay')).toBeHidden();
 }
 
 async function readAuditEventTypes(page, uid, projectId) {
