@@ -184,7 +184,7 @@
             `;
             settingsWrap.prepend(panel);
             // Painel recriado: volta a ter o "expandir" (+/-) igual aos demais.
-            window.financeApplySettingsAccordions?.();
+            window.financeApp?.settingsLegacySupplementals?.applyAccordions?.();
         }
 
         function saveTaxSettings() {

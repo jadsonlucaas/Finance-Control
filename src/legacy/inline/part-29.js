@@ -1237,7 +1237,6 @@
             function applySettingsAccordions() {
                 document.querySelectorAll('#view-configuracoes .space-y-6 > .bg-surface').forEach(enhanceSettingsPanelAccordion);
             }
-            window.financeApplySettingsAccordions = applySettingsAccordions;
 
             const _renderEntradasEnhanced = renderEntradas;
             renderEntradas = function () {
@@ -1260,6 +1259,7 @@
             const financeAppForSettingsSupplementals = window.financeApp;
             if (financeAppForSettingsSupplementals) {
                 financeAppForSettingsSupplementals.settingsLegacySupplementals = financeAppForSettingsSupplementals.settingsLegacySupplementals || {};
+                financeAppForSettingsSupplementals.settingsLegacySupplementals.applyAccordions = applySettingsAccordions;
                 financeAppForSettingsSupplementals.settingsLegacySupplementals.renderEntrySourcesAndPercentage = function () {
                     ensureEntrySourcesSettingsPanel();
                     renderEntrySourcesSettings();
