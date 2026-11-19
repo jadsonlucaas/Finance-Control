@@ -17,6 +17,17 @@ describe('settingsPanelCards', () => {
     expect(matchSettingsPanel(panelWithTitle('Regras fixas percentuais'))?.key).toBe('regras-percentuais');
   });
 
+  it('reconhece os títulos já traduzidos para espanhol', () => {
+    expect(matchSettingsPanel(panelWithTitle('Usuarios del sistema'))?.key).toBe('usuarios');
+    expect(matchSettingsPanel(panelWithTitle('Personas'))?.key).toBe('pessoas');
+    expect(matchSettingsPanel(panelWithTitle('Categorías principales'))?.key).toBe('categorias-macro');
+    expect(matchSettingsPanel(panelWithTitle('Categorías personalizadas'))?.key).toBe('categorias');
+    expect(matchSettingsPanel(panelWithTitle('Tipos de horas extra'))?.key).toBe('tipos-he');
+    expect(matchSettingsPanel(panelWithTitle('Otras fuentes de ingresos'))?.key).toBe('fontes-renda');
+    expect(matchSettingsPanel(panelWithTitle('Reglas fijas porcentuales'))?.key).toBe('regras-percentuais');
+    expect(matchSettingsPanel(panelWithTitle('Parámetros de Seguridad Social e IRPF'))?.key).toBe('inss-irrf');
+  });
+
   it('deixa de fora painéis que não são parametrização', () => {
     expect(matchSettingsPanel(panelWithTitle('Histórico'))).toBeNull();
     expect(matchSettingsPanel({ querySelector: () => null })).toBeNull();

@@ -387,5 +387,14 @@ export const SCREEN_MESSAGES = Object.freeze({
   'Ver planos': 'Ver planes',
   'Vincule seu WhatsApp': 'Vincula tu WhatsApp',
   'Mande "gastei 20 no almoço" e o assistente registra para você.': 'Envía "gasté 20 en el almuerzo" y el asistente lo registra por ti.',
-  'Vincular WhatsApp': 'Vincular WhatsApp'
+  'Vincular WhatsApp': 'Vincular WhatsApp',
+  'Início': 'Inicio',
+  'Tipo de recebimento': 'Tipo de cobro',
+  'Uma vez ao mês': 'Una vez al mes',
+  'Quinzenal': 'Quincenal',
+  'Ver histórico': 'Ver historial',
+  'Sem histórico definido': 'Sin historial definido',
+  'Parâmetros INSS e IRRF': 'Parámetros de Seguridad Social e IRPF',
+  'Outras Fontes de Renda': 'Otras fuentes de ingresos',
+  'Regras Fixas Percentuais': 'Reglas fijas porcentuales'
 });

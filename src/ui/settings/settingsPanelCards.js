@@ -9,15 +9,17 @@
 const PANEL_SELECTOR = '#view-configuracoes .space-y-6 > .bg-surface';
 const MODAL_ID = 'settings-panel-modal';
 
+// Os títulos chegam já traduzidos pelo i18n da tela, então cada painel
+// lista também o título em espanhol (es-ES).
 const PANELS = [
-  { key: 'usuarios', match: 'usuários do sistema', fallback: 'Papel e status de acesso de cada usuário.' },
-  { key: 'inss-irrf', match: 'parâmetros inss e irrf', fallback: 'Faixas e alíquotas usadas nos cálculos.' },
-  { key: 'pessoas', match: 'pessoas', fallback: 'Quem recebe e o salário base de cada um.' },
-  { key: 'categorias-macro', match: 'categorias macro', fallback: 'Grupos que organizam as categorias.' },
-  { key: 'categorias', match: 'categorias personalizadas', fallback: 'Categorias usadas nos lançamentos.' },
-  { key: 'tipos-he', match: 'tipos de h.e.', fallback: 'Tipos de hora extra disponíveis no lançamento.' },
-  { key: 'fontes-renda', match: 'outras fontes de renda', fallback: 'Opções do campo Tipo de Entrada.' },
-  { key: 'regras-percentuais', match: 'regras fixas percentuais', fallback: 'Saídas calculadas sobre as entradas.' }
+  { key: 'usuarios', match: ['usuários do sistema', 'usuarios del sistema'], fallback: 'Papel e status de acesso de cada usuário.' },
+  { key: 'inss-irrf', match: ['parâmetros inss e irrf', 'parámetros de seguridad social e irpf'], fallback: 'Faixas e alíquotas usadas nos cálculos.' },
+  { key: 'pessoas', match: ['pessoas', 'personas'], fallback: 'Quem recebe e o salário base de cada um.' },
+  { key: 'categorias-macro', match: ['categorias macro', 'categorías principales'], fallback: 'Grupos que organizam as categorias.' },
+  { key: 'categorias', match: ['categorias personalizadas', 'categorías personalizadas'], fallback: 'Categorias usadas nos lançamentos.' },
+  { key: 'tipos-he', match: ['tipos de h.e.', 'tipos de horas extra'], fallback: 'Tipos de hora extra disponíveis no lançamento.' },
+  { key: 'fontes-renda', match: ['outras fontes de renda', 'otras fuentes de ingresos'], fallback: 'Opções do campo Tipo de Entrada.' },
+  { key: 'regras-percentuais', match: ['regras fixas percentuais', 'reglas fijas porcentuales'], fallback: 'Saídas calculadas sobre as entradas.' }
 ];
 
 function normalize(text = '') {
@@ -31,7 +33,7 @@ function panelTitleElement(panel) {
 export function matchSettingsPanel(panel) {
   const title = normalize(panelTitleElement(panel)?.textContent || '');
   if (!title) return null;
-  return PANELS.find((item) => title.includes(item.match)) || null;
+  return PANELS.find((item) => item.match.some((text) => title.includes(text))) || null;
 }
 
 function panelSubtitle(panel, config) {
