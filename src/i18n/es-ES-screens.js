@@ -393,5 +393,8 @@ export const SCREEN_MESSAGES = Object.freeze({
   'Uma vez ao mês': 'Una vez al mes',
   'Quinzenal': 'Quincenal',
   'Ver histórico': 'Ver historial',
-  'Sem histórico definido': 'Sin historial definido'
+  'Sem histórico definido': 'Sin historial definido',
+  'Parâmetros INSS e IRRF': 'Parámetros de Seguridad Social e IRPF',
+  'Outras Fontes de Renda': 'Otras fuentes de ingresos',
+  'Regras Fixas Percentuais': 'Reglas fijas porcentuales'
 });
