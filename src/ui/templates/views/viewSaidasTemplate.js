@@ -1,3 +1,4 @@
+import { emptyStateHtml } from '../../components/emptyState.js';
 import { ledgerSwitchTemplate } from './ledgerSwitchTemplate.js';
 
 export function viewSaidasTemplate() {
@@ -65,6 +66,6 @@ export function viewSaidasTemplate() {
                 <div id="saidas-pagination" class="hidden pt-3 flex justify-center">
                     <button id="btn-load-more-saidas" type="button" class="px-3 py-1.5 text-xs rounded-lg bg-surfaceLight text-textSecondary hover:text-textPrimary">Carregar mais</button>
                 </div>
-                <p id="saidas-empty" class="text-textSecondary text-sm text-center py-8 hidden">Nenhuma saida cadastrada.</p>
+                ${emptyStateHtml({ id: 'saidas-empty', hidden: true, icon: 'wallet', title: 'Nenhuma saída registrada', text: 'Registre um gasto aqui ou mande uma mensagem para o assistente no WhatsApp, como "gastei 20 no almoço".', actionLabel: 'Nova saída', actionClick: 'btn-new-saida' })}
             </section>`;
 }

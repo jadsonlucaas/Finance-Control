@@ -186,3 +186,24 @@ test('celular: barra inferior e chave de lançamentos cabem na tela', async ({ b
   await shot(page, 'mob-configuracoes');
   await context.close();
 });
+
+test('conta sem lançamentos vê estados vazios com ação', async ({ page }) => {
+  const account = await createAccount('nav-empty');
+  await grantPremiumAccess(testEnv, account.uid);
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users', account.uid), { uid: account.uid, email: account.email, role: 'user', status: 'active', created_at: NOW, updated_at: NOW, last_login_at: NOW });
+  });
+  await signIn(page, account);
+
+  await page.locator('#main-tabs [data-tab="saidas"]').click();
+  const empty = page.locator('#saidas-empty');
+  await expect(empty).toBeVisible();
+  await expect(empty).toContainText('Nenhuma saída registrada');
+  await shot(page, 'desk-saidas-vazio');
+  await empty.getByRole('button', { name: 'Nova saída' }).click();
+  await expect(page.locator('#view-novo')).toBeVisible();
+
+  await page.locator('#main-tabs [data-tab="parcelamentos"]').click();
+  await expect(page.locator('#parcelamentos-list .empty-state')).toContainText('Nenhuma compra parcelada');
+  await shot(page, 'desk-parcelamentos-vazio');
+});
