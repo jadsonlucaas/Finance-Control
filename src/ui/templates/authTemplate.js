@@ -8,7 +8,7 @@ export function authTemplate() {
                     <i data-lucide="wallet" class="w-6 h-6 text-accent"></i>
                 </div>
                 <div>
-                    <p class="text-xs uppercase tracking-[0.2em] text-textSecondary">Acesso Seguro</p>
+                    <p data-app-name class="text-xs uppercase tracking-[0.2em] text-textSecondary">Controle Financeiro</p>
                     <h2 id="auth-title" class="text-2xl font-bold text-textPrimary">Entrar</h2>
                 </div>
             </div>

@@ -806,7 +806,7 @@ function renderOverview(records = []) {
       },
       {
         title: '3. Categoria amarrada ao cadastro oficial',
-        description: 'A classificacao automatica tenta vincular category_id, category_name, category_color e category_icon usando as categorias ja existentes do Finance Control.'
+        description: 'A classificacao automatica tenta vincular category_id, category_name, category_color e category_icon usando as categorias ja existentes no app.'
       },
       {
         title: '4. Preview antes de gravar',

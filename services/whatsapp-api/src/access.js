@@ -18,10 +18,10 @@ export const ACCESS_MODES = Object.freeze(['open', 'entitlement']);
 export const SUBSCRIPTION_ALLOWED_STATUSES = Object.freeze(['trialing', 'active', 'past_due']);
 
 export const ACCESS_REQUIRED_MESSAGE = 'Seu acesso ao assistente do WhatsApp não está ativo. '
-  + 'Assine o Premium no app do Finance Control para continuar usando por aqui.';
+  + 'Assine o Premium pelo app para continuar usando por aqui.';
 
 export const PHONE_MISMATCH_MESSAGE = 'Este número não é o número principal da sua assinatura Premium. '
-  + 'Use o número informado no pagamento ou troque o telefone em "Gerenciar assinatura" no app do Finance Control.';
+  + 'Use o número informado no pagamento ou troque o telefone em "Gerenciar assinatura" no app.';
 
 export function accessMessage(status) {
   return status === 'phone_mismatch' ? PHONE_MISMATCH_MESSAGE : ACCESS_REQUIRED_MESSAGE;

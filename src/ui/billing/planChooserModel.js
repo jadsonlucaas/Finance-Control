@@ -72,7 +72,7 @@ function detailsForm(details = {}) {
       </div>
       <label class="flex items-start gap-2 text-xs text-textSecondary">
         <input data-plan-field="consent" type="checkbox" class="mt-0.5" ${details?.whatsapp_consent ? 'checked' : ''}>
-        <span>Aceito receber mensagens do Finance Control no WhatsApp (boas-vindas e alertas).</span>
+        <span>Aceito receber mensagens do assistente no WhatsApp (boas-vindas e alertas).</span>
       </label>
     </div>`;
 }

@@ -37,7 +37,7 @@
         let selectedEntryDetailKey = '';
 
         const defaultConfig = {
-            app_title: 'Controle Financeiro',
+            app_title: (window.financeBrand && window.financeBrand.name) || 'Controle Financeiro',
             background_color: '#0b1120',
             surface_color: '#1e293b',
             text_color: '#e2e8f0',

@@ -68,6 +68,7 @@ import { installFinancialCrudControllers } from './ui/records/financialCrudContr
 import { createResilienceViewPilots } from './ui/resilience/resiliencePilots.js';
 import { installInitialTemplates } from './ui/templates/installInitialTemplates.js';
 import { installAppShell } from './ui/shell/appShell.js';
+import { installAppName } from './core/brand.js';
 
 function markBootstrap(name, target = globalThis) {
   try {
@@ -116,6 +117,7 @@ export function bootstrapApp() {
   installModalKeyboard(globalThis);
   installSettingsPanelCards(globalThis);
   installAppShell(globalThis);
+  installAppName(globalThis);
   installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);
   installRecordFormValidationGlobals(globalThis);

@@ -18,10 +18,10 @@ import { ApiError } from './errors.js';
 export const DEFAULT_DAILY_LIMITS = Object.freeze({ messages: 100, tool_calls: 400 });
 
 export const DAILY_LIMIT_MESSAGE = 'Você atingiu o limite de uso do assistente por hoje. '
-  + 'Amanhã ele volta a responder normalmente. Enquanto isso, você pode lançar e consultar tudo pelo app do Finance Control.';
+  + 'Amanhã ele volta a responder normalmente. Enquanto isso, você pode lançar e consultar tudo pelo app.';
 
 export const DAILY_LIMIT_MESSAGE_ES = 'Has alcanzado el límite de uso del asistente por hoy. '
-  + 'Mañana volverá a responder con normalidad. Mientras tanto, puedes registrar y consultar todo en la app de Finance Control.';
+  + 'Mañana volverá a responder con normalidad. Mientras tanto, puedes registrar y consultar todo en la app.';
 
 export function dailyLimitMessage(locale = '') {
   return String(locale).toLowerCase().startsWith('es') ? DAILY_LIMIT_MESSAGE_ES : DAILY_LIMIT_MESSAGE;

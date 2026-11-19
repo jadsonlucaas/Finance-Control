@@ -107,7 +107,7 @@ function body(state, { botNumber } = {}) {
         <button type="button" data-whatsapp-link-action="revoke" class="${BUTTON_DANGER} mt-3" ${disabled}>Desvincular WhatsApp</button>
         ${feedback(state)}`;
     case 'code':
-      return `<p class="text-xs text-textSecondary">Envie este código, como mensagem, para o WhatsApp do Finance Control:</p>
+      return `<p class="text-xs text-textSecondary">Envie este código, como mensagem, para o WhatsApp do assistente:</p>
         <p class="text-2xl font-bold tracking-[0.2em] text-textPrimary my-3 select-all" data-whatsapp-link-code>${escapeHtml(state.code)}</p>
         <p class="text-xs text-textSecondary">Válido até ${escapeHtml(formatTime(state.expiresAt))}. Só funciona uma vez e só para esta conta. Não compartilhe.</p>
         <p class="text-xs text-textSecondary mt-1" aria-live="polite">Aguardando a mensagem…</p>
