@@ -185,6 +185,9 @@ async function openSettingsAsAdmin(page) {
   await openSettings(page);
   await page.waitForFunction(() => window.refreshManagedUsers?.__financeModernUserAdmin === true);
   await page.evaluate(() => window.refreshManagedUsers());
+  // Em Configurações cada painel é um cartão que abre numa janela.
+  const card = page.locator('[data-settings-card-summary="usuarios"]');
+  if (await card.count()) await card.click();
   await expect(page.locator('#admin-users-panel')).toBeVisible();
   await expect(page.locator('[data-admin-user-row]').first()).toBeVisible();
 }

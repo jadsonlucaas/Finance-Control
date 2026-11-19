@@ -1166,76 +1166,10 @@
                 showToast('Regra percentual removida!');
             };
 
-            const settingsAccordionState = {};
-
-            function getSettingsPanelTitle(panel) {
-                return normalizeEntrySourceName(panel?.querySelector('h3')?.textContent || '');
-            }
-
-            function shouldUseSettingsAccordion(panel) {
-                const title = getSettingsPanelTitle(panel).toLowerCase();
-                return [
-                    'parâmetros inss e irrf',
-                    'parâmetros inss e irrf',
-                    'pessoas',
-                    'categorias macro',
-                    'categorias personalizadas',
-                    'configuracao de tipos de h.e.',
-                    'configuração de tipos de h.e.',
-                    'outras fontes de renda',
-                    'regras fixas percentuais'
-                ].some((candidate) => title.includes(candidate));
-            }
-
-            function setSettingsAccordionOpen(panel, open) {
-                const content = panel.querySelector(':scope > .settings-accordion-content');
-                const button = panel.querySelector('.settings-accordion-toggle');
-                if (!content || !button) return;
-                const key = panel.dataset.settingsAccordionKey || getSettingsPanelTitle(panel);
-                settingsAccordionState[key] = Boolean(open);
-                content.classList.toggle('hidden', !open);
-                button.textContent = open ? '-' : '+';
-                button.setAttribute('aria-expanded', String(open));
-                button.title = open ? 'Ocultar informações' : 'Exibir informações';
-            }
-
-            function enhanceSettingsPanelAccordion(panel) {
-                if (!panel || !shouldUseSettingsAccordion(panel)) return;
-                const title = getSettingsPanelTitle(panel);
-                const key = panel.dataset.settingsAccordionKey || title;
-                panel.dataset.settingsAccordionKey = key;
-
-                let content = panel.querySelector(':scope > .settings-accordion-content');
-                if (!content) {
-                    const header = panel.firstElementChild;
-                    if (!header) return;
-                    content = document.createElement('div');
-                    content.className = 'settings-accordion-content mt-3';
-                    while (header.nextSibling) {
-                        content.appendChild(header.nextSibling);
-                    }
-                    panel.appendChild(content);
-                }
-
-                let button = panel.querySelector('.settings-accordion-toggle');
-                if (!button) {
-                    const header = panel.firstElementChild;
-                    if (!header) return;
-                    button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'settings-accordion-toggle shrink-0 w-8 h-8 rounded-lg border border-surfaceLight bg-surfaceLight/40 text-accent text-lg font-semibold leading-none hover:bg-accent hover:text-bg transition-colors';
-                    button.setAttribute('aria-label', `Exibir informações de ${title}`);
-                    button.onclick = () => setSettingsAccordionOpen(panel, button.getAttribute('aria-expanded') !== 'true');
-                    header.classList.add('gap-3');
-                    header.insertBefore(button, header.firstChild);
-                }
-
-                const shouldOpen = settingsAccordionState[key] === true;
-                setSettingsAccordionOpen(panel, shouldOpen);
-            }
-
+            // Os painéis de parametrização viram cartões que abrem numa janela
+            // (src/ui/settings/settingsPanelCards.js).
             function applySettingsAccordions() {
-                document.querySelectorAll('#view-configuracoes .space-y-6 > .bg-surface').forEach(enhanceSettingsPanelAccordion);
+                window.financeApp?.settingsPanelCards?.apply?.();
             }
 
             const _renderEntradasEnhanced = renderEntradas;
@@ -1259,6 +1193,7 @@
             const financeAppForSettingsSupplementals = window.financeApp;
             if (financeAppForSettingsSupplementals) {
                 financeAppForSettingsSupplementals.settingsLegacySupplementals = financeAppForSettingsSupplementals.settingsLegacySupplementals || {};
+                financeAppForSettingsSupplementals.settingsLegacySupplementals.applyAccordions = applySettingsAccordions;
                 financeAppForSettingsSupplementals.settingsLegacySupplementals.renderEntrySourcesAndPercentage = function () {
                     ensureEntrySourcesSettingsPanel();
                     renderEntrySourcesSettings();

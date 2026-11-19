@@ -143,6 +143,10 @@
                 }
                 renderAll();
                 refreshDashboardDetailAfterDataChange();
+                // Primeira leitura desenhada: tira o carregamento de cima do conteudo.
+                if (!window.__financeFirstDataReceived && window.__financeUserRecordsPending !== true) {
+                    window.financeAppBoot?.markFirstDataReceived?.();
+                }
             }
         };
 
@@ -190,7 +194,10 @@
 
         async function initSdk() {
             const r = await window.dataSdk.init(dataHandler);
-            if (!r.isOk) console.error('Data SDK init failed');
+            if (!r.isOk) {
+                console.error('Data SDK init failed');
+                window.financeAppBoot?.markFirstDataReceived?.();
+            }
         }
 
         if (!window.dataSdk) {

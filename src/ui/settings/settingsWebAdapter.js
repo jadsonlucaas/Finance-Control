@@ -204,12 +204,14 @@ function createSettingsActions(target = globalThis) {
 }
 
 function createSettingsSupplementaryRenderers(target = globalThis) {
+  // O painel de INSS/IRRF e recriado a cada desenho; ele vem antes dos complementos porque
+  // sao eles que transformam os paineis em "expandir" (+/-) no fim.
   return [
-    () => target.financeApp?.settingsLegacySupplementals?.renderEntrySourcesAndPercentage?.(),
     () => target.renderImportReport?.(),
     () => target.renderEntradasImportReport?.(),
     () => target.renderOvertimeTypesSettings?.(),
-    () => target.renderTaxSettingsPanel?.()
+    () => target.renderTaxSettingsPanel?.(),
+    () => target.financeApp?.settingsLegacySupplementals?.renderEntrySourcesAndPercentage?.()
   ];
 }
 

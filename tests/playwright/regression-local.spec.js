@@ -1,5 +1,15 @@
 import { expect, test } from '@playwright/test';
 
+// Em Configurações cada parametrização é um cartão que abre numa janela;
+// abre a janela do painel que contém o controle antes de usá-lo.
+async function revealSettingsControl(page, selector) {
+  await page.evaluate((target) => {
+    const panel = document.querySelector(target)?.closest('[data-settings-card]');
+    if (panel && !panel.dataset.settingsOpen) window.financeApp?.settingsPanelCards?.open?.(panel);
+  }, selector);
+}
+
+
 async function waitTwoFrames(page) {
   const wait = () => page.evaluate(() => new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
@@ -485,6 +495,7 @@ test('modern admin panel filters users locally without exposing common-user acti
   await page.waitForFunction(() => window.refreshManagedUsers?.__financeModernUserAdmin === true);
 
   await expect(page.locator('#admin-users-list')).toContainText('admin-ui@example.test');
+  await revealSettingsControl(page, '#admin-users-next');
   await page.locator('#admin-users-next').click();
   await expect(page.locator('#admin-users-list')).toContainText('page-user-48@example.test');
   await expect(page.locator('#admin-users-list')).not.toContainText('admin-ui@example.test');
@@ -689,12 +700,16 @@ test('common user creates personal macro and category by default', async ({ page
   await showAppWithMockData(page, []);
   await openSettingsWithActiveUi(page);
 
+  await revealSettingsControl(page, '#btn-add-macro');
+
   await page.locator('#btn-add-macro').click();
   await expect(page.locator('#macro-scope')).toBeVisible();
   await expect(page.locator('#macro-scope')).toBeDisabled();
   expect(await page.locator('#macro-scope option').evaluateAll((options) => options.map((option) => option.value))).toEqual(['personal']);
   await page.locator('#macro-input').fill('Projetos locais');
   await page.locator('#btn-save-macro').click();
+
+  await revealSettingsControl(page, '#btn-open-category-form');
 
   await page.locator('#btn-open-category-form').click();
   await expect(page.locator('#cat-scope')).toBeVisible();
@@ -714,6 +729,8 @@ test('common user creates personal macro and category by default', async ({ page
 test('common manipulated global scope is rejected without converted personal side effect', async ({ page }) => {
   await showAppWithMockData(page, []);
   await openSettingsWithActiveUi(page);
+
+  await revealSettingsControl(page, '#btn-add-macro');
 
   await page.locator('#btn-add-macro').click();
   await page.locator('#macro-input').fill('Global manipulada');
@@ -740,11 +757,15 @@ test('admin creates global reference only through explicit scope selection', asy
   });
   await openSettingsWithActiveUi(page);
 
+  await revealSettingsControl(page, '#btn-add-macro');
+
   await page.locator('#btn-add-macro').click();
   await expect(page.locator('#macro-scope')).toBeVisible();
   await page.locator('#macro-input').fill('Global controlada');
   await page.locator('#macro-scope').selectOption('global');
   await page.locator('#btn-save-macro').click();
+
+  await revealSettingsControl(page, '#btn-open-category-form');
 
   await page.locator('#btn-open-category-form').click();
   await expect(page.locator('#cat-scope')).toBeVisible();
@@ -809,6 +830,8 @@ test('duplicate save and permission error keep reference UI from false success',
   });
   await openSettingsWithActiveUi(page);
 
+  await revealSettingsControl(page, '#btn-add-macro');
+
   await page.locator('#btn-add-macro').click();
   await page.locator('#macro-input').fill('Clique unico');
   await page.evaluate(() => Promise.all([
@@ -816,6 +839,8 @@ test('duplicate save and permission error keep reference UI from false success',
     window.saveMacroCategory()
   ]));
   expect(await page.evaluate(() => window.__regressionRecords.filter((record) => record.type === 'macro').length)).toBe(1);
+
+  await revealSettingsControl(page, '#btn-add-macro');
 
   await page.locator('#btn-add-macro').click();
   await page.locator('#macro-input').fill('Falha');

@@ -3,6 +3,7 @@ import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/sora/500.css';
+import { endAppBoot, holdViewWhileLoading, installAppBoot } from './ui/shell/appBoot.js';
 import '@fontsource/sora/600.css';
 import '../styles/style.css';
 import '../styles/shell.css';
@@ -59,6 +60,7 @@ import { installModalGlobals } from './ui/components/modal.js';
 import { installCreateElementGlobals } from './ui/dom/createElement.js';
 import { installLegacyEventBindings } from './ui/legacy-events.js';
 import { installModalKeyboard } from './ui/modalKeyboard.js';
+import { installSettingsPanelCards } from './ui/settings/settingsPanelCards.js';
 import { installRecordFormReaderGlobals } from './ui/records/recordFormReader.js';
 import { installRecordFormValidationGlobals } from './ui/records/recordFormValidation.js';
 import { installRecordListRendererGlobals } from './ui/records/recordListRenderer.js';
@@ -85,6 +87,7 @@ initializeObservability();
 // The current production app still runs from index.html. Keep bootstrap free of
 // automatic side effects until the inline handlers are migrated safely.
 export function bootstrapApp() {
+  installAppBoot(globalThis);
   const bootstrapTrace = startTrace('app.bootstrap', { operation: 'app.bootstrap' });
   markBootstrap('finance-bridge-install-start');
   installInitialTemplates(document);
@@ -111,6 +114,7 @@ export function bootstrapApp() {
   installImportPipelineGlobals(globalThis);
   installLegacyEventBindings(globalThis);
   installModalKeyboard(globalThis);
+  installSettingsPanelCards(globalThis);
   installAppShell(globalThis);
   installHistoryWindowUi(globalThis);
   installRecordFormReaderGlobals(globalThis);
@@ -141,6 +145,7 @@ export function bootstrapApp() {
         });
     })
     .catch((error) => {
+      endAppBoot(globalThis);
       bootstrapTrace.finish('error', { stage: 'legacy_or_firebase' });
       const normalized = normalizeLazyLoadError(error, { operation: 'bootstrap_legacy' });
       globalThis.financeApp?.resilience?.errorReporter?.report?.({ error: normalized, operation: 'bootstrap_legacy' });
@@ -392,9 +397,13 @@ export function installSettingsLazyLoader(target = globalThis) {
   app.loadSettingsActiveUi = loadActiveUi;
 
   target.renderConfiguracoes = function renderConfiguracoesLazyPlaceholder(...args) {
+    // Na primeira abertura a tela espera o modulo e o painel de INSS/IRRF (que entra no topo),
+    // em vez de aparecer pela metade e "pular" quando ele chega.
+    const release = holdViewWhileLoading(target, 'view-configuracoes');
     return loadActiveUi()
       .then(() => target.renderConfiguracoes?.(...args))
-      .catch(() => (typeof previousRenderConfiguracoes === 'function' ? previousRenderConfiguracoes.apply(this, args) : null));
+      .catch(() => (typeof previousRenderConfiguracoes === 'function' ? previousRenderConfiguracoes.apply(this, args) : null))
+      .finally(release);
   };
   Object.defineProperty(target.renderConfiguracoes, '__financeSettingsLazyPlaceholder', { value: true });
 
