@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "synthetic": true,
+  "collections": {
+    "users": "profiles",
+    "users/*/finance_records": "finance_records",
+    "users/*/local_storage": "local_storage",
+    "users/*/audit_logs": "audit_logs",
+    "users/*/idempotency_receipts": "idempotency_receipts"
+  },
+  "identity": {
+    "source": "firebase_uid",
+    "mapping_table": "identity_mappings"
+  }
+}
